@@ -174,7 +174,6 @@ if ($file == false) {
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>KontrolVM</title>
-	<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" defer></script>
 	<style>
 		body {
 			font-family: sans-serif;
