@@ -1,6 +1,9 @@
 <?PHP
 /** KontrolVM By KuJoe (https://github.com/KuJoe/kontrolvm) **/
 
+use phpseclib3\Crypt\EC;
+require __DIR__ . '/vendor/autoload.php';
+
 $filename = 'LOCKED';
 if (file_exists($filename)) {
 	die("The directory is locked. Please delete the LOCKED file if you are sure you need to run the install.php file (this might overwrite existing data in the database if it exists).");
@@ -11,11 +14,14 @@ if (file_exists('config.php')) {
 } else {
 	die("The config.php file does not exist. Please upload it to the same folder as this file.");
 }
+
+//Generate the super user for later.
 $username = "admin";
 $password = substr(md5(time()), 0, 16);
 $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
 
 try {
+	//Create the database tables.
 	$conn = new PDO("sqlite:$db_file_path");
 	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 	$tables = [
@@ -155,7 +161,16 @@ try {
 	$stmt->bindValue(':password', "$hashedPassword", SQLITE3_TEXT);
 	$stmt->bindValue(':active', '1', SQLITE3_INTEGER);
 	$stmt->execute();
-	$success = $db_file_path." has been deployed and the tables have been successfully created.";
+	
+	//Create the SSH key
+	$privateKey = EC::createKey('Ed25519');
+	$publicKey = $privateKey->getPublicKey(); 
+	$privateKeyString = $privateKey->toString('OpenSSH'); 
+	$publicKeyString = $publicKey->toString('OpenSSH');
+	file_put_contents('../kontrolvm', $privateKeyString);
+	file_put_contents('../kontrolvm.pub', $publicKeyString);
+	
+	$success = "Database has been deployed and the tables have been successfully created.<br />SSH key has been generated for use.";
 	
 } catch(PDOException $e) {
 	$error = $e->getMessage();
@@ -226,8 +241,8 @@ if ($file == false) {
 			<p>
 			<br />
 			The following user was created:<br />
-			Username: <?php echo $username; ?><br />
-			Password: <?php echo $password; ?><br />
+			Username: <b><?php echo $username; ?></b><br />
+			Password: <b><?php echo $password; ?></b><br />
 			<br />
 			<?php echo $lock; ?>
 			</p>
