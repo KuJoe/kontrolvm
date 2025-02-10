@@ -167,10 +167,10 @@ try {
 	$publicKey = $privateKey->getPublicKey(); 
 	$privateKeyString = $privateKey->toString('OpenSSH'); 
 	$publicKeyString = $publicKey->toString('OpenSSH');
-	file_put_contents('../kontrolvm', $privateKeyString);
-	file_put_contents('../kontrolvm.pub', $publicKeyString);
+	file_put_contents($sshkeypriv, $privateKeyString);
+	file_put_contents($sshkeypub, $publicKeyString);
 	
-	$success = "Database has been deployed and the tables have been successfully created.<br />SSH key has been generated for use.";
+	$success = "Database has been deployed and the tables have been successfully created.<br />An SSH key has been generated for internal use.";
 	
 } catch(PDOException $e) {
 	$error = $e->getMessage();
@@ -243,8 +243,12 @@ if ($file == false) {
 			The following user was created:<br />
 			Username: <b><?php echo $username; ?></b><br />
 			Password: <b><?php echo $password; ?></b><br />
+			<i>Write these down, they will not be displayed again and cannot be recovered at this time.</i>
 			<br />
 			<?php echo $lock; ?>
+			<br />
+			<br />
+			<a href="index.php">LOGIN</a>
 			</p>
 		<?php } ?>
 		<br /><br />

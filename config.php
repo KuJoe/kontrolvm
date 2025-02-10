@@ -8,6 +8,14 @@
 // SQLite3 Database File
 $db_file_path = "../kontrolvm.db";
 
+// SSH Settings
+$sshusernow = "kontrolvm";
+$sshkeypriv = "../kontrolvm";
+$sshkeypub = "../kontrolvm.pub";
+
+// Encrypt/Decrypt Key
+$cryptkey = "a-random-string";
+
 //
 // Optional settings
 //

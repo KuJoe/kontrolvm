@@ -91,7 +91,7 @@ All of the current assets and UI are placeholders, I'll find somebody to design 
 
 # KontrolVM Installation
 
- 1. ~~Download the [latest release](https://github.com/KuJoe/kontrolvm/releases).~~
+ 1. Download the [latest release](https://github.com/KuJoe/kontrolvm/releases).
  2. Extract the files and upload them to your web directory.  
 	 *OPTIONAL: Update the config.php file if needed.*
  3. Navigate to the install.php file in your browser to run the installer.  
@@ -101,4 +101,4 @@ All of the current assets and UI are placeholders, I'll find somebody to design 
 *At this time only AlmaLinux 9, RockyLinux 9, and CentOS Stream 9 have been tested and are supported. We will add more server OS options later.*
 Login to your Linux KVM node and run the following command as root:
 
-    COMMAND COMING SOON
+    curl -fsSL https://kontrolvm.com/setup.sh | bash
