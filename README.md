@@ -1,6 +1,21 @@
-# KontrolVM
-A simple self-hosted PHP + SQLite3 control panel for Linux KVM clusters, nodes, and guests.
+![KontrolVM Logo](https://kontrolvm.com/logo.png)
+A simple self-hosted PHP + SQLite3 control panel for Linux KVM clusters, nodes, and guest VMs.
 
+[**DEMO**](https://demo.kontrolvm.com) *
+*This is mostly a tour of the control panel and not functional at this time.  
+All of the current assets and UI are placeholders, I'll find somebody to design a better looking UI in the near future.*
+
+#### Table of Contents
+[Features](#features)
+    - [User Management](#user-management)
+    - [Node Management](#node-management)
+    - [VM Management](#vm-management)
+    - [Cluster Management](#cluster-management)
+    - [Other Features](#other-features)
+[Requirements](#requirements)
+[KontrolVM Installation](#kontrolvm-installation)
+[Linux KVM Node Setup](#linux-kvm-node-setup)
+##
 # Features
 ### User Management
 
