@@ -76,6 +76,7 @@ wget -N https://raw.githubusercontent.com/KuJoe/kontrolvm/refs/heads/main/script
 wget -N https://raw.githubusercontent.com/KuJoe/kontrolvm/refs/heads/main/scripts/iolimits.sh
 wget -N https://raw.githubusercontent.com/KuJoe/kontrolvm/refs/heads/main/scripts/tc_start.sh
 wget -N https://raw.githubusercontent.com/KuJoe/kontrolvm/refs/heads/main/scripts/tc_stop.sh
+wget -O /home/kontrolvm/isos/systemrescue-amd64.iso https://sourceforge.net/projects/systemrescuecd/files/sysresccd-x86/11.03/systemrescue-11.03-amd64.iso/download
 echo "kontrolvm_version=0.1" > /home/kontrolvm/conf/kontrolvm.conf
 echo '#!/bin/sh' > /home/kontrolvm/create_console.sh
 echo "# Script Name:  create_console" >> /home/kontrolvm/create_console.sh
