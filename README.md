@@ -2,7 +2,8 @@
 
 A simple self-hosted PHP + SQLite3 control panel for Linux KVM clusters, nodes, and guest VMs.
 
-[**DEMO**](https://demo.kontrolvm.com) *
+[**DEMO**](https://demo.kontrolvm.com)  
+
 *This is mostly a tour of the control panel and not functional at this time.  
 All of the current assets and UI are placeholders, I'll find somebody to design a better looking UI in the near future.*
 
