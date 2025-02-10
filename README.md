@@ -72,7 +72,7 @@ A simple self-hosted PHP + SQLite3 control panel for Linux KVM clusters, nodes, 
 
 # KontrolVM Installation
 
- ~~1. Download the [latest release](https://github.com/KuJoe/kontrolvm/releases).~~
+ 1. ~~Download the [latest release](https://github.com/KuJoe/kontrolvm/releases).~~
  2. Extract the files and upload them to your web directory.
 	 *OPTIONAL: Update the config.php file if needed.*
  3. Navigate to the install.php file in your browser to run the installer.
@@ -82,4 +82,4 @@ A simple self-hosted PHP + SQLite3 control panel for Linux KVM clusters, nodes, 
 *At this time only RHEL-based distros are supported. We will add more server OS options later.*
 Login to your Linux KVM node and run the following command as root:
 
-    ~~curl -fsSL https://kontrolvm.com/setup.sh | sh~~
+    COMMAND COMING SOON
