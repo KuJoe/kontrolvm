@@ -1,4 +1,5 @@
-![KontrolVM Logo](https://kontrolvm.com/logo.png)
+![KontrolVM Logo](https://kontrolvm.com/logo.png)  
+
 A simple self-hosted PHP + SQLite3 control panel for Linux KVM clusters, nodes, and guest VMs.
 
 [**DEMO**](https://demo.kontrolvm.com) *
