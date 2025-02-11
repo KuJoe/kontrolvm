@@ -88,22 +88,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 			$vncpw = $_POST["vncpw"];
 			$vncport = $_POST["vncport"];
 			$websockify = $_POST["websockify"];
-			$netdriver = $_POST["netdriver"];
-			$network = $_POST["network"];
-			$diskdriver = $_POST["diskdriver"];
-			$bootorder = $_POST["bootorder"];
 			$loc = $_POST["loc"];
-			if($_POST["status"]) {
+			if(isset($_POST["status"])) {
 				$status = '1';
 			} else {
 				$status = '0';
 			}
-			if($_POST["protected"]) {
+			if(isset($_POST["protected"])) {
 				$protected = '1';
 			} else {
 				$protected = '0';
 			}
-			$result = editVM($vm_id, $name, $hostname, $ipaddr, $cpu_cores, $memory, $disk1, $disk_space1, $ipv4, $ipv6, $mac_address, $notes, $vncpw, $vncport, $websockify, $netdriver, $network, $diskdriver, $bootorder, $loc, $node['ipaddr'], $node['sshport'], $node['sshuser'], $node['sshkey'], $status, $protected);
+			$result = editVM($vm_id, $name, $hostname, $ipaddr, $cpu_cores, $memory, $disk1, $disk_space1, $ipv4, $ipv6, $mac_address, $notes, $vncpw, $vncport, $websockify, $loc, $status, $protected);
 			if($result === true) {
 				header("Location: vm.php?id=". (int)$vm_id. "&s=1");
 			} else {

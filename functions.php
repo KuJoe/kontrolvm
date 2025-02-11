@@ -451,7 +451,7 @@ function editNode($node_id, $hostname, $ipaddr, $sshport, $status, $lastvm, $las
 	}
 }
 
-function editVM($vm_id, $name, $hostname, $ipaddr, $cpu_cores, $memory, $disk1, $disk_space1, $ipv4, $ipv6, $mac_address, $notes, $vncpw, $vncport, $websockify, $netdriver, $network, $diskdriver, $bootorder, $loc, $nodeipaddr, $nodesshport, $status, $protected) {
+function editVM($vm_id, $name, $hostname, $ipaddr, $cpu_cores, $memory, $disk1, $disk_space1, $ipv4, $ipv6, $mac_address, $notes, $vncpw, $vncport, $websockify, $loc, $status, $protected) {
 	include('config.php');
 	$conn = new PDO("sqlite:$db_file_path");
 	$encpw = encrypt($vncpw);
@@ -473,10 +473,6 @@ function editVM($vm_id, $name, $hostname, $ipaddr, $cpu_cores, $memory, $disk1, 
 				vncpw =:vncpw,
 				vncport =:vncport,
 				websockify =:websockify,
-				netdriver =:netdriver,
-				network =:network,
-				diskdriver =:diskdriver,
-				bootorder =:bootorder,
 				loc =:loc,
 				last_updated =:last_updated
 			WHERE vm_id =:vm_id";
@@ -498,10 +494,6 @@ function editVM($vm_id, $name, $hostname, $ipaddr, $cpu_cores, $memory, $disk1, 
 	$stmt->bindValue(':vncpw', "$encpw", SQLITE3_TEXT);
 	$stmt->bindParam(':vncport', $vncport, SQLITE3_INTEGER);
 	$stmt->bindParam(':websockify', $websockify, SQLITE3_INTEGER);
-	$stmt->bindValue(':netdriver', "$netdriver", SQLITE3_TEXT);
-	$stmt->bindValue(':network', "$network", SQLITE3_TEXT);
-	$stmt->bindValue(':diskdriver', "$diskdriver", SQLITE3_TEXT);
-	$stmt->bindValue(':bootorder', "$bootorder", SQLITE3_TEXT);
 	$stmt->bindValue(':loc', "$loc", SQLITE3_TEXT);
 	$stmt->bindValue(':last_updated', "$last_updated", SQLITE3_TEXT);
 	$stmt->bindParam(':vm_id', $vm_id, SQLITE3_INTEGER);
