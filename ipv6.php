@@ -105,7 +105,7 @@ $clusters = getClusters('1');
 			<li><a href="vms.php">VMs</a></li>
 			<li><a href="users.php">Users</a></li>
 			<li><a class="active" href="settings.php">Settings</a></li>
-			<li style="font-weight: bold;"><a href="account.php"><?php echo $_SESSION["username"]; ?></a></li>
+			<li style="font-weight: bold;"><a href="account.php"><?php echo htmlspecialchars($_SESSION["username"]); ?></a></li>
 			<li><a href="logout.php"><i class="fa fa-sign-out" aria-hidden="true"></i></a></li>
 		</ul>
 	</nav>

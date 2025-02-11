@@ -105,7 +105,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 			}
 			$result = editVM($vm_id, $name, $hostname, $ipaddr, $cpu_cores, $memory, $disk1, $disk_space1, $ipv4, $ipv6, $mac_address, $notes, $vncpw, $vncport, $websockify, $netdriver, $network, $diskdriver, $bootorder, $loc, $node['ipaddr'], $node['sshport'], $node['sshuser'], $node['sshkey'], $status, $protected);
 			if($result === true) {
-				header("Location: vm.php?id=$vm_id&s=1");
+				header("Location: vm.php?id=". (int)$vm_id. "&s=1");
 			} else {
 				$error = "VM update failed: ".$result;
 			}
@@ -114,7 +114,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 			$speed = $_POST['iow'];
 			$result = setIOW($vm_id,$vm['name'],$speed,$node['ipaddr'],$node['sshport'],$node['sshuser'],$node['sshkey']);
 			if($result === true) {
-				header("Location: vm.php?id=$vm_id&s=1");
+				header("Location: vm.php?id=". (int)$vm_id. "&s=1");
 			} else {
 				$error = "VM update failed: ".$result;
 			}
@@ -123,7 +123,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 			$speed = $_POST['nic'];
 			$result = setNIC($vm_id,$vm['name'],$vm['network'],$speed,$node['ipaddr'],$node['sshport'],$node['sshuser'],$node['sshkey']);
 			if($result === true) {
-				header("Location: vm.php?id=$vm_id&s=1");
+				header("Location: vm.php?id=". (int)$vm_id. "&s=1");
 			} else {
 				$error = "VM update failed: ".$result;
 			}
@@ -131,7 +131,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 		if (isset($_POST['startvm'])) {
 			$result = startVM($vm_id,$vm['name'],$node['ipaddr'],$node['sshport'],$node['sshuser'],$node['sshkey']);
 			if($result === true) {
-				header("Location: vm.php?id=$vm_id&s=2");
+				header("Location: vm.php?id=". (int)$vm_id. "&s=2");
 			} else {
 				$error = "VM start failed: ".$result;
 			}
@@ -139,7 +139,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 		if (isset($_POST['restartvm'])) {
 			$result = restartVM($vm_id,$vm['name'],$node['ipaddr'],$node['sshport'],$node['sshuser'],$node['sshkey']);
 			if($result === true) {
-				header("Location: vm.php?id=$vm_id&s=3");
+				header("Location: vm.php?id=". (int)$vm_id. "&s=3");
 			} else {
 				$error = "VM restart failed: ".$result;
 			}
@@ -147,7 +147,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 		if (isset($_POST['shutdownvm'])) {
 			$result = shutdownVM($vm_id,$vm['name'],$node['ipaddr'],$node['sshport'],$node['sshuser'],$node['sshkey']);
 			if($result === true) {
-				header("Location: vm.php?id=$vm_id&s=4");
+				header("Location: vm.php?id=". (int)$vm_id. "&s=4");
 			} else {
 				$error = "VM shutdown failed: ".$result;
 			}
@@ -155,7 +155,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 		if (isset($_POST['stopvm'])) {
 			$result = stopVM($vm_id,$vm['name'],$node['ipaddr'],$node['sshport'],$node['sshuser'],$node['sshkey']);
 			if($result === true) {
-				header("Location: vm.php?id=$vm_id&s=5");
+				header("Location: vm.php?id=". (int)$vm_id. "&s=5");
 			} else {
 				$error = "VM stop failed: ".$result;
 			}
@@ -163,7 +163,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 		if (isset($_POST['disableVNC'])) {
 			$result = disableVNC($vm_id,$vm['name'],$vm['websockify'],$vm['vncport'],$node['ipaddr'],$node['sshport'],$node['sshuser'],$node['sshkey']);
 			if($result === true) {
-				header("Location: vm.php?id=$vm_id&s=6");
+				header("Location: vm.php?id=". (int)$vm_id. "&s=6");
 			} else {
 				$error = "VM disable VNC failed: ".$result;
 			}
@@ -171,7 +171,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 		if (isset($_POST['enableVNC'])) {
 			$result = enableVNC($vm_id,$vm['name'],$vm['websockify'],$vm['vncport'],$node['ipaddr'],$node['sshport'],$node['sshuser'],$node['sshkey']);
 			if($result === true) {
-				header("Location: vm.php?id=$vm_id&s=7");
+				header("Location: vm.php?id=". (int)$vm_id. "&s=7");
 			} else {
 				$error = "VM enable VNC failed: ".$result;
 			}
@@ -179,7 +179,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 		if (isset($_POST['consolePW'])) {
 			$result = consolePW($vm_id,$vm['name'],$vm['vncport'],$node['ipaddr'],$node['sshport'],$node['sshuser'],$node['sshkey']);
 			if($result === true) {
-				header("Location: vm.php?id=$vm_id&s=8");
+				header("Location: vm.php?id=". (int)$vm_id. "&s=8");
 			} else {
 				$error = "VM console password reset failed: ".$result;
 			}
@@ -188,7 +188,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 			$ostemplate = $_POST['ostemplate'];
 			$result = mountISO($vm_id,$vm['name'],$ostemplate,$node['ipaddr'],$node['sshport'],$node['sshuser'],$node['sshkey']);
 			if($result === true) {
-				header("Location: vm.php?id=$vm_id&s=9");
+				header("Location: vm.php?id=". (int)$vm_id. "&s=9");
 			} else {
 				$error = "VM ISO mount failed: ".$result;
 			}
@@ -196,7 +196,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 		if (isset($_POST['unmountISO'])) {
 			$result = unmountISO($vm_id,$vm['name'],$node['ipaddr'],$node['sshport'],$node['sshuser'],$node['sshkey']);
 			if($result === true) {
-				header("Location: vm.php?id=$vm_id&s=10");
+				header("Location: vm.php?id=". (int)$vm_id. "&s=10");
 			} else {
 				$error = "VM ISO unmount failed: ".$result;
 			}
@@ -205,7 +205,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 		#	$bus = $_POST['bus'];
 		#	$result = diskDriver($vm_id,$vm['name'],$bus,$node['ipaddr'],$node['sshport'],$node['sshuser'],$node['sshkey']);
 		#	if($result === true) {
-		#		header("Location: vm.php?id=$vm_id&s=11");
+		#		header("Location: vm.php?id=". (int)$vm_id. "&s=11");
 		#	} else {
 		#		$error = "VM update disk driver failed: ".$result;
 		#	}
@@ -214,7 +214,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 		#	$bus = $_POST['bus'];
 		#	$result = netDriver($vm_id,$vm['name'],$bus,$node['ipaddr'],$node['sshport'],$node['sshuser'],$node['sshkey']);
 		#	if($result === true) {
-		#		header("Location: vm.php?id=$vm_id&s=12");
+		#		header("Location: vm.php?id=". (int)$vm_id. "&s=12");
 		#	} else {
 		#		$error = "VM update network driver failed: ".$result;
 		#	}
@@ -223,7 +223,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 			$boot = $_POST['boot'];
 			$result = bootOrder($vm_id,$vm['name'],$boot,$node['ipaddr'],$node['sshport'],$node['sshuser'],$node['sshkey']);
 			if($result === true) {
-				header("Location: vm.php?id=$vm_id&s=13");
+				header("Location: vm.php?id=". (int)$vm_id. "&s=13");
 			} else {
 				$error = "VM update boot order failed: ".$result;
 			}
@@ -276,7 +276,7 @@ if ($vm) {
 			<li><a class="active" href="vms.php">VMs</a></li>
 			<li><a href="users.php">Users</a></li>
 			<li><a href="settings.php">Settings</a></li>
-			<li style="font-weight: bold;"><a href="account.php"><?php echo $_SESSION["username"]; ?></a></li>
+			<li style="font-weight: bold;"><a href="account.php"><?php echo htmlspecialchars($_SESSION["username"]); ?></a></li>
 			<li><a href="logout.php"><i class="fa fa-sign-out" aria-hidden="true"></i></a></li>
 		</ul>
 	</nav>

@@ -1,13 +1,8 @@
 <?php
 /** KontrolVM By KuJoe (https://github.com/KuJoe/kontrolvm) **/
 
-session_start(); // Start the session
-
-// Unset all session variables
+session_start();
 $_SESSION = array();
-
-// If it's desired to kill the session, also delete the session cookie.
-// Note: This will destroy the session, and not just the session data!
 if (ini_get("session.use_cookies")) {
 		$params = session_get_cookie_params();
 		setcookie(session_name(), '', time() - 42000,
@@ -15,16 +10,7 @@ if (ini_get("session.use_cookies")) {
 				$params["secure"], $params["httponly"]
 		);
 }
-
-// Finally, destroy the session
 session_destroy();
-
-// Clear all cookies
-foreach ($_COOKIE as $key => $value) {
-	setcookie($key, '', time() - 3600, '/'); // Set expiration to the past
-}
-
-// Redirect to index.php after 3 seconds
 header("refresh:3;url=index.php");
 
 ?>

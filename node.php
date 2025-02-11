@@ -55,7 +55,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 			}
 			$result = editNode($node_id, $hostname, $ipaddr, $sshport, $status, $lastvm, $lastvnc, $lastws, $loc);
 			if($result === true) {
-				header("Location: node.php?id=$node_id&s=1");
+				header("Location: node.php?id=". (int)$node_id. "&s=1");
 			} else {
 				$error = "Node update failed: ".$result;
 			}
@@ -108,7 +108,7 @@ if ($node) {
 			<li><a href="vms.php">VMs</a></li>
 			<li><a href="users.php">Users</a></li>
 			<li><a href="settings.php">Settings</a></li>
-			<li style="font-weight: bold;"><a href="account.php"><?php echo $_SESSION["username"]; ?></a></li>
+			<li style="font-weight: bold;"><a href="account.php"><?php echo htmlspecialchars($_SESSION["username"]); ?></a></li>
 			<li><a href="logout.php"><i class="fa fa-sign-out" aria-hidden="true"></i></a></li>
 		</ul>
 	</nav>
@@ -123,8 +123,8 @@ if ($node) {
 		<div class="table-container" style="max-width:1500px;">
 			<div class="node-details">
 				<form id="editNode" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post">
-				<input type="hidden" name="csrf_token" value="<?php echo $csrfToken; ?>">
-				<input type="hidden" name="id" value="<?php echo $node_id; ?>">
+				<input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
+				<input type="hidden" name="id" value="<?php echo htmlspecialchars($node_id); ?>">
 				<table>
 					<tr>
 						<td style="background-color:#999;">Hostname:</td>
@@ -187,19 +187,19 @@ if ($node) {
 					</tr>
 					<tr>
 						<td style="background-color:#999;">Uptime:</td>
-						<td><?php echo $node['uptime']; ?></td>
+						<td><?php echo htmlspecialchars($node['uptime']); ?></td>
 					</tr>
 					<tr>
 						<td style="background-color:#999;">Memory Used:</td>
-						<td><?php echo $node['memused']; ?></td>
+						<td><?php echo htmlspecialchars($node['memused']); ?></td>
 					</tr>
 					<tr>
 						<td style="background-color:#999;">Disk Usage:</td>
-						<td><?php echo $node['diskclnt']; ?></td>
+						<td><?php echo htmlspecialchars($node['diskclnt']); ?></td>
 					</tr>
 					<tr>
 						<td style="background-color:#999;">Load Average:</td>
-						<td><?php echo $node['load']; ?></td>
+						<td><?php echo htmlspecialchars($node['load']); ?></td>
 					</tr>
 					<tr>
 						<td style="background-color:#999;">Make:</td>
@@ -254,8 +254,8 @@ if ($node) {
 						Confirm
 						</td>
 						<td>
-						<input type="hidden" name="csrf_token" value="<?php echo $csrfToken; ?>">
-						<input type="hidden" name="id" value="<?php echo $node_id; ?>">
+						<input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
+						<input type="hidden" name="id" value="<?php echo htmlspecialchars($node_id); ?>">
 						<button type="submit" name="deleteNode" id="deleteNode" class="stylish-button" style="background-color:red;">DELETE</button>
 						</form>
 						</td>

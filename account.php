@@ -65,7 +65,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST") {
 				if($_SESSION["staff_id"] == $_POST["id"]) {
 					$_SESSION["username"] = $username;
 				}
-				header("Location: account.php?id=$staff_id&s=1");
+				header("Location: account.php?id=". (int)$staff_id. "&s=1");
 			} else {
 				$error = "Account update failed: ".$result;
 			}
@@ -119,7 +119,7 @@ if ($staff) {
 			<li><a href="vms.php">VMs</a></li>
 			<li><a href="users.php">Users</a></li>
 			<li><a href="settings.php">Settings</a></li>
-			<li style="font-weight: bold;"><a class="active" href="account.php"><?php echo $_SESSION["username"]; ?></a></li>
+			<li style="font-weight: bold;"><a class="active" href="account.php"><?php echo htmlspecialchars($_SESSION["username"]); ?></a></li>
 			<li><a href="logout.php"><i class="fa fa-sign-out" aria-hidden="true"></i></a></li>
 		</ul>
 	</nav>
@@ -132,8 +132,8 @@ if ($staff) {
 			<div class="error-message"><?php echo $error; ?></div> 
 		<?php } ?>
 		<form id="save_account" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post">
-		<input type="hidden" name="csrf_token" value="<?php echo $csrfToken; ?>">
-		<input type="hidden" name="id" value="<?php echo $staff_id; ?>">
+		<input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
+		<input type="hidden" name="id" value="<?php echo htmlspecialchars($staff_id); ?>">
 			<h2>Profile</h2>
 			<div class="form-group">
 				<label for="username">Username:</label>
@@ -180,8 +180,8 @@ if ($staff) {
 				Confirm
 				</td>
 				<td>
-				<input type="hidden" name="csrf_token" value="<?php echo $csrfToken; ?>">
-				<input type="hidden" name="id" value="<?php echo $staff_id; ?>">
+				<input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
+				<input type="hidden" name="id" value="<?php echo htmlspecialchars($staff_id); ?>">
 				<button type="submit" name="delete_account" id="delete_account" class="stylish-button" style="background-color:red;">DELETE</button>
 				</form>
 				</td>
