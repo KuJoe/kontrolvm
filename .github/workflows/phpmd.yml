@@ -47,7 +47,7 @@ jobs:
           tools: phpmd
 
       - name: Run PHPMD
-        run: phpmd . sarif codesize --reportfile phpmd-results.sarif --exclude *vendor/*
+        run: phpmd . sarif codesize --exclude vendor/* --reportfile phpmd-results.sarif
         continue-on-error: true
 
       - name: Upload analysis results to GitHub
