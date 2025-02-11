@@ -956,10 +956,14 @@ function getTotalCPU() {
 		$stmt->execute();
 		$result = $stmt->fetch(PDO::FETCH_ASSOC);
 		$total_cores = $result['total_cores'];
-		return $total_cores;
+		if($total_cores) {
+			return $total_cores;
+		} else {
+			return "0";
+		}
 	} catch (PDOException $e) {
 		error_log("Error calculating total CPU cores: " . $e->getMessage());
-		return 0;
+		return "0";
 	}
 }
 
@@ -974,10 +978,14 @@ function getTotalDisk() {
 		$stmt->execute();
 		$result = $stmt->fetch(PDO::FETCH_ASSOC);
 		$total_disk = $result['total_disk'];
-		return $total_disk;
+		if($total_disk) {
+			return $total_disk;
+		} else {
+			return "0";
+		}
 	} catch (PDOException $e) {
 		error_log("Error calculating total disk space: " . $e->getMessage());
-		return 0;
+		return "0";
 	}
 }
 
@@ -992,10 +1000,14 @@ function getTotalRAM() {
 		$stmt->execute();
 		$result = $stmt->fetch(PDO::FETCH_ASSOC);
 		$total_ram = $result['total_ram'];
-		return $total_ram;
+		if($total_ram) {
+			return $total_ram;
+		} else {
+			return "0";
+		}
 	} catch (PDOException $e) {
 		error_log("Error calculating total RAM: " . $e->getMessage());
-		return 0;
+		return "0";
 	}
 }
 
@@ -1010,10 +1022,14 @@ function getTotalVMs() {
 		$stmt->execute();
 		$result = $stmt->fetch(PDO::FETCH_ASSOC);
 		$total_vms = $result['total_vms'];
-		return $total_vms;
+		if($total_vms) {
+			return $total_vms;
+		} else {
+			return "0";
+		}
 	} catch (PDOException $e) {
 		error_log("Error calculating total VMs: " . $e->getMessage());
-		return 0;
+		return "0";
 	}
 }
 
@@ -1027,10 +1043,14 @@ function getTotalNodes() {
 		$stmt = $conn->prepare($sql);
 		$stmt->execute();
 		$count = $stmt->fetchColumn(); // Fetch the count directly
-		return $count;
+		if($count) {
+			return $count;
+		} else {
+			return "0";
+		}		
 	} catch (PDOException $e) {
 		error_log("Error counting active nodes: " . $e->getMessage());
-		return 0;
+		return "0";
 	}
 }
 

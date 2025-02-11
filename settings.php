@@ -47,45 +47,6 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 	</ul>
 	<div class="container">
 		<h1>Settings</h1>
-
-		<form action="#" method="post"> 
-
-			<h2>General</h2>
-			<div class="form-group">
-				<label for="hostname">Hostname:</label>
-				<input type="text" id="hostname" name="hostname" value="kvm-cluster-01" disabled>
-			</div>
-			<div class="form-group">
-				<label for="timezone">Timezone:</label>
-				<select id="timezone" name="timezone" disabled>
-					<option value="UTC">UTC</option>
-					<option value="EST" selected>EST</option> 
-					<option value="PST">PST</option>
-					</select>
-			</div>
-
-			<h2>Network</h2>
-			<div class="form-group">
-				<label for="dns-server">DNS Server:</label>
-				<input type="text" id="dns-server" name="dns-server" value="8.8.8.8" disabled>
-			</div>
-			<div class="form-group">
-				<label for="ntp-server">NTP Server:</label>
-				<input type="text" id="ntp-server" name="ntp-server" value="time.google.com" disabled>
-			</div>
-
-			<h2>Security</h2>
-			<div class="form-group">
-				<label for="password">SSH Password:</label>
-				<input type="password" id="password" name="password" value="12345" disabled>
-			</div>
-			<div class="form-group">
-				<label for="ssh-port">SSH Port:</label>
-				<input type="number" id="ssh-port" name="ssh-port" value="22" disabled>
-			</div>
-
-			<button type="submit" class="stylish-button">Save Changes</button>
-		</form>
 	</div>
 	<?php include('footer.php'); ?>
 	<script>
