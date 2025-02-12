@@ -451,7 +451,7 @@ function editNode($node_id, $hostname, $ipaddr, $sshport, $status, $lastvm, $las
 	}
 }
 
-function editVM($vm_id, $name, $hostname, $ipaddr, $cpu_cores, $memory, $disk1, $disk_space1, $ipv4, $ipv6, $mac_address, $notes, $vncpw, $vncport, $websockify, $loc, $status, $protected) {
+function editVM($vm_id, $name, $hostname, $disk1, $disk_space1, $notes, $mac_address, $vncpw, $vncport, $websockify, $loc, $status, $protected) {
 	include('config.php');
 	$conn = new PDO("sqlite:$db_file_path");
 	$encpw = encrypt($vncpw);
@@ -462,12 +462,8 @@ function editVM($vm_id, $name, $hostname, $ipaddr, $cpu_cores, $memory, $disk1, 
 				ip_address =:ipaddr,
 				status =:status,
 				protected =:protected,
-				cpu_cores =:cpu_cores,
-				memory =:memory,
 				disk1 =:disk1,
 				disk_space1 =:disk_space1,
-				ipv4 =:ipv4,
-				ipv6 =:ipv6,
 				mac_address =:mac_address,
 				notes =:notes,
 				vncpw =:vncpw,
@@ -480,15 +476,10 @@ function editVM($vm_id, $name, $hostname, $ipaddr, $cpu_cores, $memory, $disk1, 
 	$stmt = $conn->prepare($sql);
 	$stmt->bindValue(':name', "$name", SQLITE3_TEXT);
 	$stmt->bindValue(':hostname', "$hostname", SQLITE3_TEXT);
-	$stmt->bindValue(':ipaddr', "$ipaddr", SQLITE3_TEXT);
 	$stmt->bindParam(':status', $status, SQLITE3_INTEGER);
 	$stmt->bindParam(':protected', $protected, SQLITE3_INTEGER);
-	$stmt->bindParam(':cpu_cores', $cpu_cores, SQLITE3_INTEGER);
-	$stmt->bindParam(':memory', $memory, SQLITE3_INTEGER);
 	$stmt->bindValue(':disk1', "$disk1", SQLITE3_TEXT);
 	$stmt->bindParam(':disk_space1', $disk_space1, SQLITE3_INTEGER);
-	$stmt->bindParam(':ipv4', $ipv4, SQLITE3_INTEGER);
-	$stmt->bindParam(':ipv6', $ipv6, SQLITE3_INTEGER);
 	$stmt->bindValue(':mac_address', "$mac_address", SQLITE3_TEXT);
 	$stmt->bindValue(':notes', "$notes", SQLITE3_TEXT);
 	$stmt->bindValue(':vncpw', "$encpw", SQLITE3_TEXT);
@@ -1134,9 +1125,10 @@ function createVM($memory,$disk_space1,$cpu_cores,$loc) {
 		$encpw = encrypt($password);
 		$disk1 = $vmname."-disk1.img";
 		$created_at = time();
+		$memorymb = $memory * 1024;
 				
 		$ssh = connectNode($nodeip,$nodeport,$sshuser,$sshkey);
-		$ssh->exec('sudo /usr/bin/virt-install --name '.$vmname.' --ram '.$memory.' --vcpus='.$cpu_cores.' --disk path=/home/kontrolvm/data/'.$disk1.',size='.$disk_space1.',format=raw,bus=virtio,cache=writeback --network=bridge:br0,model=virtio --cdrom /home/kontrolvm/isos/systemrescue-amd64.iso --os-variant linux2022 --osinfo detect=on,require=off --noautoconsole --graphics vnc,listen=0.0.0.0,port='.$vncport.',password='.$password.',keymap=en-us --hvm --boot uefi');
+		$ssh->exec('sudo /usr/bin/virt-install --name '.$vmname.' --ram '.$memorymb.' --vcpus='.$cpu_cores.' --disk path=/home/kontrolvm/data/'.$disk1.',size='.$disk_space1.',format=raw,bus=virtio,cache=writeback --network=bridge:br0,model=virtio --cdrom /home/kontrolvm/isos/systemrescue-amd64.iso --os-variant linux2022 --osinfo detect=on,require=off --noautoconsole --graphics vnc,listen=0.0.0.0,port='.$vncport.',password='.$password.',keymap=en-us --hvm --boot uefi');
 		$ssh->exec('/bin/rm -rf /home/kontrolvm/xmls/'.$vmname.'.xml');
 		$ssh->exec('/bin/touch /home/kontrolvm/xmls/'.$vmname.'.xml');
 		$ssh->exec('sudo /usr/bin/virsh destroy '.$vmname.'');
@@ -1287,6 +1279,52 @@ function destroyVM($vm_id,$vmname,$websockify,$vncport,$nodeip,$nodeport,$sshuse
 		error_log("No confirmation ($vm_id): " . $e->getMessage());
 		return false;
 	}
+}
+
+function setCPU($vm_id,$vmname,$cpu,$nodeip,$nodeport,$sshuser,$sshkey) {
+	include('config.php');
+	$conn = new PDO("sqlite:$db_file_path");
+	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+	try {
+		$ssh = connectNode($nodeip,$nodeport,$sshuser,$sshkey);
+		$ssh->exec('sudo /usr/bin/virsh setvcpus '.$vmname.' '.$cpu.' --config --maximum');
+		$ssh->exec('sudo /usr/bin/virsh setvcpus '.$vmname.' '.$cpu.' --config');
+		$ssh->exec('sudo /usr/bin/virsh dumpxml '.$vmname.' --security-info > /usr/local/wyvern/xmls/ '.$vmname.'.xml');
+		$ssh->disconnect();
+
+		$stmt = $conn->prepare("UPDATE vms SET cpu_cores =:cpu_cores WHERE vm_id =:vm_id");
+		$stmt->bindValue(':cpu_cores', $cpu, SQLITE3_INTEGER);
+		$stmt->bindValue(':vm_id', $vm_id, SQLITE3_INTEGER);
+		$stmt->execute();
+		return true;
+	} catch (PDOException $e) {
+		error_log("Error updating VM IOW ($vm_id): " . $e->getMessage());
+		return false; 
+	}	
+}
+
+function setRAM($vm_id,$vmname,$memory,$nodeip,$nodeport,$sshuser,$sshkey) {
+	include('config.php');
+	$conn = new PDO("sqlite:$db_file_path");
+	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+	try {
+		$ssh = connectNode($nodeip,$nodeport,$sshuser,$sshkey);
+		$ssh->exec('sudo /usr/bin/virsh setmaxmem '.$vmname.' '.$memory.'G --config');
+		$ssh->exec('sudo /usr/bin/virsh setmem '.$vmname.' '.$memory.'G --config');
+		$ssh->exec('sudo /usr/bin/virsh dumpxml '.$vmname.' --security-info > /usr/local/wyvern/xmls/ '.$vmname.'.xml');
+		$ssh->disconnect();
+
+		$stmt = $conn->prepare("UPDATE vms SET memory =:memory WHERE vm_id =:vm_id");
+		$stmt->bindValue(':memory', $memory, SQLITE3_INTEGER);
+		$stmt->bindValue(':vm_id', $vm_id, SQLITE3_INTEGER);
+		$stmt->execute();
+		return true;
+	} catch (PDOException $e) {
+		error_log("Error updating VM IOW ($vm_id): " . $e->getMessage());
+		return false; 
+	}	
 }
 
 function setIOW($vm_id,$vmname,$speed,$nodeip,$nodeport,$sshuser,$sshkey) {

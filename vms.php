@@ -28,7 +28,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 	$token = $_POST["csrf_token"];
 	if (validateCSRFToken($token)) {
 		$memory = trim($_POST["memory"]);
-		$memory = $memory * 1024;
 		$disk_space1 = trim($_POST["disk_space1"]);
 		$cpu_cores = trim($_POST["cpu_cores"]);
 		$loc = $_POST["loc"];

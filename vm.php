@@ -72,14 +72,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 		if (isset($_POST['update_vm'])) {
 			$name = $_POST["name"];
 			$hostname = $_POST["hostname"];
-			$ipaddr = $_POST["ip_address"];
-			$cpu_cores = $_POST["cpu_cores"];
-			$memory = $_POST["memory"];
 			$disk1 = $_POST["disk1"];
 			$disk_space1 = $_POST["disk_space1"];
-			$ipv4 = $_POST["ipv4"];
-			$ipv6 = $_POST["ipv6"];
-			$mac_address = $_POST["mac_address"];
 			if(isset($_POST["notes"])) {
 				$notes = $_POST["notes"];
 			} else {
@@ -88,6 +82,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 			$vncpw = $_POST["vncpw"];
 			$vncport = $_POST["vncport"];
 			$websockify = $_POST["websockify"];
+			$mac_address = $_POST["mac_address"];
 			$loc = $_POST["loc"];
 			if(isset($_POST["status"])) {
 				$status = '1';
@@ -99,7 +94,34 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 			} else {
 				$protected = '0';
 			}
-			$result = editVM($vm_id, $name, $hostname, $ipaddr, $cpu_cores, $memory, $disk1, $disk_space1, $ipv4, $ipv6, $mac_address, $notes, $vncpw, $vncport, $websockify, $loc, $status, $protected);
+			$result = editVM($vm_id, $name, $hostname, $disk1, $disk_space1, $notes, $mac_address, $vncpw, $vncport, $websockify, $loc, $status, $protected);
+			if($result === true) {
+				header("Location: vm.php?id=". (int)$vm_id. "&s=1");
+			} else {
+				$error = "VM update failed: ".$result;
+			}
+		}
+		if (isset($_POST['set_CPU'])) {
+			$cpu_cores = $_POST["cpu_cores"];
+			$result = setCPU($vm_id,$vm['name'],$cpu_cores,$node['ipaddr'],$node['sshport'],$node['sshuser'],$node['sshkey']);
+			if($result === true) {
+				header("Location: vm.php?id=". (int)$vm_id. "&s=1");
+			} else {
+				$error = "VM update failed: ".$result;
+			}
+		}
+		if (isset($_POST['set_RAM'])) {
+			$memory = $_POST["memory"];
+			$result = setRAM($vm_id,$vm['name'],$memory,$node['ipaddr'],$node['sshport'],$node['sshuser'],$node['sshkey']);
+			if($result === true) {
+				header("Location: vm.php?id=". (int)$vm_id. "&s=1");
+			} else {
+				$error = "VM update failed: ".$result;
+			}
+		}
+		if (isset($_POST['set_iow'])) {
+			$speed = $_POST['iow'];
+			$result = setIOW($vm_id,$vm['name'],$speed,$node['ipaddr'],$node['sshport'],$node['sshuser'],$node['sshkey']);
 			if($result === true) {
 				header("Location: vm.php?id=". (int)$vm_id. "&s=1");
 			} else {
@@ -361,28 +383,12 @@ if ($vm) {
 							</td>
 						</tr>
 						<tr>
-							<td style="background-color:#999;">CPU Cores:</td>
-							<td><input type="text" id="cpu_cores" name="cpu_cores" value="<?php echo htmlspecialchars($vm['cpu_cores']);?>" style="text-align:center;width:80%;"></td> 
-						</tr>
-						<tr>
-							<td style="background-color:#999;">Memory:</td>
-							<td><input type="text" id="memory" name="memory" value="<?php echo htmlspecialchars($vm['memory']);?>" style="text-align:center;width:80%;"></td> 
-						</tr>
-						<tr>
 							<td style="background-color:#999;">Disk 1:</td>
 							<td><input type="text" id="disk1" name="disk1" value="<?php echo htmlspecialchars($vm['disk1']);?>" style="text-align:center;width:80%;"></td> 
 						</tr>
 						<tr>
 							<td style="background-color:#999;">Disk Space 1:</td>
 							<td><input type="text" id="disk_space1" name="disk_space1" value="<?php echo htmlspecialchars($vm['disk_space1']);?>" style="text-align:center;width:80%;"></td> 
-						</tr>
-						<tr>
-							<td style="background-color:#999;">IPv4:</td>
-							<td><input type="text" id="ipv4" name="ipv4" value="<?php echo htmlspecialchars($vm['ipv4']);?>" style="text-align:center;width:80%;"></td> 
-						</tr>
-						<tr>
-							<td style="background-color:#999;">IPv6:</td>
-							<td><input type="text" id="ipv6" name="ipv6" value="<?php echo htmlspecialchars($vm['ipv6']);?>" style="text-align:center;width:80%;"></td> 
 						</tr>
 						<tr>
 							<td style="background-color:#999;">Notes:</td>
@@ -405,10 +411,6 @@ if ($vm) {
 						<tr>
 							<td style="background-color:#999;">Name:</td>
 							<td><input type="text" id="myInput1" name="name" value="<?php echo htmlspecialchars($vm['name']);?>" style="text-align:center;width:60%;" readonly> <input type="checkbox" id="enablemyInput1" onchange="toggleInput('myInput1')"> Override</td> 
-						</tr>
-						<tr>
-							<td style="background-color:#999;">IP Address:</td>
-							<td><input type="text" id="myInput2" name="ip_address" value="<?php echo htmlspecialchars($vm['ip_address']);?>" style="text-align:center;width:60%;" readonly> <input type="checkbox" id="enablemyInput2" onchange="toggleInput('myInput2')"> Override</td>	
 						</tr>
 						<tr>
 							<td style="background-color:#999;">MAC Address:</td>
@@ -448,6 +450,26 @@ if ($vm) {
 				<hr />
 				<br />
 				<table>
+					<tr>
+						<td style="background-color:#999;">CPU Cores:</td>
+						<td>
+						<form id="set_CPU" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post">
+						<input type="text" id="cpu_cores" name="cpu_cores" value="<?php echo htmlspecialchars($vm['cpu_cores']);?>" style="text-align:center;width:60%;">
+						<input type="hidden" name="csrf_token" value="<?php echo $csrfToken; ?>">
+						<input type="hidden" name="id" value="<?php echo $vm_id; ?>">
+						<button type="submit" name="set_CPU" id="set_CPU" class="stylish-button">SET</button></form>
+						</td>
+					</tr>
+					<tr>
+						<td style="background-color:#999;">Memory(GB):</td>
+						<td>
+						<form id="set_RAM" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post">
+						<input type="text" id="memory" name="memory" value="<?php echo htmlspecialchars($vm['memory']);?>" style="text-align:center;width:60%;">
+						<input type="hidden" name="csrf_token" value="<?php echo $csrfToken; ?>">
+						<input type="hidden" name="id" value="<?php echo $vm_id; ?>">
+						<button type="submit" name="set_RAM" id="set_RAM" class="stylish-button">SET</button></form>
+						</td>
+					</tr>
 					<tr>
 						<td style="background-color:#999;">IO Write Limit:</td>
 						<td>
