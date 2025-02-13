@@ -103,7 +103,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 		}
 		if (isset($_POST['set_CPU'])) {
 			$cpu_cores = $_POST["cpu_cores"];
-			$result = setCPU($vm_id,$vm['name'],$cpu_cores,$node['ipaddr'],$node['sshport'],$node['sshuser'],$node['sshkey']);
+			$result = setCPU($vm_id,$vm['name'],$cpu_cores,$node['node_id']);
 			if($result === true) {
 				header("Location: vm.php?id=". (int)$vm_id. "&s=1");
 			} else {
@@ -112,7 +112,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 		}
 		if (isset($_POST['set_RAM'])) {
 			$memory = $_POST["memory"];
-			$result = setRAM($vm_id,$vm['name'],$memory,$node['ipaddr'],$node['sshport'],$node['sshuser'],$node['sshkey']);
+			$result = setRAM($vm_id,$vm['name'],$memory,$vm['node_id']);
 			if($result === true) {
 				header("Location: vm.php?id=". (int)$vm_id. "&s=1");
 			} else {
@@ -121,7 +121,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 		}
 		if (isset($_POST['set_iow'])) {
 			$speed = $_POST['iow'];
-			$result = setIOW($vm_id,$vm['name'],$speed,$node['ipaddr'],$node['sshport'],$node['sshuser'],$node['sshkey']);
+			$result = setIOW($vm_id,$vm['name'],$speed,$vm['node_id']);
 			if($result === true) {
 				header("Location: vm.php?id=". (int)$vm_id. "&s=1");
 			} else {
@@ -130,7 +130,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 		}
 		if (isset($_POST['set_iow'])) {
 			$speed = $_POST['iow'];
-			$result = setIOW($vm_id,$vm['name'],$speed,$node['ipaddr'],$node['sshport'],$node['sshuser'],$node['sshkey']);
+			$result = setIOW($vm_id,$vm['name'],$speed,$vm['node_id']);
 			if($result === true) {
 				header("Location: vm.php?id=". (int)$vm_id. "&s=1");
 			} else {
@@ -139,7 +139,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 		}
 		if (isset($_POST['set_nic'])) {
 			$speed = $_POST['nic'];
-			$result = setNIC($vm_id,$vm['name'],$vm['network'],$speed,$node['ipaddr'],$node['sshport'],$node['sshuser'],$node['sshkey']);
+			$result = setNIC($vm_id,$vm['name'],$vm['network'],$speed,$vm['node_id']);
 			if($result === true) {
 				header("Location: vm.php?id=". (int)$vm_id. "&s=1");
 			} else {
@@ -147,7 +147,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 			}
 		}
 		if (isset($_POST['startvm'])) {
-			$result = startVM($vm_id,$vm['name'],$node['ipaddr'],$node['sshport'],$node['sshuser'],$node['sshkey']);
+			$result = startVM($vm_id,$vm['name'],$vm['node_id']);
 			if($result === true) {
 				header("Location: vm.php?id=". (int)$vm_id. "&s=2");
 			} else {
@@ -155,7 +155,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 			}
 		}
 		if (isset($_POST['restartvm'])) {
-			$result = restartVM($vm_id,$vm['name'],$node['ipaddr'],$node['sshport'],$node['sshuser'],$node['sshkey']);
+			$result = restartVM($vm_id,$vm['name'],$vm['node_id']);
 			if($result === true) {
 				header("Location: vm.php?id=". (int)$vm_id. "&s=3");
 			} else {
@@ -163,7 +163,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 			}
 		}
 		if (isset($_POST['shutdownvm'])) {
-			$result = shutdownVM($vm_id,$vm['name'],$node['ipaddr'],$node['sshport'],$node['sshuser'],$node['sshkey']);
+			$result = shutdownVM($vm_id,$vm['name'],$vm['node_id']);
 			if($result === true) {
 				header("Location: vm.php?id=". (int)$vm_id. "&s=4");
 			} else {
@@ -171,7 +171,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 			}
 		}
 		if (isset($_POST['stopvm'])) {
-			$result = stopVM($vm_id,$vm['name'],$node['ipaddr'],$node['sshport'],$node['sshuser'],$node['sshkey']);
+			$result = stopVM($vm_id,$vm['name'],$vm['node_id']);
 			if($result === true) {
 				header("Location: vm.php?id=". (int)$vm_id. "&s=5");
 			} else {
@@ -179,7 +179,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 			}
 		}
 		if (isset($_POST['disableVNC'])) {
-			$result = disableVNC($vm_id,$vm['name'],$vm['websockify'],$vm['vncport'],$node['ipaddr'],$node['sshport'],$node['sshuser'],$node['sshkey']);
+			$result = disableVNC($vm_id,$vm['name'],$vm['websockify'],$vm['vncport'],$vm['node_id']);
 			if($result === true) {
 				header("Location: vm.php?id=". (int)$vm_id. "&s=6");
 			} else {
@@ -187,7 +187,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 			}
 		}
 		if (isset($_POST['enableVNC'])) {
-			$result = enableVNC($vm_id,$vm['name'],$vm['websockify'],$vm['vncport'],$node['ipaddr'],$node['sshport'],$node['sshuser'],$node['sshkey']);
+			$result = enableVNC($vm_id,$vm['name'],$vm['websockify'],$vm['vncport'],$vm['node_id']);
 			if($result === true) {
 				header("Location: vm.php?id=". (int)$vm_id. "&s=7");
 			} else {
@@ -195,7 +195,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 			}
 		}
 		if (isset($_POST['consolePW'])) {
-			$result = consolePW($vm_id,$vm['name'],$vm['vncport'],$node['ipaddr'],$node['sshport'],$node['sshuser'],$node['sshkey']);
+			$result = consolePW($vm_id,$vm['name'],$vm['vncport'],$vm['node_id']);
 			if($result === true) {
 				header("Location: vm.php?id=". (int)$vm_id. "&s=8");
 			} else {
@@ -204,7 +204,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 		}
 		if (isset($_POST['mountISO'])) {
 			$ostemplate = $_POST['ostemplate'];
-			$result = mountISO($vm_id,$vm['name'],$ostemplate,$node['ipaddr'],$node['sshport'],$node['sshuser'],$node['sshkey']);
+			$result = mountISO($vm_id,$vm['name'],$ostemplate,$vm['node_id']);
 			if($result === true) {
 				header("Location: vm.php?id=". (int)$vm_id. "&s=9");
 			} else {
@@ -212,7 +212,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 			}
 		}
 		if (isset($_POST['unmountISO'])) {
-			$result = unmountISO($vm_id,$vm['name'],$node['ipaddr'],$node['sshport'],$node['sshuser'],$node['sshkey']);
+			$result = unmountISO($vm_id,$vm['name'],$vm['node_id']);
 			if($result === true) {
 				header("Location: vm.php?id=". (int)$vm_id. "&s=10");
 			} else {
@@ -221,7 +221,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 		}
 		#if (isset($_POST['diskDriver'])) {
 		#	$bus = $_POST['bus'];
-		#	$result = diskDriver($vm_id,$vm['name'],$bus,$node['ipaddr'],$node['sshport'],$node['sshuser'],$node['sshkey']);
+		#	$result = diskDriver($vm_id,$vm['name'],$bus,$vm['node_id']);
 		#	if($result === true) {
 		#		header("Location: vm.php?id=". (int)$vm_id. "&s=11");
 		#	} else {
@@ -230,7 +230,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 		#}
 		#if (isset($_POST['netDriver'])) {
 		#	$bus = $_POST['bus'];
-		#	$result = netDriver($vm_id,$vm['name'],$bus,$node['ipaddr'],$node['sshport'],$node['sshuser'],$node['sshkey']);
+		#	$result = netDriver($vm_id,$vm['name'],$bus,$vm['node_id']);
 		#	if($result === true) {
 		#		header("Location: vm.php?id=". (int)$vm_id. "&s=12");
 		#	} else {
@@ -239,7 +239,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 		#}
 		if (isset($_POST['bootOrder'])) {
 			$boot = $_POST['boot'];
-			$result = bootOrder($vm_id,$vm['name'],$boot,$node['ipaddr'],$node['sshport'],$node['sshuser'],$node['sshkey']);
+			$result = bootOrder($vm_id,$vm['name'],$boot,$vm['node_id']);
 			if($result === true) {
 				header("Location: vm.php?id=". (int)$vm_id. "&s=13");
 			} else {
@@ -249,7 +249,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 		if (isset($_POST['destroyVM'])) {
 			if (isset($_POST['confirm'])) {
 				$confirm = $_POST['confirm'];
-				$result = destroyVM($vm_id,$vm['name'],$vm['websockify'],$vm['vncport'],$node['ipaddr'],$node['sshport'],$node['sshuser'],$node['sshkey'],$confirm);
+				$result = destroyVM($vm_id,$vm['name'],$vm['websockify'],$vm['vncport'],$vm['node_id'],$confirm);
 				if($result === true) {
 					header("Location: vms.php?s=2");
 				} else {
@@ -660,14 +660,11 @@ if ($vm) {
 				localStorage.setItem('theme', 'light');
 			}
 		});
-		function updateVmStatus(vmname,nodeip,nodeport,nodeuser,nodepw) {
+		function updateVmStatus(vmname,node_id) {
 			const statusDiv = document.getElementById('server-status');
 			$.post("./get_vm_status.php", { 
 				vmname: vmname, 
-				nodeip: nodeip,
-				nodeport: nodeport,
-				nodeuser: nodeuser,
-				nodepw: nodepw
+				node_id: node_id
 			}, function(data) {
 				if (data == "running") {
 					statusDiv.innerHTML = "<img src='assets/online.png' height='24' width='24' alt='Running'>";
@@ -676,9 +673,9 @@ if ($vm) {
 				}
 			});
 		}
-		updateVmStatus('<?php echo $vm['name'];?>','<?php echo $node['ipaddr'];?>','<?php echo $node['sshport'];?>','<?php echo $node['sshuser'];?>','<?php echo $node['sshkey'];?>');
+		updateVmStatus('<?php echo $vm['name'];?>','<?php echo $vm['node_id'];?>');
 		setInterval(function() {
-			updateVmStatus('<?php echo $vm['name'];?>','<?php echo $node['ipaddr'];?>','<?php echo $node['sshport'];?>','<?php echo $node['sshuser'];?>','<?php echo $node['sshkey'];?>');
+			updateVmStatus('<?php echo $vm['name'];?>','<?php echo $vm['node_id'];?>');
 		}, 15000);
 	</script>
 </body>

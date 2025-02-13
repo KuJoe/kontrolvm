@@ -188,14 +188,11 @@ $clusters = getClusters('1');
 			}
 		}
 
-		function updateVmStatus(vm_id,vmname,nodeip,nodeport,nodeuser,nodepw) {
+		function updateVmStatus(vm_id,vmname,node_id) {
 			const statusDiv = document.getElementById('server-status-' + vm_id);
 			$.post("./get_vm_status.php", { 
 				vmname: vmname, 
-				nodeip: nodeip,
-				nodeport: nodeport,
-				nodeuser: nodeuser,
-				nodepw: nodepw
+				node_id: node_id
 			}, function(data) {
 				if (data == "running") {
 					statusDiv.innerHTML = "<img src='assets/online.png' height='16' width='16' alt='Running'>";
@@ -207,9 +204,9 @@ $clusters = getClusters('1');
 		<?php foreach ($servers as $server):
 			$node = getNodeDetails($server['node_id']);
 		?>
-			updateVmStatus('<?php echo $server['vm_id'];?>','<?php echo $server['name'];?>','<?php echo $node['ipaddr'];?>','<?php echo $node['sshport'];?>','<?php echo $node['sshuser'];?>','<?php echo $node['sshkey'];?>');
+			updateVmStatus('<?php echo $server['vm_id'];?>','<?php echo $server['name'];?>','<?php echo $server['node_id'];?>');
 			setInterval(function() {
-				updateVmStatus('<?php echo $server['vm_id'];?>','<?php echo $server['name'];?>','<?php echo $node['ipaddr'];?>','<?php echo $node['sshport'];?>','<?php echo $node['sshuser'];?>','<?php echo $node['sshkey'];?>');
+				updateVmStatus('<?php echo $server['vm_id'];?>','<?php echo $server['name'];?>','<?php echo $server['node_id'];?>');
 			}, 15000);
 		<?php endforeach;?>
 	</script>

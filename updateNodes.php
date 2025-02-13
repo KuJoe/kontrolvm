@@ -9,13 +9,8 @@ $servers = getServerList('1');
 
 if (count($servers) > 0) {
 	foreach ($servers as $server) {
-		$node_id = $server['node_id'];
-		$ipaddr = $server['ipaddr'];
-		$sshport = $server['sshport'];
-		$sshuser = $server['sshuser'];
-		$sshkey = $server['sshkey'];
-		if(getNodeInfo($node_id, $ipaddr, $sshport, $sshuser, $sshkey)) {
-			getNodeStats($node_id, $ipaddr, $sshport, $sshuser, $sshkey);
+		if(getNodeInfo($server['node_id'])) {
+			getNodeStats($server['node_id']);
 		}
 	}
 } else {

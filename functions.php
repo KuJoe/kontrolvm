@@ -79,20 +79,21 @@ function calcDisk($disk) {
 	return $output;
 }
 
-function connectNode($node,$port,$sshuser,$sshkey) {
-	$connection = @fsockopen($node, $port, $errno, $errstr, 2);
+function connectNode($node_id) {
+	$node = getNodeDetails((int)$node_id);
+	$connection = @fsockopen($node['ipaddr'], $node['sshport'], $errno, $errstr, 2);
 	if (is_resource($connection)) {
 		fclose($connection);
-		$ssh = new SSH2($node, $port, 5);
-		$key = PublicKeyLoader::load(file_get_contents($sshkey));
+		$ssh = new SSH2($node['ipaddr'], $node['sshport'], 5);
+		$key = PublicKeyLoader::load(file_get_contents($node['sshkey']));
 		//$ssh->enablePTY();
 		$ssh->setTimeout(30);
-		$ssh->login($sshuser, $key);
+		$ssh->login($node['sshuser'], $key);
 		if ($ssh->isConnected()) {
 			return $ssh;
 		} else {
 			$error = $ssh->getLastError();
-			error_log("SSH connection failed for $node: $error");
+			error_log("SSH connection failed for $node_id: $error");
 			return false;
 		}
 	} else {
@@ -320,11 +321,6 @@ function addNode($hostname, $ipaddr, $sshport, $rootpw, $loc) {
 			$sshkeypublic = 'from="'.$kontrolvmip.'" '.$sshkeypublic;
 			$ssh->exec("echo '$sshkeypublic' >> /home/kontrolvm/.ssh/authorized_keys");
 			$ssh->disconnect();
-			
-			$ssh = connectNode($ipaddr,$sshport,$sshusernow,$sshkeypriv);
-			if (!$ssh->isConnected()) {
-				throw new Exception("SSH connection with key failed.");
-			}
 		} else {
 			throw new Exception("SSH connection with password failed.");
 		}
@@ -539,13 +535,13 @@ function getVMDetails($vm_id) {
 	}
 }
 
-function getNodeStats($node_id, $nodeip, $nodeport, $sshuser, $sshkey) {
+function getNodeStats($node_id) {
 	include('config.php');
 	$conn = new PDO("sqlite:$db_file_path");
 	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
 	try {
-		$ssh = connectNode($nodeip,$nodeport,$sshuser,$sshkey);
+		$ssh = connectNode($node_id);
 		$uptime_string = $ssh->exec('uptime'); 
 		preg_match('/up (.*?),/', $uptime_string, $matches);
 		$uptime = $matches[1];
@@ -570,66 +566,62 @@ function getNodeStats($node_id, $nodeip, $nodeport, $sshuser, $sshkey) {
 	}
 }
 
-function getNodeInfo($node_id, $ipaddr, $sshport, $sshuser, $sshkey) {
-	require_once('config.php');
+function getNodeInfo($node_id) {
+	include('config.php');
+	$conn = new PDO("sqlite:$db_file_path");
+	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
 	try {
-		$key = PublicKeyLoader::load(file_get_contents("$sshkey"));
-		$ssh = new SSH2($ipaddr, $sshport, 5);
-		$ssh->setTimeout(10);
-		if (!$ssh->login($sshuser, $key)) {
-			error_log("SSH connection failed for $ipaddr");
-			return;
-		} else {
-			// Get RAM amount
-			$ram = $ssh->exec("free -h | grep Mem | awk '{print $2}'");
-			$total_memory = trim($ram);
-			preg_match('/([\d\.]+)([GMK])/', $total_memory, $matches);
-			$value = $matches[1];
-			$unit = $matches[2];
+		$ssh = connectNode($node_id);
+		// Get RAM amount
+		$ram = $ssh->exec("free -h | grep Mem | awk '{print $2}'");
+		$total_memory = trim($ram);
+		preg_match('/([\d\.]+)([GMK])/', $total_memory, $matches);
+		$value = $matches[1];
+		$unit = $matches[2];
 
-			if ($unit == "G") {
-				$ram = $value;
-			} elseif ($unit == "M") {
-				$ram = $value / 1024;
-			} elseif ($unit == "K") {
-				$ram = $value / 1024 / 1024;
-			}
-
-			// Get CPU core count
-			$cpu = $ssh->exec('cat /proc/cpuinfo | grep "processor" | wc -l');
-			$cpumodel = $ssh->exec("cat /proc/cpuinfo | grep 'model name' | head -n 1");
-			$cpumodel = trim(mb_substr($cpumodel, 13));
-
-			// Get total disk space
-			$total_disk = $ssh->exec("df -h /home/kontrolvm | awk 'NR==2{print $2}'");
-			$total_disk = calcDisk($total_disk);
-			$used_disk = $ssh->exec("df -h /home/kontrolvm | awk 'NR==2{print $3}'");
-			$used_disk = calcDisk($used_disk);
-
-			// Get make and model
-			$make = $ssh->exec("sudo dmidecode | grep -A3 '^System Information' | grep 'Manufacturer'");
-			$make = mb_substr($make, 14);
-			$make = trim(str_replace([',', '.'], '', $make));
-			$model = $ssh->exec("sudo dmidecode | grep -A3 '^System Information' | grep 'Product Name'");
-			$model = mb_substr($model, 14);
-			$model = trim(str_replace([',', '.'], '', $model)); 
-
-			// Get number of VMs (XML files)
-			$vms = $ssh->exec("sudo virsh list --all | grep kvm | wc -l");
-
-			// Get OS Information
-			$os_version = $ssh->exec('cat /etc/os-release | grep "PRETTY_NAME"');
-			$os_version = trim(mb_substr($os_version, 12));
-			$kernel_version = $ssh->exec('uname -r');
-			$libvirt_version = $ssh->exec('virsh --version');
-			
-			$ssh->disconnect();
-			
-			updateNode($node_id, $cpu, $ram, $total_disk, $make, $model, $cpumodel, $vms, $os_version, $kernel_version, $libvirt_version);
-			return true;
+		if ($unit == "G") {
+			$ram = $value;
+		} elseif ($unit == "M") {
+			$ram = $value / 1024;
+		} elseif ($unit == "K") {
+			$ram = $value / 1024 / 1024;
 		}
+
+		// Get CPU core count
+		$cpu = $ssh->exec('cat /proc/cpuinfo | grep "processor" | wc -l');
+		$cpumodel = $ssh->exec("cat /proc/cpuinfo | grep 'model name' | head -n 1");
+		$cpumodel = trim(mb_substr($cpumodel, 13));
+
+		// Get total disk space
+		$total_disk = $ssh->exec("df -h /home/kontrolvm | awk 'NR==2{print $2}'");
+		$total_disk = calcDisk($total_disk);
+		$used_disk = $ssh->exec("df -h /home/kontrolvm | awk 'NR==2{print $3}'");
+		$used_disk = calcDisk($used_disk);
+
+		// Get make and model
+		$make = $ssh->exec("sudo dmidecode | grep -A3 '^System Information' | grep 'Manufacturer'");
+		$make = mb_substr($make, 14);
+		$make = trim(str_replace([',', '.'], '', $make));
+		$model = $ssh->exec("sudo dmidecode | grep -A3 '^System Information' | grep 'Product Name'");
+		$model = mb_substr($model, 14);
+		$model = trim(str_replace([',', '.'], '', $model)); 
+
+		// Get number of VMs (XML files)
+		$vms = $ssh->exec("sudo virsh list --all | grep kvm | wc -l");
+
+		// Get OS Information
+		$os_version = $ssh->exec('cat /etc/os-release | grep "PRETTY_NAME"');
+		$os_version = trim(mb_substr($os_version, 12));
+		$kernel_version = $ssh->exec('uname -r');
+		$libvirt_version = $ssh->exec('virsh --version');
+		
+		$ssh->disconnect();
+		
+		updateNode($node_id, $cpu, $ram, $total_disk, $make, $model, $cpumodel, $vms, $os_version, $kernel_version, $libvirt_version);
+		return true;
 	} catch (Exception $e) {
-		error_log("Error connecting to $ipaddr: " . $e->getMessage());
+		error_log("Error connecting to $node_id: " . $e->getMessage());
 		return;
 	}
 }
@@ -697,10 +689,10 @@ function getUserList($status) {
 	}
 }
 
-function getVMState($vmname,$nodeip,$nodeport,$sshuser,$sshkey) {
+function getVMState($vmname,$node_id) {
 	include('config.php');
 	try {
-		$ssh = connectNode($nodeip,$nodeport,$sshuser,$sshkey);
+		$ssh = connectNode($node_id);
 		$status = $ssh->exec("sudo virsh list --all | grep $vmname | awk '{print $3}'");
 		#echo $ssh->getLog();
 		$ssh->disconnect();
@@ -786,7 +778,7 @@ function downloadISOs($download, $filename) {
 	foreach ($servers as $server) {
 		try {
 			$node_id = $server['node_id'];
-			$ssh = connectNode($server['ipaddr'], $server['sshport'], $server['sshuser'], $server['sshkey']);
+			$ssh = connectNode($node_id);
 			$ssh->exec('wget -O /home/kontrolvm/isos/'.$filename.' '.$download.' &');
 			sleep(5);
 			#echo $ssh->getLog();
@@ -1109,10 +1101,6 @@ function createVM($memory,$disk_space1,$cpu_cores,$loc) {
 		$node = $stmt->fetch(PDO::FETCH_ASSOC);
 		if ($node) {
 			$node_id = $node["node_id"];
-			$nodeip = $node["ipaddr"];
-			$nodeport = $node["sshport"];
-			$sshuser = $node["sshuser"];
-			$sshkey = $node["sshkey"];
 			$vncport = $node["lastvnc"]+1;
 			$wsport = $node["lastws"]+1;
 			$vmnum = $node["lastvm"]+1;
@@ -1133,7 +1121,7 @@ function createVM($memory,$disk_space1,$cpu_cores,$loc) {
 		$created_at = time();
 		$memorymb = $memory * 1024;
 				
-		$ssh = connectNode($nodeip,$nodeport,$sshuser,$sshkey);
+		$ssh = connectNode($node_id);
 		$ssh->exec('sudo /usr/bin/virt-install --name '.$vmname.' --ram '.$memorymb.' --vcpus='.$cpu_cores.' --disk path=/home/kontrolvm/data/'.$disk1.',size='.$disk_space1.',format=raw,bus=virtio,cache=writeback --network=bridge:br0,model=virtio --cdrom /home/kontrolvm/isos/systemrescue-amd64.iso --os-variant linux2022 --osinfo detect=on,require=off --noautoconsole --graphics vnc,listen=0.0.0.0,port='.$vncport.',password='.$password.',keymap=en-us --hvm --boot uefi');
 		$ssh->exec('/bin/rm -rf /home/kontrolvm/xmls/'.$vmname.'.xml');
 		$ssh->exec('/bin/touch /home/kontrolvm/xmls/'.$vmname.'.xml');
@@ -1196,9 +1184,9 @@ function createVM($memory,$disk_space1,$cpu_cores,$loc) {
 	}
 }
 
-function restartVM($vm_id,$vmname,$nodeip,$nodeport,$sshuser,$sshkey) {
+function restartVM($vm_id,$vmname,$node_id) {
 	try {
-		$ssh = connectNode($nodeip,$nodeport,$sshuser,$sshkey);
+		$ssh = connectNode($node_id);
 		$ssh->exec('nohup sudo /usr/bin/virsh reboot '.$vmname.' > /dev/null 2>&1 &');
 		#echo $ssh->getLog();
 		$ssh->disconnect();
@@ -1209,9 +1197,9 @@ function restartVM($vm_id,$vmname,$nodeip,$nodeport,$sshuser,$sshkey) {
 	}
 }
 
-function startVM($vm_id,$vmname,$nodeip,$nodeport,$sshuser,$sshkey) {
+function startVM($vm_id,$vmname,$node_id) {
 	try {
-		$ssh = connectNode($nodeip,$nodeport,$sshuser,$sshkey);
+		$ssh = connectNode($node_id);
 		$ssh->exec('nohup sudo /usr/bin/virsh start '.$vmname.' > /dev/null 2>&1 &');
 		#echo $ssh->getLog();
 		$ssh->disconnect();
@@ -1222,9 +1210,9 @@ function startVM($vm_id,$vmname,$nodeip,$nodeport,$sshuser,$sshkey) {
 	}
 }
 
-function stopVM($vm_id,$vmname,$nodeip,$nodeport,$sshuser,$sshkey) {
+function stopVM($vm_id,$vmname,$node_id) {
 	try {
-		$ssh = connectNode($nodeip,$nodeport,$sshuser,$sshkey);
+		$ssh = connectNode($node_id);
 		$ssh->exec('nohup sudo /usr/bin/virsh destroy '.$vmname.' > /dev/null 2>&1 &');
 		#echo $ssh->getLog();
 		$ssh->disconnect();
@@ -1235,9 +1223,9 @@ function stopVM($vm_id,$vmname,$nodeip,$nodeport,$sshuser,$sshkey) {
 	}
 }
 
-function shutdownVM($vm_id,$vmname,$nodeip,$nodeport,$sshuser,$sshkey) {
+function shutdownVM($vm_id,$vmname,$node_id) {
 	try {
-		$ssh = connectNode($nodeip,$nodeport,$sshuser,$sshkey);
+		$ssh = connectNode($node_id);
 		$ssh->exec('nohup sudo /usr/bin/virsh shutdown '.$vmname.' > /dev/null 2>&1 &');
 		#echo $ssh->getLog();
 		$ssh->disconnect();
@@ -1248,13 +1236,13 @@ function shutdownVM($vm_id,$vmname,$nodeip,$nodeport,$sshuser,$sshkey) {
 	}
 }
 
-function destroyVM($vm_id,$vmname,$websockify,$vncport,$nodeip,$nodeport,$sshuser,$sshkey,$confirm) {
+function destroyVM($vm_id,$vmname,$websockify,$vncport,$node_id,$confirm) {
 	if($confirm = 1) {
 		include('config.php');
 		$conn = new PDO("sqlite:$db_file_path");
 		$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 		try {
-			$ssh = connectNode($nodeip,$nodeport,$sshuser,$sshkey);
+			$ssh = connectNode($node_id);
 			$ssh->exec('sudo /bin/sh /home/kontrolvm/destroyvps.sh '.$vmname.'');
 			sleep(5);
 			$ssh->exec('sudo /bin/sh /home/kontrolvm/killconsole.sh '.$vncport.'');
@@ -1287,13 +1275,13 @@ function destroyVM($vm_id,$vmname,$websockify,$vncport,$nodeip,$nodeport,$sshuse
 	}
 }
 
-function setCPU($vm_id,$vmname,$cpu,$nodeip,$nodeport,$sshuser,$sshkey) {
+function setCPU($vm_id,$vmname,$cpu,$node_id) {
 	include('config.php');
 	$conn = new PDO("sqlite:$db_file_path");
 	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
 	try {
-		$ssh = connectNode($nodeip,$nodeport,$sshuser,$sshkey);
+		$ssh = connectNode($node_id);
 		$ssh->exec('sudo /usr/bin/virsh setvcpus '.$vmname.' '.$cpu.' --config --maximum');
 		$ssh->exec('sudo /usr/bin/virsh setvcpus '.$vmname.' '.$cpu.' --config');
 		$ssh->exec('sudo /usr/bin/virsh dumpxml '.$vmname.' --security-info > /usr/local/wyvern/xmls/ '.$vmname.'.xml');
@@ -1310,13 +1298,13 @@ function setCPU($vm_id,$vmname,$cpu,$nodeip,$nodeport,$sshuser,$sshkey) {
 	}	
 }
 
-function setRAM($vm_id,$vmname,$memory,$nodeip,$nodeport,$sshuser,$sshkey) {
+function setRAM($vm_id,$vmname,$memory,$node_id) {
 	include('config.php');
 	$conn = new PDO("sqlite:$db_file_path");
 	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
 	try {
-		$ssh = connectNode($nodeip,$nodeport,$sshuser,$sshkey);
+		$ssh = connectNode($node_id);
 		$ssh->exec('sudo /usr/bin/virsh setmaxmem '.$vmname.' '.$memory.'G --config');
 		$ssh->exec('sudo /usr/bin/virsh setmem '.$vmname.' '.$memory.'G --config');
 		$ssh->exec('sudo /usr/bin/virsh dumpxml '.$vmname.' --security-info > /usr/local/wyvern/xmls/ '.$vmname.'.xml');
@@ -1333,13 +1321,13 @@ function setRAM($vm_id,$vmname,$memory,$nodeip,$nodeport,$sshuser,$sshkey) {
 	}	
 }
 
-function setIOW($vm_id,$vmname,$speed,$nodeip,$nodeport,$sshuser,$sshkey) {
+function setIOW($vm_id,$vmname,$speed,$node_id) {
 	include('config.php');
 	$conn = new PDO("sqlite:$db_file_path");
 	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
 	try {
-		$ssh = connectNode($nodeip,$nodeport,$sshuser,$sshkey);
+		$ssh = connectNode($node_id);
 		$ssh->exec('/bin/rm -rf /home/kontrolvm/iow/'.$vmname.'');
 		$ssh->exec('echo "virsh blkdeviotune '.$vmname.' vda --write_bytes_sec $(expr 1024 \* 1024 \* '.$speed.')" > /home/kontrolvm/iow/'.$vmname.'');
 		$ssh->exec('sudo /bin/sh /home/kontrolvm/iow/'.$vmname.'');
@@ -1356,13 +1344,13 @@ function setIOW($vm_id,$vmname,$speed,$nodeip,$nodeport,$sshuser,$sshkey) {
 	}	
 }
 
-function setNIC($vm_id,$vmname,$nicToChange,$speed,$nodeip,$nodeport,$sshuser,$sshkey) {
+function setNIC($vm_id,$vmname,$nicToChange,$speed,$node_id) {
 	include('config.php');
 	$conn = new PDO("sqlite:$db_file_path");
 	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
 	try {
-		$ssh = connectNode($nodeip,$nodeport,$sshuser,$sshkey);
+		$ssh = connectNode($node_id);
 		$ssh->exec('/bin/rm -rf /home/kontrolvm/tc/'.$vmname.'');
 		$ssh->exec('echo "/sbin/tc qdisc del dev '.$nicToChange.' root" >> /home/kontrolvm/tc_stop.sh');
 		$ssh->exec('echo "/sbin/tc qdisc del dev '.$nicToChange.' ingress" >> /home/kontrolvm/tc_stop.sh');
@@ -1398,13 +1386,13 @@ function setNIC($vm_id,$vmname,$nicToChange,$speed,$nodeip,$nodeport,$sshuser,$s
 	}
 }
 
-function disableVNC($vm_id,$vmname,$websockify,$vncport,$nodeip,$nodeport,$sshuser,$sshkey) {
+function disableVNC($vm_id,$vmname,$websockify,$vncport,$node_id) {
 	include('config.php');
 	$conn = new PDO("sqlite:$db_file_path");
 	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
 	try {
-		$ssh = connectNode($nodeip,$nodeport,$sshuser,$sshkey);
+		$ssh = connectNode($node_id);
 		$ssh->exec('sudo /bin/sh /home/kontrolvm/killconsole.sh '.$vncport);
 		sleep(2);
 		$ssh->exec('/bin/touch /home/kontrolvm/disabledvnc/'.$vncport);
@@ -1423,13 +1411,13 @@ function disableVNC($vm_id,$vmname,$websockify,$vncport,$nodeip,$nodeport,$sshus
 	}
 }
 
-function enableVNC($vm_id,$vmname,$websockify,$vncport,$nodeip,$nodeport,$sshuser,$sshkey) {
+function enableVNC($vm_id,$vmname,$websockify,$vncport,$node_id) {
 	include('config.php');
 	$conn = new PDO("sqlite:$db_file_path");
 	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
 	try {
-		$ssh = connectNode($nodeip,$nodeport,$sshuser,$sshkey);
+		$ssh = connectNode($node_id);
 		$ssh->exec('sudo /bin/sh /home/kontrolvm/killconsole.sh '.$vncport);
 		sleep(2);
 		$ssh->exec('sudo /bin/sh /home/kontrolvm/create_console.sh '.$websockify.' '.$vncport);
@@ -1449,14 +1437,14 @@ function enableVNC($vm_id,$vmname,$websockify,$vncport,$nodeip,$nodeport,$sshuse
 	}
 }
 
-function consolePW($vm_id,$vmname,$vncport,$nodeip,$nodeport,$sshuser,$sshkey) {
+function consolePW($vm_id,$vmname,$vncport,$node_id) {
 	include('config.php');
 	$password = substr(md5(rand().rand()), 0, 8);
 	$encpw = encrypt($password);
 	$conn = new PDO("sqlite:$db_file_path");
 	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 	try {
-		$ssh = connectNode($nodeip,$nodeport,$sshuser,$sshkey);
+		$ssh = connectNode($node_id);
 		$ssh->exec('sudo /bin/sed -i \'/vnc/c\ \ \ \ <graphics type=\x27vnc\x27 port=\x27'.$vncport.'\x27 autoport=\x27no\x27 listen=\x270.0.0.0\x27 keymap=\x27en-us\x27 passwd=\x27'.$password.'\x27>\' /home/kontrolvm/xmls/'.$vmname.'.xml');
 		$ssh->exec('sudo /usr/bin/virsh define /home/kontrolvm/xmls/'.$vmname.'.xml');
 		#echo $ssh->getLog();
@@ -1473,12 +1461,12 @@ function consolePW($vm_id,$vmname,$vncport,$nodeip,$nodeport,$sshuser,$sshkey) {
 	}
 }
 
-function mountISO($vm_id,$vmname,$ostemplate,$nodeip,$nodeport,$sshuser,$sshkey) {
+function mountISO($vm_id,$vmname,$ostemplate,$node_id) {
 	include('config.php');
 	$conn = new PDO("sqlite:$db_file_path");
 	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 	try {
-		$ssh = connectNode($nodeip,$nodeport,$sshuser,$sshkey);
+		$ssh = connectNode($node_id);
 		$ssh->exec('sudo /usr/bin/virsh attach-disk '.$vmname.' /home/kontrolvm/isos/'.$ostemplate.' sda --type cdrom --mode readonly');
 		$ssh->exec('sudo /usr/bin/virsh change-media '.$vmname.' sda /home/kontrolvm/isos/'.$ostemplate.' --insert --live --config');
 		$ssh->exec('sudo /usr/bin/virsh dumpxml '.$vmname.' --security-info > /home/kontrolvm/xmls/'.$vmname.'.xml');
@@ -1499,12 +1487,12 @@ function mountISO($vm_id,$vmname,$ostemplate,$nodeip,$nodeport,$sshuser,$sshkey)
 	}
 }
 
-function unmountISO($vm_id,$vmname,$nodeip,$nodeport,$sshuser,$sshkey) {
+function unmountISO($vm_id,$vmname,$node_id) {
 	include('config.php');
 	$conn = new PDO("sqlite:$db_file_path");
 	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 	try {
-		$ssh = connectNode($nodeip,$nodeport,$sshuser,$sshkey);
+		$ssh = connectNode($node_id);
 		$ssh->exec('sudo /usr/bin/virsh change-media '.$vmname.' sda --eject --live');
 		$ssh->exec('sudo /usr/bin/virsh change-media '.$vmname.' sda --eject --config');
 		$ssh->exec('sudo /usr/bin/virsh change-media '.$vmname.' fda --eject --live');
@@ -1531,12 +1519,12 @@ function unmountISO($vm_id,$vmname,$nodeip,$nodeport,$sshuser,$sshkey) {
 	}
 }
 
-#function diskDriver($vm_id,$vmname,$bus,$nodeip,$nodeport,$sshuser,$sshkey) {
+#function diskDriver($vm_id,$vmname,$bus,$node_id) {
 #	include('config.php');
 #	$conn = new PDO("sqlite:$db_file_path");
 #	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 #	try {
-#		$ssh = connectNode($nodeip,$nodeport,$sshuser,$sshkey);
+#		$ssh = connectNode($node_id);
 #		if($bus == 'ide') {
 #			$ssh->exec('sudo /bin/sed -i \'/vda/c\ \ \ \ \ \ <target dev=\x27vda\x27\ bus=\x27ide\x27\/>\' /home/kontrolvm/xmls/'.$vmname.'.xml');
 #		} else {
@@ -1557,12 +1545,12 @@ function unmountISO($vm_id,$vmname,$nodeip,$nodeport,$sshuser,$sshkey) {
 #	}
 #}
 #
-#function netDriver($vm_id,$vmname,$bus,$nodeip,$nodeport,$sshuser,$sshkey) {
+#function netDriver($vm_id,$vmname,$bus,$node_id) {
 #	include('config.php');
 #	$conn = new PDO("sqlite:$db_file_path");
 #	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 #	try {
-#		$ssh = connectNode($nodeip,$nodeport,$sshuser,$sshkey);
+#		$ssh = connectNode($node_id);
 #		if($bus == 'e1000') {
 #			$ssh->exec('sudo /bin/sed -i \'/<model type=\x27virtio\x27\/>/c\ \ \ \ \ \ <model type=\x27e1000\x27\/>\' /home/kontrolvm/xmls/'.$vmname.'.xml');
 #		} else {
@@ -1583,12 +1571,12 @@ function unmountISO($vm_id,$vmname,$nodeip,$nodeport,$sshuser,$sshkey) {
 #	}
 #}
 
-function bootOrder($vm_id,$vmname,$boot,$nodeip,$nodeport,$sshuser,$sshkey) {
+function bootOrder($vm_id,$vmname,$boot,$node_id) {
 	include('config.php');
 	$conn = new PDO("sqlite:$db_file_path");
 	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 	try {
-		$ssh = connectNode($nodeip,$nodeport,$sshuser,$sshkey);
+		$ssh = connectNode($node_id);
 		if($boot == 'hd') {
 			$ssh->exec('sudo /bin/sed -ie \'s/<boot dev=\x27cdrom\x27\/>/<boot dev=\x27hd\x27\/>/g\' /home/kontrolvm/xmls/'.$vmname.'.xml');
 		} else {
