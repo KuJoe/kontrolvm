@@ -57,7 +57,7 @@ All of the current assets and UI are placeholders, I'll find somebody to design 
  - ✅Reset VNC passwords
  - ✅Change disk and network drivers for VMs
  - ✅Set boot order for VMs
- - 🚧Adjusting VM resources (CPU, RAM, disk space, etc...)
+ - ✅Adjusting VM resources (CPU, RAM, etc...)
  - 🚧Adding and removing disks
  - 🚧Adding and removing NICs
  - 🚧Backup/Restore/Snapshot VMs

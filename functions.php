@@ -1473,8 +1473,8 @@ function mountISO($vm_id,$vmname,$ostemplate,$nodeip,$nodeport,$sshuser,$sshkey)
 	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 	try {
 		$ssh = connectNode($nodeip,$nodeport,$sshuser,$sshkey);
+		$ssh->exec('sudo /usr/bin/virsh attach-disk '.$vmname.' /home/kontrolvm/isos/'.$ostemplate.' sda --type cdrom --mode readonly');
 		$ssh->exec('sudo /usr/bin/virsh change-media '.$vmname.' sda /home/kontrolvm/isos/'.$ostemplate.' --insert --live --config');
-		#$ssh->exec('sudo /usr/bin/virsh attach-disk '.$vmname.' /home/kontrolvm/isos/'.$ostemplate.' sda --type cdrom --mode readonly');
 		$ssh->exec('sudo /usr/bin/virsh dumpxml '.$vmname.' --security-info > /home/kontrolvm/xmls/'.$vmname.'.xml');
 		$ssh->exec('sudo /bin/sed -ie \'s/<boot dev=\x27hd\x27\/>/<boot dev=\x27cdrom\x27\/>/g\' /home/kontrolvm/xmls/'.$vmname.'.xml');
 		$ssh->exec('sudo /usr/bin/virsh define /home/kontrolvm/xmls/'.$vmname.'.xml');
