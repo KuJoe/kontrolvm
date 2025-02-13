@@ -22,14 +22,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 	}
 }
 $token = getCSRFToken();
-
-$script_name = 'updateNodes.php';
-$last_run_time = getLastRunTime($script_name); 
-if (!$last_run_time || time() - $last_run_time >= 3600) {
-	include($script_name);
-	updateLastRunTime($script_name); 
-}
-
+$last_run_time = getLastRunTime('updateNodes.php'); 
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -76,6 +69,8 @@ if (!$last_run_time || time() - $last_run_time >= 3600) {
 				<div class="value"><?php echo getTotalDisk(); ?>GB</div> 
 			</div>
 		</div>
+		<br />
+		<p style="text-align:center;font-size:12px;">Last refresh: <?php echo date('m/j/Y @ g:i:s A',$last_run_time); ?></p>
 	</div>
 	<?php include('footer.php'); ?>
 	<script>

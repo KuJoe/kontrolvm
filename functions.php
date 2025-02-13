@@ -80,18 +80,24 @@ function calcDisk($disk) {
 }
 
 function connectNode($node,$port,$sshuser,$sshkey) {
-	$ssh = new SSH2($node, $port, 5);
-	$key = PublicKeyLoader::load(file_get_contents($sshkey));
-	//$ssh->enablePTY();
-	$ssh->setTimeout(30);
-	$ssh->login($sshuser, $key);
-	if ($ssh->isConnected()) {
-		return $ssh;
-    } else {
-		$error = $ssh->getLastError();
-		error_log("SSH connection failed for $node: $error");
+	$connection = @fsockopen($node, $port, $errno, $errstr, 2);
+	if (is_resource($connection)) {
+		fclose($connection);
+		$ssh = new SSH2($node, $port, 5);
+		$key = PublicKeyLoader::load(file_get_contents($sshkey));
+		//$ssh->enablePTY();
+		$ssh->setTimeout(30);
+		$ssh->login($sshuser, $key);
+		if ($ssh->isConnected()) {
+			return $ssh;
+		} else {
+			$error = $ssh->getLastError();
+			error_log("SSH connection failed for $node: $error");
+			return false;
+		}
+	} else {
 		return false;
-    }
+	}
 }
 
 function encrypt($string) {

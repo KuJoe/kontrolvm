@@ -14,8 +14,9 @@ if (count($servers) > 0) {
 		$sshport = $server['sshport'];
 		$sshuser = $server['sshuser'];
 		$sshkey = $server['sshkey'];
-		getNodeInfo($node_id, $ipaddr, $sshport, $sshuser, $sshkey);
-		getNodeStats($node_id, $ipaddr, $sshport, $sshuser, $sshkey);
+		if(getNodeInfo($node_id, $ipaddr, $sshport, $sshuser, $sshkey)) {
+			getNodeStats($node_id, $ipaddr, $sshport, $sshuser, $sshkey);
+		}
 	}
 } else {
 	return false;
