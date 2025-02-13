@@ -48,7 +48,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 			$lastvnc = $_POST["lastvnc"];
 			$lastws = $_POST["lastws"];
 			$loc = $_POST["loc"];
-			if($_POST["status"]) {
+			if(isset($_POST["status"])) {
 				$status = '1';
 			} else {
 				$status = '0';
