@@ -1,26 +1,32 @@
 #!/bin/bash
 
-echo "Installing required software via yum..."
+exec 1>kontrolvm.log 2>&1
+
+echo "Kicking off the setup script, you can check the kontrolvm.log file for more details." > /dev/tty 
+
+echo "Installing required software via yum (this might take a while)..." > /dev/tty 
 yum install epel-release -y
 /usr/bin/crb enable
-yum install -y wget gcc make tar bind-utils zlib-devel openssl-devel pam pam-devel krb5-devel ncurses-devel e4fsprogs openssh-clients rrdtool smartmontools bridge-utils qemu-kvm libvirt virt-manager virt-install virt-top libguestfs-tools virt-viewer libvirt-daemon-kvm novnc ncurses-compat-libs iptables-services unzip net-tools
+yum install --skip-broken -y wget gcc make tar bind-utils zlib-devel openssl-devel pam pam-devel krb5-devel ncurses-devel e4fsprogs openssh-clients rrdtool smartmontools bridge-utils qemu-kvm libvirt virt-manager virt-install virt-top libguestfs-tools virt-viewer libvirt-daemon-kvm novnc ncurses-compat-libs iptables-services unzip net-tools
 
-echo "Setting up KontrolVM user..."
+echo "Setting up KontrolVM user..." > /dev/tty 
 adduser kontrolvm
 chown -R kontrolvm:kontrolvm /home/kontrolvm
 /usr/bin/setfacl -m u:qemu:rx /home/kontrolvm
 echo "kontrolvm  ALL = NOPASSWD: /usr/bin/virsh, /usr/bin/virt-install, /sbin/iptables, /sbin/ip6tables, /sbin/ebtables, /bin/sh, /bin/sed, /sbin/ifconfig, /usr/bin/qemu-img, /home/kontrolvm/destroyvps.sh, /usr/bin/test, /usr/bin/novnc_proxy, /usr/bin/nohup, /usr/sbin/dmidecode" | sudo EDITOR='tee -a' visudo
 
-echo "Disabling firewalld..."
+echo "Disabling firewalld..." > /dev/tty 
 systemctl stop firewalld
 systemctl disable firewalld
 systemctl mask firewalld
 
-echo "Enabling iptables services..."
+echo "Enabling iptables services..." > /dev/tty 
 systemctl enable --now iptables
 systemctl enable --now ip6tables
+iptables -F
+service iptables save
 
-echo "Configuring network..."
+echo "Configuring network..." > /dev/tty 
 echo 'net.ipv4.ip_forward = 1' > /etc/sysctl.conf
 echo 'net.ipv6.conf.default.forwarding = 1' >> /etc/sysctl.conf
 echo 'net.ipv6.conf.all.forwarding = 1' >> /etc/sysctl.conf
@@ -47,11 +53,11 @@ INTERFACE_NAME=`ip a show | grep 'state UP' | awk 'NR==1{print $2}' | sed 's/:$/
 /usr/bin/nmcli connection up br0
 echo "allow all" > /etc/qemu-kvm/bridge.conf
 
-echo "Updating sshd Config..."
+echo "Updating sshd Config..." > /dev/tty 
 echo "Match User kontrolvm" >> /etc/ssh/sshd_config
 echo "     PasswordAuthentication no" >> /etc/ssh/sshd_config
 
-echo "Creating directories/files for KontrolVM..."
+echo "Creating directories/files for KontrolVM..." > /dev/tty 
 cd
 touch /var/www/html/index.html
 mkdir /home/kontrolvm/.ssh
@@ -67,7 +73,7 @@ mkdir /home/kontrolvm/xmls
 touch /home/kontrolvm/ip4
 touch /home/kontrolvm/ip6
 
-echo "Configuring KontrolVM..."
+echo "Configuring KontrolVM (this might take a while)..." > /dev/tty 
 cd /home/kontrolvm/
 wget -N https://raw.githubusercontent.com/KuJoe/kontrolvm/refs/heads/main/scripts/killconsole.sh
 wget -N https://raw.githubusercontent.com/KuJoe/kontrolvm/refs/heads/main/scripts/buildnet.sh
@@ -85,14 +91,14 @@ echo " " >> /home/kontrolvm/create_console.sh
 /usr/bin/openssl req -new -newkey rsa:4096 -days 365 -nodes -x509 -subj "/C=US/ST=Online/L=Web/O=Web/CN=example.com" -keyout /home/kontrolvm/key.pem -out /home/kontrolvm/cert.pem
 echo 'sudo /usr/bin/nohup /usr/bin/novnc_proxy --listen $1 --vnc localhost:$2 --ssl-only --cert /home/kontrolvm/cert.pem --key /home/kontrolvm/key.pem > /dev/null 2>&1 &' >> /home/kontrolvm/create_console.sh
 
-echo "Set permissions for KontrolVM..."
+echo "Set permissions for KontrolVM..." > /dev/tty 
 cd
 chown -R kontrolvm:kontrolvm /home/kontrolvm
 chmod 0755 /home/kontrolvm/*.sh
 chmod 0700 /home/kontrolvm/.ssh
 chmod 0600 /home/kontrolvm/.ssh/*
 
-echo "Setting up Websockify and noVNC..."
+echo "Setting up Websockify and noVNC..." > /dev/tty 
 cd
 wget https://github.com/novnc/websockify/archive/refs/tags/v0.11.0.zip
 unzip v0.11.0.zip
@@ -100,12 +106,15 @@ rm v0.11.0.zip
 cd websockify-0.11.0/
 python3 setup.py install
 
+systemctl restart sshd
 systemctl enable --now libvirtd
 
-echo "Setting up cronjobs..."
+echo "Setting up cronjobs..." > /dev/tty 
 echo 'MAILTO=""' >> /var/spool/cron/root
 echo '*/30 * * * * sh /home/kontrolvm/tc_start.sh' >> /var/spool/cron/root
 echo '*/5 * * * * sh /home/kontrolvm/vz_traffic.sh' >> /var/spool/cron/root
 echo '*/15 * * * * sh /home/kontrolvm/buildnet.sh' >> /var/spool/cron/root
 echo '*/15 * * * * sh /home/kontrolvm/iolimits.sh' >> /var/spool/cron/root
 echo '0 * * * * sh /home/kontrolvm/traffic.sh' >> /var/spool/cron/root
+
+echo "KontrolVM node setup completed, a full log is available in kontrolvm.log" > /dev/tty 
