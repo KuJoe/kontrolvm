@@ -27,7 +27,7 @@ All of the current assets and UI are placeholders, I'll find somebody to design 
  - ✅Delete user accounts
  - ✅Update user details (username, email, status, password)
  - ✅Cloudflare Turnstile invisible CAPTCHA
- - 🚧Multifactor Authentication
+ - ✅Multifactor Authentication
  - 🚧User permissions/levels
  - 🚧Password reset
  - 🚧Notifications

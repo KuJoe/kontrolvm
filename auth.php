@@ -55,7 +55,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 				$chkLocked = checkLockedOut($staff_id);
 				if($chkLocked == false AND $chkActive == true) {
 					if(password_verify($password, $user['staff_password'])) {
-						$_SESSION["loggedin"] = true; 
 						$_SESSION["username"] = $username;
 						$_SESSION['staff_id'] = $staff_id;
 						$staff_lastlogin = time();
@@ -65,7 +64,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 						$stmt->bindValue(':staff_failed_logins', '0', SQLITE3_INTEGER);
 						$stmt->bindValue(':staff_id', $staff_id, SQLITE3_INTEGER);
 						$stmt->execute();
-						header("refresh:3;url=home.php"); 
+						if(isset($user['staff_mfa'])) {
+							$_SESSION['mfa_required'] = true;
+							header("Location: ". $_SERVER["PHP_SELF"]);
+							exit;
+						} else {
+							$_SESSION["loggedin"] = true;
+							header("Location: home.php");
+						}
 					} else {
 						$sql = "UPDATE staff SET staff_failed_logins = staff_failed_logins + 1 WHERE staff_id =:staff_id";
 						$stmt = $conn->prepare($sql);
@@ -98,12 +104,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 			echo "Error: " . $e->getMessage();
 		}
 		$stmt = null;
-	}	
-} else {
-	header("refresh:3;url=index.php");
-	exit;
-}
-
+	} elseif(isset($_POST["otp"])) {
+		$staffid = (int)$_POST["staff_id"];
+		$otp = (int)$_POST["otp"];
+		if(verifyMFA($staffid,$otp)) {
+			unset($_SESSION['mfa_required']);
+			$_SESSION["loggedin"] = true;
+			header("Location: home.php");
+		} else {
+			session_destroy();
+			header("Location: index.php?e=3");
+			exit;
+		}
+	}
+} elseif($_SESSION['mfa_required']) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -121,7 +135,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 			background-color: #f4f4f7;
 		}
 
-		.logout-container {
+		.container {
 			background-color: #fff;
 			padding: 30px;
 			border-radius: 8px;
@@ -130,35 +144,61 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 		}
 
 		h1 {
-			color: #333;
+			text-align: center;
+			margin-bottom: 20px;
 		}
 
-		p {
-			margin-top: 15px;
-			color: #666;
+		.form-group {
+			margin-bottom: 15px;
 		}
 
-		.loader {
-			border: 8px solid #f3f3f3; 
-			border-radius: 50%;
-			border-top: 8px solid #3498db; 
-			width: 40px;
-			height: 40px;
-			animation: spin 2s linear infinite;
-			margin: 20px auto;
+		label {
+			display: block;
+			margin-bottom: 5px;
 		}
 
-		@keyframes spin {
-			0% { transform: rotate(0deg); }
-			100% { transform: rotate(360deg); }
+		input[type="text"],
+		input[type="password"] {
+			width: 100%;
+			padding: 10px;
+			border: 1px solid #ced4da;
+			border-radius: 4px;
+			box-sizing: border-box; 
 		}
+
+		button[type="submit"] {
+			background-color: #28a745; 
+			color: white;
+			padding: 10px 20px;
+			border: none;
+			border-radius: 4px;
+			cursor: pointer;
+			width: 100%; 
+		}
+		
 	</style>
 </head>
 <body>
-	<div class="logout-container">
-		<h1>Authenticating account...</h1>
-		<p>Please wait.</p>
-		<div class="loader"></div> 
+	<div class="container">
+		<img src="assets/logo.png" alt="KontrolVM Logo" style="display:block;margin:0 auto;" />
+		<br />
+		<br />
+		<h1>Two-Factor Authentication</h1>
+		<p>Please enter your OTP:
+		<form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post"> 
+			<input type="hidden" name="staff_id" value="<?php echo htmlspecialchars($_SESSION['staff_id']);?>"> 
+			<input type="text" name="otp" required>
+			<br />
+			<br />
+			<button type="submit">Verify</button>
+		</form>
+		</p>
 	</div>
 </body>
 </html>
+<?php
+} else {
+	header("refresh:3;url=index.php");
+	exit;
+}
+?>

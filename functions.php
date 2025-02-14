@@ -1679,7 +1679,7 @@ function disableCluster($clusterid) {
 }
 
 function enableMFA($staff_id,$mfasecret,$mfacode) {
-	if(is_int($mfacode) OR isset($mfasecret)) {
+	if(is_int($mfacode)) {
 		$google2fa = new Google2FA();
 		if ($google2fa->verifyKey($mfasecret, $mfacode, '1')) {
 			include('config.php');
@@ -1717,6 +1717,22 @@ function disableMFA($staff_id) {
 		return true;
 	} catch (PDOException $e) {
 		error_log("Error updating staff: ". $e->getMessage());
+		return false;
+	}
+}
+
+function verifyMFA($staff_id,$mfacode) {
+	if(is_int($mfacode)) {
+		$staff = getStaffDetails($staff_id);
+		$google2fa = new Google2FA();
+		if ($google2fa->verifyKey($staff['staff_mfa'], $mfacode, '1')) {
+			return true;
+		} else {
+			error_log("Error validating MFA code.");
+			return false;
+		}
+	} else {
+		error_log("Error MFA missing code.");
 		return false;
 	}
 }

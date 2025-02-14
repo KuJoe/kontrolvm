@@ -7,6 +7,10 @@ use BaconQrCode\Renderer\GDLibRenderer;
 use BaconQrCode\Writer;
 
 session_start();
+if (isset($_SESSION['mfa_required']) && $_SESSION['mfa_required']) {
+	header("Location: logout.php");
+	exit;
+}
 if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 	header("Location: index.php"); 
 	exit; 

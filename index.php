@@ -14,6 +14,8 @@ if(isset($_GET['e'])) {
 		$error = "CAPTCHA failed.";
 	} elseif($_GET['e'] == '2') {
 		$error = "User is locked out or not active.";
+	} elseif($_GET['e'] == '3') {
+		$error = "MFA verification failed.";
 	} else {
 		$error = "Login failed.";
 	}

@@ -6,6 +6,10 @@ header('Expires: Mon, 26 Jul 1997 05:00:00 GMT');
 header('Cache-Control: no-store, no-cache, must-revalidate');
 header('Cache-Control: post-check=0, pre-check=0', false);
 header('Pragma: no-cache');
+if (isset($_SESSION['mfa_required']) && $_SESSION['mfa_required']) {
+	header("Location: logout.php");
+	exit;
+}
 if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 	header("Location: index.php");
 	exit; 

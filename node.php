@@ -2,7 +2,6 @@
 /** KontrolVM By KuJoe (https://github.com/KuJoe/kontrolvm) **/
 
 session_start();
-define('AmAllowed', TRUE);
 if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 	header("Location: index.php");
 	exit; 
@@ -23,6 +22,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 		exit;
 	}
 }
+define('AmAllowed', TRUE);
 $loggedin_id = $_SESSION['staff_id'];
 $chkActive = checkActive($loggedin_id);
 $chkLocked = checkLockedOut($loggedin_id);
