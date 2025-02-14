@@ -204,7 +204,7 @@ if ($staff) {
 			<div class="form-group mfa-options">
 				<p>
 				<img src="data:image/png;base64, <?php echo $qrcode_image; ?> "/><br />
-				<span style="padding-left:22px;"><small>Secret Key: <?php echo $mfasecret; ?></small>
+				<span style="padding-left:22px;"><small>Secret Key: <?php echo htmlspecialchars($mfasecret); ?></small>
 				</p>
 				<br />
 				<label for="mfa-verify">Verify MFA:</label>
