@@ -9,6 +9,7 @@ require_once('config.php');
 require __DIR__ . '/vendor/autoload.php';
 use phpseclib3\Net\SSH2;
 use phpseclib3\Crypt\PublicKeyLoader;
+use PragmaRX\Google2FA\Google2FA;
 
 function getRealUserIp() {
 	switch(true){
@@ -1673,6 +1674,49 @@ function disableCluster($clusterid) {
 		return true;
 	} catch (PDOException $e) {
 		error_log("Error updating cluster: ". $e->getMessage());
+		return false;
+	}
+}
+
+function enableMFA($staff_id,$mfasecret,$mfacode) {
+	if(is_int($mfacode) OR isset($mfasecret)) {
+		$google2fa = new Google2FA();
+		if ($google2fa->verifyKey($mfasecret, $mfacode, '1')) {
+			include('config.php');
+			$conn = new PDO("sqlite:$db_file_path");
+			$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+			try {
+				$stmt = $conn->prepare("UPDATE staff SET staff_mfa =:staff_mfa WHERE staff_id =:staff_id");
+				$stmt->bindValue(':staff_mfa', "$mfasecret", SQLITE3_TEXT);
+				$stmt->bindValue(':staff_id', $staff_id, SQLITE3_INTEGER);
+				$stmt->execute();
+				return true;
+			} catch (PDOException $e) {
+				error_log("Error updating staff: ". $e->getMessage());
+				return false;
+			}
+		} else {
+			error_log("Error validating MFA code.");
+			return false;
+		}
+	} else {
+		error_log("Error MFA missing secret and/or code.");
+		return false;
+	}
+}
+
+function disableMFA($staff_id) {
+	include('config.php');
+	$conn = new PDO("sqlite:$db_file_path");
+	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+	try {
+		$stmt = $conn->prepare("UPDATE staff SET staff_mfa =:staff_mfa WHERE staff_id =:staff_id");
+		$stmt->bindValue(':staff_mfa', NULL, SQLITE3_TEXT);
+		$stmt->bindValue(':staff_id', $staff_id, SQLITE3_INTEGER);
+		$stmt->execute();
+		return true;
+	} catch (PDOException $e) {
+		error_log("Error updating staff: ". $e->getMessage());
 		return false;
 	}
 }
