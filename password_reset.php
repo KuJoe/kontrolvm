@@ -2,24 +2,51 @@
 /** KontrolVM By KuJoe (https://github.com/KuJoe/kontrolvm) **/
 
 session_start();
-if (isset($_SESSION["loggedin"]) AND $_SESSION["loggedin"] == true) {
-	define('AmAllowed', TRUE);
-	header("Location: home.php"); 
-}
+define('AmAllowed', TRUE);
 require_once('config.php');
-if(isset($_GET['e'])) {
-	if($_GET['e'] == '0') {
-		$error = 'Incorrect username or password.';
-	} elseif($_GET['e'] == '1') {
-		$error = "CAPTCHA failed.";
-	} elseif($_GET['e'] == '2') {
-		$error = "User is locked out or not active.";
-	} elseif($_GET['e'] == '3') {
-		$error = "MFA verification failed.";
-	} elseif($_GET['e'] == '4') {
-		$success = "Your password has been reset and a new one has been e-mailed to you.";
+require_once('functions.php');
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+	if(isset($secretkey)) {
+		$cf_url = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
+		$token = $_POST['cf-turnstile-response'];
+		$data = array(
+			"secret" => $secretkey,
+			"response" => $token,
+			"remoteip" => $remote_addr
+		);
+		$curl = curl_init();
+		curl_setopt($curl, CURLOPT_URL, $cf_url);
+		curl_setopt($curl, CURLOPT_POST, true);
+		curl_setopt($curl, CURLOPT_POSTFIELDS, $data);
+		curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+		$response = curl_exec($curl);
+		if (curl_errno($curl)) {
+			$error_message = curl_error($curl);
+			$error = "Error with CAPTCHA: " . $error_message;
+			curl_close($curl);
+		} else {
+			$response = json_decode($response,true);
+			if ($response['error-codes'] && count($response['error-codes']) > 0){
+				error_log("Cloudflare Turnstile check failed.");
+				$error = "Error with CAPTCHA.";
+				curl_close($curl);
+			}
+		}
+		curl_close($curl);
+	}
+	if(isset($_POST['email'])) {
+		if(sendPasswordResetEmail($_POST['email'])) {
+			$success = "Password reset e-mail sent successfully.";
+		} else {
+			$error = "Password reset e-mail failed to send.";
+		}
+	}
+}
+if(isset($_GET['id']) AND isset($_GET['token'])) {
+	if(verifyToken($_GET['token'],$_GET['id'])) {
+		header("Location: index.php?e=4");
 	} else {
-		$error = "Login failed.";
+		$error = "Password reset e-mail failed to send.";
 	}
 }
 ?>
@@ -62,8 +89,7 @@ if(isset($_GET['e'])) {
 			margin-bottom: 5px;
 		}
 
-		input[type="text"],
-		input[type="password"] {
+		input[type="email"] {
 			width: 100%;
 			padding: 10px;
 			border: 1px solid #ced4da;
@@ -107,29 +133,25 @@ if(isset($_GET['e'])) {
 		<img src="assets/logo.png" alt="KontrolVM Logo" style="display:block;margin:0 auto;" />
 		<br />
 		<br />
+		<h1>Password Reset</h1>
 		<?php if (isset($success)) { ?>
 			<div class="success-message"><?php echo $success; ?></div> 
-		<?php } ?>
-		<?php if (isset($error)) { ?>
+		<?php } elseif (isset($error)) { ?>
 			<div class="error-message"><?php echo $error; ?></div> 
-		<?php } ?>
-		<form action="auth.php" method="post"> 
-			<div class="form-group">
-				<label for="username">Username:</label>
-				<input type="text" id="username" name="username" placeholder="username" maxlength="50" required>
-			</div>
-			<div class="form-group">
-				<label for="password">Password:</label>
-				<input type="password" id="password" name="password" placeholder="password" maxlength="50" required>
-			</div>
+		<?php } else { ?>
+		<form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post">
+			<label for="email">E-mail Address:</label>
+			<input type="email" id="email" name="email" required>
 			<?php if(isset($sitekey)) { ?>
 				<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" defer></script>
 				<div class="cf-turnstile" data-sitekey="<?php echo $sitekey; ?>"></div>
 			<?php } ?>
-			<button type="submit">Login</button>
+			<br />
+			<br />
+			<button type="submit">Reset Password</button>
 		</form>
-		<p style="text-align:center;"><a href="password_reset.php">Reset Password</a></p>
-		<br/ >
+		<?php } ?>
+		<br /><br />
 		<p style="text-align:center;font-size:0.9em;">Powered by <a href="https://github.com/KuJoe/kontrolvm" target="_blank">KontrolVM</a></p>
 	</div>
 </body>

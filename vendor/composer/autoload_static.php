@@ -19,6 +19,7 @@ class ComposerStaticInit7f1dac609c0f46f6940dbbc85442d12f
         array (
             'PragmaRX\\Google2FA\\' => 19,
             'ParagonIE\\ConstantTime\\' => 23,
+            'PHPMailer\\PHPMailer\\' => 20,
         ),
         'D' => 
         array (
@@ -42,6 +43,10 @@ class ComposerStaticInit7f1dac609c0f46f6940dbbc85442d12f
         'ParagonIE\\ConstantTime\\' => 
         array (
             0 => __DIR__ . '/..' . '/paragonie/constant_time_encoding/src',
+        ),
+        'PHPMailer\\PHPMailer\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/phpmailer/phpmailer/src',
         ),
         'DASPRiD\\Enum\\' => 
         array (

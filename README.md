@@ -29,7 +29,7 @@ All of the current assets and UI are placeholders, I'll find somebody to design 
  - ✅Cloudflare Turnstile invisible CAPTCHA
  - ✅Multifactor Authentication
  - 🚧User permissions/levels
- - 🚧Password reset
+ - ✅Password reset
  - 🚧Notifications
 
 ### Node Management

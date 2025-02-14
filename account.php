@@ -72,7 +72,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST") {
 					$status = '0';
 				}
 			}
-			if(isset($_POST["confirm-password"])) {
+			if(isset($_POST["password-change"])) {
 				$password1 = $_POST['new-password'];
 				$password2 = $_POST['confirm-password'];
 			} else {

@@ -10,6 +10,9 @@ require __DIR__ . '/vendor/autoload.php';
 use phpseclib3\Net\SSH2;
 use phpseclib3\Crypt\PublicKeyLoader;
 use PragmaRX\Google2FA\Google2FA;
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\SMTP;
+use PHPMailer\PHPMailer\Exception;
 
 function getRealUserIp() {
 	switch(true){
@@ -117,6 +120,44 @@ function decrypt($encrypted_string) {
 	$iv = random_bytes(openssl_cipher_iv_length($cipher));
 	list($encrypted_data, $iv) = explode('::', $data);
 	return openssl_decrypt($encrypted_data, $cipher, $cryptkey, 0, $iv);
+}
+
+function sendMail($message,$subject,$email) {
+	include('config.php');
+	if(isset($smtp_server)) {
+		$mail = new PHPMailer(true);
+		try {
+			$mail->SMTPDebug = SMTP::DEBUG_OFF;
+			$mail->isSMTP();
+			$mail->Host       = $smtp_server;
+			$mail->SMTPAuth   = true;
+			$mail->Username   = $smtp_user;
+			$mail->Password   = $smtp_password;
+			if($smtp_tls) {
+				$mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+			}
+			$mail->Port       = $smtp_port;
+
+			// Recipients
+			$mail->setFrom($smtp_sender, 'KontrolVM');
+			$mail->addAddress($email, 'KontrolVM User');
+
+			// Content
+			$mail->isHTML(true);
+			$mail->Subject = $subject;
+			$mail->Body    = $message;
+			$mail->AltBody = strip_tags($message);
+
+			$mail->send();
+			return true;
+		} catch (Exception $e) {
+			error_log("Mailer Error: ".$mail->ErrorInfo);
+			return false;
+		}
+	} else {
+		error_log("Mailer sending error: Please configure the SMTP settings in config.php");
+		return false;
+	}
 }
 
 function checkActive($staff_id) {
@@ -1737,4 +1778,81 @@ function verifyMFA($staff_id,$mfacode) {
 	}
 }
 
+function sendPasswordResetEmail($email) {
+	include('config.php');
+	$conn = new PDO("sqlite:$db_file_path");
+	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+	try {
+		$stmt = $conn->prepare("SELECT staff_id FROM staff WHERE staff_email =:staff_email");
+		$stmt->bindValue(':staff_email', "$email", SQLITE3_TEXT);
+		$stmt->execute();
+		$staff = $stmt->fetchColumn();
+		if($staff > "0") {
+			$resetToken = bin2hex(random_bytes(16));
+			$domain = $_SERVER['HTTP_HOST'];
+			$directory = dirname($_SERVER['PHP_SELF']);
+			$full_domain = "https://".$domain.$directory;
+			$stmt = $conn->prepare("UPDATE staff SET staff_pwreset =:staff_pwreset WHERE staff_email =:staff_email");
+			$stmt->bindValue(':staff_pwreset', "$resetToken", SQLITE3_TEXT);
+			$stmt->bindValue(':staff_email', "$email", SQLITE3_TEXT);
+			$stmt->execute();
+			$subject = 'KontrolVM Password Reset';
+			$message = "
+				<p>Hello,</p>
+				<p>You have requested a password reset for your account.</p>
+				<p>Please click the following link to reset your password:</p>
+				<a href='$full_domain/password_reset.php?token=$resetToken&id=$email'>Reset Password</a>
+			";
+			if(sendMail($message,$subject,$email)) {
+				return true;
+			} else {
+				return false;
+			}
+		} else {
+			return false;
+		}
+	} catch (PDOException $e) {
+		error_log("Error finding staff: ". $e->getMessage());
+		return false;
+	}
+}
+
+function verifyToken($token,$email) {
+	include('config.php');
+	$conn = new PDO("sqlite:$db_file_path");
+	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+	try {
+		$stmt = $conn->prepare("SELECT staff_id FROM staff WHERE staff_pwreset =:staff_pwreset AND staff_email =:staff_email");
+		$stmt->bindValue(':staff_pwreset', "$token", SQLITE3_TEXT);
+		$stmt->bindValue(':staff_email', "$email", SQLITE3_TEXT);
+		$stmt->execute();
+		$active = $stmt->fetchColumn();
+		if($active > "0") {
+			$password = generateRandomString();
+			$hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+			$stmt = $conn->prepare("UPDATE staff SET staff_password =:staff_password, staff_pwreset =:staff_pwreset WHERE staff_email =:staff_email");
+			$stmt->bindValue(':staff_password', "$hashedPassword", SQLITE3_TEXT);
+			$stmt->bindValue(':staff_pwreset', ' ', SQLITE3_TEXT);
+			$stmt->bindValue(':staff_email', "$email", SQLITE3_TEXT);
+			$result = $stmt->execute();
+			$subject = 'KontrolVM Password Reset Successful';
+			$message = "
+				<p>Hello,</p>
+				<p>You password reset request was successful.</p>
+				<p>Please login with the following password: $password</p>
+				<p><i>Please change this password once you login.</i></p>
+			";
+			if(sendMail($message,$subject,$email)) {
+				return true;
+			} else {
+				return false;
+			}
+		} else {
+			return false;
+		}
+	} catch(PDOException $e) {
+		die("Database error: " . $e->getMessage());
+	}
+	return false;
+}
 ?>
