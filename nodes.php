@@ -60,7 +60,7 @@ $script_name = 'updateNodes.php';
 $last_run_time = getLastRunTime($script_name); 
 if ((!$last_run_time || time() - $last_run_time >= 3600) AND isset($bgupdate)) {
 	include($script_name);
-	updateLastRunTime($script_name); 
+	$last_run_time = time();
 }
 ?>
 <!DOCTYPE html>

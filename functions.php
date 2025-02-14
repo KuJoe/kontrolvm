@@ -1828,6 +1828,9 @@ function verifyToken($token,$email) {
 		$stmt->execute();
 		$active = $stmt->fetchColumn();
 		if($active > "0") {
+			$domain = $_SERVER['HTTP_HOST'];
+			$directory = dirname($_SERVER['PHP_SELF']);
+			$full_domain = "https://".$domain.$directory;
 			$password = generateRandomString();
 			$hashedPassword = password_hash($password, PASSWORD_DEFAULT);
 			$stmt = $conn->prepare("UPDATE staff SET staff_password =:staff_password, staff_pwreset =:staff_pwreset WHERE staff_email =:staff_email");
@@ -1840,7 +1843,7 @@ function verifyToken($token,$email) {
 				<p>Hello,</p>
 				<p>You password reset request was successful.</p>
 				<p>Please login with the following password: $password</p>
-				<p><i>Please change this password once you login.</i></p>
+				<p><i>Please change this password once you <a href='$full_domain'>login</a>.</i></p>
 			";
 			if(sendMail($message,$subject,$email)) {
 				return true;

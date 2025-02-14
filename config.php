@@ -20,6 +20,9 @@ $cryptkey = "a-random-string";
 // Optional settings
 //
 
+// Background Node Updates - If you want the node data to automatically update every hour set this to true, if you want to manually refresh the nodes only set this to false.
+$bgupdate = true;
+
 // SMTP Settings
 //$smtp_server = "localhost";
 //$smtp_port = "587";

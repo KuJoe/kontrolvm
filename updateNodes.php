@@ -13,6 +13,7 @@ if (count($servers) > 0) {
 			getNodeStats($server['node_id']);
 		}
 	}
+	updateLastRunTime('updateNodes.php'); 
 } else {
 	return false;
 }
