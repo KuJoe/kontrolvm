@@ -86,7 +86,7 @@ All of the current assets and UI are placeholders, I'll find somebody to design 
 
 # Requirements
 
- - PHP 8.x (tested on PHP 8.1 and 8.2)
+ - PHP 8.1+ (tested on PHP 8.1 and 8.2)
  - SQLite3
 
 # KontrolVM Installation
