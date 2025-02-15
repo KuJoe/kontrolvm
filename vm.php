@@ -44,6 +44,12 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 				$success = "VM network driver updated successfully.";
 			} elseif ($_GET['s'] == '13') {
 				$success = "VM boot order updated successfully.<br />Power cycle VM to take effect.";
+			} elseif ($_GET['s'] == '14') {
+				$success = "VM disk resized, please login to resize inside the OS.<br />May need to power cycle VM to take effect.";
+			} elseif ($_GET['s'] == '15') {
+				$success = "VM disk added successfully.";
+			} elseif ($_GET['s'] == '16') {
+				$success = "VM disk deleted successfully.";
 			}
 		}
 		$vm_id = $_GET['id'];
@@ -72,8 +78,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 		if (isset($_POST['update_vm'])) {
 			$name = $_POST["name"];
 			$hostname = $_POST["hostname"];
-			$disk1 = $_POST["disk1"];
-			$disk_space1 = $_POST["disk_space1"];
 			if(isset($_POST["notes"])) {
 				$notes = $_POST["notes"];
 			} else {
@@ -94,7 +98,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 			} else {
 				$protected = '0';
 			}
-			$result = editVM($vm_id, $name, $hostname, $disk1, $disk_space1, $notes, $mac_address, $vncpw, $vncport, $websockify, $loc, $status, $protected);
+			$result = editVM($vm_id, $name, $hostname, $notes, $mac_address, $vncpw, $vncport, $websockify, $loc, $status, $protected);
 			if($result === true) {
 				header("Location: vm.php?id=". (int)$vm_id. "&s=1");
 			} else {
@@ -117,6 +121,37 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 				header("Location: vm.php?id=". (int)$vm_id. "&s=1");
 			} else {
 				$error = "VM update failed: ".$result;
+			}
+		}
+		if (isset($_POST['resize_disk'])) {
+			$disk_id= $_POST["disk_id"];
+			$disk_name = $_POST["disk_name"];
+			$disk_size = $_POST["disk_size"];
+			$result = resizeDisk($vm_id,$disk_id,$disk_name,$disk_size,$vm['node_id']);
+			if($result === true) {
+				header("Location: vm.php?id=". (int)$vm_id. "&s=14");
+			} else {
+				$error = "VM disk resize failed: ".$result;
+			}
+		}
+		if (isset($_POST['add_disk'])) {
+			$vmname = $_POST["vmname"];
+			$disk_size = $_POST["disk_size"];
+			$result = addDisk($vm_id,$vmname,$disk_size,$vm['node_id']);
+			if($result === true) {
+				header("Location: vm.php?id=". (int)$vm_id. "&s=15");
+			} else {
+				$error = "VM disk add failed: ".$result;
+			}
+		}
+		if (isset($_POST['delete_disk'])) {
+			$disk_id= $_POST["disk_id"];
+			$disk_name = $_POST["disk_name"];
+			$result = deleteDisk($vm_id,$disk_id,$disk_name,$vm['node_id']);
+			if($result === true) {
+				header("Location: vm.php?id=". (int)$vm_id. "&s=16");
+			} else {
+				$error = "VM disk delete failed: ".$result;
 			}
 		}
 		if (isset($_POST['set_iow'])) {
@@ -277,6 +312,7 @@ if ($vm) {
 		$protect = "";
 	}
 	$isoList = getISOs();
+	$disks = getDisks($vm_id);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -383,14 +419,6 @@ if ($vm) {
 							</td>
 						</tr>
 						<tr>
-							<td style="background-color:#999;">Disk 1:</td>
-							<td><input type="text" id="disk1" name="disk1" value="<?php echo htmlspecialchars($vm['disk1']);?>" style="text-align:center;width:80%;"></td> 
-						</tr>
-						<tr>
-							<td style="background-color:#999;">Disk Space 1:</td>
-							<td><input type="text" id="disk_space1" name="disk_space1" value="<?php echo htmlspecialchars($vm['disk_space1']);?>" style="text-align:center;width:80%;"></td> 
-						</tr>
-						<tr>
 							<td style="background-color:#999;">Notes:</td>
 							<td><input type="text" id="notes" name="notes" value="<?php echo htmlspecialchars($vm['notes']);?>" style="text-align:center;width:80%;"></td> 
 						</tr>
@@ -446,6 +474,33 @@ if ($vm) {
 				<br />
 				<center><button type="submit" class="stylish-button" name="update_vm" id="update_vm">SAVE VM</button><br /></center>
 				</form>
+				<br />
+				<hr />
+				<br />
+				<h2>Disk Management</h2>
+				<div class="disk-list">
+						<form id="add_disk" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post">
+						<h3>Add New Disk</h3>
+						<input type="hidden" name="csrf_token" value="<?php echo $csrfToken; ?>">
+						<input type="hidden" name="id" value="<?php echo $vm_id; ?>">
+						<input type="hidden" name="vmname" value="<?php echo $vm['name']; ?>">
+						<input type="number" id="disk_size" name="disk_size" placeholder="10" style="text-align:center;width:80px;"> GB <button class="stylish-button" id="add_disk" name="add_disk">Add Disk</button>
+						</form>
+					<br />
+					<hr />
+					<br />
+					<h3>Attached Disks</h3>
+					<?php foreach ($disks as $disk):
+						$name = $disk['disk_name'];
+						$size = $disk['disk_size'];
+						$disk_id = $disk['disk_id'];
+						$csrf = '<input type="hidden" name="csrf_token" value="'.$csrfToken.'">';
+						$diskname = '<input type="hidden" name="disk_name" value="'.$name.'">';
+						$diskid = '<input type="hidden" name="disk_id" value="'.$disk_id.'">';
+						echo "<form id='resize_disk' action='vm.php?id=$vm_id' method='post'>$csrf $diskname $diskid $name : <input type='text' id='disk_size' name='disk_size' value='$size' style='text-align:center;width:40px;'> GB <button class='stylish-button' id='resize_disk' name='resize_disk'>Resize</button> <button class='stylish-button' id='delete_disk' name='delete_disk'>Delete</button></form>";
+					endforeach;?>
+					</div>
+				</div>
 				<br />
 				<hr />
 				<br />

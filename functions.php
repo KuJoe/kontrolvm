@@ -384,7 +384,7 @@ function addNode($hostname, $ipaddr, $sshport, $rootpw, $loc) {
 		$stmt->bindValue(':lastws', '6901', SQLITE3_INTEGER);
 		$stmt->bindValue(':lastvm', '0', SQLITE3_INTEGER);
 		$stmt->bindValue(':status', '1', SQLITE3_INTEGER);
-		$stmt->bindValue(':last_updated', time(), SQLITE3_TEXT); 
+		$stmt->bindValue(':last_updated', time(), SQLITE3_TEXT);
 		$stmt->execute();
 		return true;
 	} catch (PDOException $e) {
@@ -420,7 +420,6 @@ function deleteNode($node_id,$hostname,$confirm) {
 function updateNode($node_id, $cpu_cores, $total_memory, $disk_space, $make, $model, $cpu, $vms, $os_version, $kernel_version, $libvirt_version) {
 	include('config.php');
 	$conn = new PDO("sqlite:$db_file_path");
-	$last_updated = time();
 	$sql = "UPDATE nodes SET 
 				cpu_cores =:cpu_cores,
 				total_memory =:total_memory,
@@ -447,7 +446,7 @@ function updateNode($node_id, $cpu_cores, $total_memory, $disk_space, $make, $mo
 	$stmt->bindValue(':os_version', "$os_version", SQLITE3_TEXT);
 	$stmt->bindValue(':kernel_version', "$kernel_version", SQLITE3_TEXT);
 	$stmt->bindValue(':libvirt_version', "$libvirt_version", SQLITE3_TEXT);
-	$stmt->bindValue(':last_updated', "$last_updated", SQLITE3_TEXT);
+	$stmt->bindValue(':last_updated', time(), SQLITE3_TEXT);
 	$stmt->bindParam(':node_id', $node_id, SQLITE3_INTEGER);
 
 	if ($stmt->execute()) {
@@ -461,7 +460,6 @@ function updateNode($node_id, $cpu_cores, $total_memory, $disk_space, $make, $mo
 function editNode($node_id, $hostname, $ipaddr, $sshport, $status, $lastvm, $lastvnc, $lastws, $loc) {
 	include('config.php');
 	$conn = new PDO("sqlite:$db_file_path");
-	$last_updated = time();
 	$sql = "UPDATE nodes SET 
 				hostname =:hostname,
 				ipaddr =:ipaddr,
@@ -479,7 +477,7 @@ function editNode($node_id, $hostname, $ipaddr, $sshport, $status, $lastvm, $las
 	$stmt->bindValue(':hostname', "$hostname", SQLITE3_TEXT);
 	$stmt->bindValue(':ipaddr', "$ipaddr", SQLITE3_TEXT);
 	$stmt->bindValue(':sshport', $sshport, SQLITE3_INTEGER);
-	$stmt->bindValue(':last_updated', "$last_updated", SQLITE3_TEXT);
+	$stmt->bindValue(':last_updated', time(), SQLITE3_TEXT);
 	$stmt->bindParam(':status', $status, SQLITE3_INTEGER);
 	$stmt->bindParam(':lastvm', $lastvm, SQLITE3_INTEGER);
 	$stmt->bindParam(':lastvnc', $lastvnc, SQLITE3_INTEGER);
@@ -499,7 +497,6 @@ function editVM($vm_id, $name, $hostname, $notes, $mac_address, $vncpw, $vncport
 	include('config.php');
 	$conn = new PDO("sqlite:$db_file_path");
 	$encpw = encrypt($vncpw);
-	$last_updated = time();
 	$sql = "UPDATE vms SET
 				name =:name,
 				hostname =:hostname,
@@ -526,7 +523,7 @@ function editVM($vm_id, $name, $hostname, $notes, $mac_address, $vncpw, $vncport
 	$stmt->bindParam(':vncport', $vncport, SQLITE3_INTEGER);
 	$stmt->bindParam(':websockify', $websockify, SQLITE3_INTEGER);
 	$stmt->bindValue(':loc', "$loc", SQLITE3_TEXT);
-	$stmt->bindValue(':last_updated', "$last_updated", SQLITE3_TEXT);
+	$stmt->bindValue(':last_updated', time(), SQLITE3_TEXT);
 	$stmt->bindParam(':vm_id', $vm_id, SQLITE3_INTEGER);
 
 	if ($stmt->execute()) {
@@ -856,7 +853,6 @@ function addIPs($ipaddress, $gwip, $loc) {
 	include('config.php');
 	$conn = new PDO("sqlite:$db_file_path");
 	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-	$last_updated = time();
 	if(filter_var($ipaddress, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
 		$sql = "SELECT COUNT(*) FROM ipv4 WHERE ipaddress =':ipaddress'";
 		$stmt = $conn->prepare($sql);
@@ -895,7 +891,7 @@ function addIPs($ipaddress, $gwip, $loc) {
 	$stmt->bindValue(':vmid', '0', SQLITE3_INTEGER);
 	$stmt->bindValue(':status', '1', SQLITE3_INTEGER);
 	$stmt->bindValue(':notes', ' ', SQLITE3_INTEGER);
-	$stmt->bindValue(':last_updated', "$last_updated", SQLITE3_TEXT); 
+	$stmt->bindValue(':last_updated', time(), SQLITE3_TEXT);
 
 	$result = $stmt->execute();
 
@@ -1125,7 +1121,7 @@ function updateLastRunTime($script_name) {
 	}
 }
 
-function createVM($memory,$disk_space1,$cpu_cores,$loc) {
+function createVM($memory,$disk_space,$cpu_cores,$loc) {
 	include('config.php');
 	$conn = new PDO("sqlite:$db_file_path");
 	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -1156,11 +1152,10 @@ function createVM($memory,$disk_space1,$cpu_cores,$loc) {
 		$password = substr(md5(rand().rand()), 0, 6);
 		$encpw = encrypt($password);
 		$disk1 = $vmname."-disk1.img";
-		$created_at = time();
 		$memorymb = $memory * 1024;
 				
 		$ssh = connectNode($node_id);
-		$ssh->exec('sudo /usr/bin/virt-install --name '.$vmname.' --ram '.$memorymb.' --vcpus='.$cpu_cores.' --disk path=/home/kontrolvm/data/'.$disk1.',size='.$disk_space1.',format=raw,bus=virtio,cache=writeback --network=bridge:br0,model=virtio --cdrom /home/kontrolvm/isos/systemrescue-amd64.iso --os-variant linux2022 --osinfo detect=on,require=off --noautoconsole --graphics vnc,listen=0.0.0.0,port='.$vncport.',password='.$password.',keymap=en-us --hvm --boot uefi');
+		$ssh->exec('sudo /usr/bin/virt-install --name '.$vmname.' --ram '.$memorymb.' --vcpus='.$cpu_cores.' --disk path=/home/kontrolvm/data/'.$disk1.',size='.$disk_space.',format=qcow2,bus=virtio,cache=writeback --network=bridge:br0,model=virtio --cdrom /home/kontrolvm/isos/systemrescue-amd64.iso --os-variant linux2022 --osinfo generic --noautoconsole --graphics vnc,listen=0.0.0.0,port='.$vncport.',password='.$password.',keymap=en-us --hvm --boot uefi');
 		$ssh->exec('/bin/rm -rf /home/kontrolvm/xmls/'.$vmname.'.xml');
 		$ssh->exec('/bin/touch /home/kontrolvm/xmls/'.$vmname.'.xml');
 		$ssh->exec('sudo /usr/bin/virsh destroy '.$vmname.'');
@@ -1180,8 +1175,8 @@ function createVM($memory,$disk_space1,$cpu_cores,$loc) {
 		$ssh->exec('/bin/touch /home/kontrolvm/addrs/'.$vmname.'');
 		$ssh->exec('sudo /bin/sh /home/kontrolvm/create_console.sh '.$wsport.' '.$vncport.'');
 		
-		$stmt = $conn->prepare("INSERT INTO vms (name, hostname, node_id, status, loc, cpu_cores, memory, disk1, disk_space1, ipv4, ipv6, mac_address, nic, iow, vncpw, vncport, websockify, network, netdriver, diskdriver, bootorder, created_at, last_updated, protected) 
-												VALUES (:name,:hostname,:node_id,:status,:loc,:cpu_cores,:memory,:disk1,:disk_space1,:ipv4,:ipv6,:mac_address,:nic,:iow,:vncpw,:vncport,:websockify,:network,:netdriver,:diskdriver,:bootorder,:created_at,:last_updated,:protected)");
+		$stmt = $conn->prepare("INSERT INTO vms (name, hostname, node_id, status, loc, cpu_cores, memory, mac_address, nic, iow, vncpw, vncport, websockify, network, netdriver, diskdriver, bootorder, created_at, last_updated, protected) 
+												VALUES (:name,:hostname,:node_id,:status,:loc,:cpu_cores,:memory,:mac_address,:nic,:iow,:vncpw,:vncport,:websockify,:network,:netdriver,:diskdriver,:bootorder,:created_at,:last_updated,:protected)");
 		$stmt->bindValue(':name', "$vmname", SQLITE3_TEXT);
 		$stmt->bindValue(':hostname', "$vmname", SQLITE3_TEXT);
 		$stmt->bindValue(':status', '1', SQLITE3_INTEGER);
@@ -1189,10 +1184,6 @@ function createVM($memory,$disk_space1,$cpu_cores,$loc) {
 		$stmt->bindValue(':loc', "$loc", SQLITE3_TEXT);
 		$stmt->bindValue(':cpu_cores', $cpu_cores, SQLITE3_INTEGER);
 		$stmt->bindValue(':memory', $memory, SQLITE3_INTEGER);
-		$stmt->bindValue(':disk1', "$disk1", SQLITE3_TEXT);
-		$stmt->bindValue(':disk_space1', $disk_space1, SQLITE3_INTEGER);
-		$stmt->bindValue(':ipv4', "1", SQLITE3_INTEGER);
-		$stmt->bindValue(':ipv6', '1', SQLITE3_INTEGER);
 		$stmt->bindValue(':protected', '0', SQLITE3_INTEGER);
 		$stmt->bindValue(':mac_address', "$macaddr", SQLITE3_TEXT);
 		$stmt->bindValue(':nic', '1000', SQLITE3_INTEGER);
@@ -1204,9 +1195,18 @@ function createVM($memory,$disk_space1,$cpu_cores,$loc) {
 		$stmt->bindValue(':netdriver', "virtio", SQLITE3_TEXT);
 		$stmt->bindValue(':diskdriver', "virtio", SQLITE3_TEXT);
 		$stmt->bindValue(':bootorder', "cdrom", SQLITE3_TEXT);
-		$stmt->bindValue(':created_at', "$created_at", SQLITE3_TEXT);
-		$stmt->bindValue(':last_updated', "$created_at", SQLITE3_TEXT);
+		$stmt->bindValue(':created_at', time(), SQLITE3_TEXT);
+		$stmt->bindValue(':last_updated', time(), SQLITE3_TEXT);
 		$stmt->execute();
+		
+		$vm_id = $conn->lastInsertId();	
+		$stmt = $conn->prepare("INSERT INTO disks (disk_name, disk_size, vm_id, node_id, last_updated) VALUES (:disk_name, :disk_size, :vm_id, :node_id, :last_updated)");
+		$stmt->bindValue(':disk_name', "$disk1", SQLITE3_TEXT);
+		$stmt->bindValue(':disk_size', $disk_space, SQLITE3_INTEGER);
+		$stmt->bindValue(':vm_id', $vm_id, SQLITE3_INTEGER);
+		$stmt->bindValue(':node_id', $node_id, SQLITE3_INTEGER);
+		$stmt->bindValue(':last_updated', time(), SQLITE3_TEXT);
+		$stmt->execute();	
 		
 		$stmt = $conn->prepare("UPDATE nodes SET lastvnc =:lastvnc, lastws =:lastws, lastvm =:lastvm WHERE node_id =:node_id");
 		$stmt->bindValue(':lastvnc', $vncport, SQLITE3_INTEGER);
@@ -1285,9 +1285,16 @@ function destroyVM($vm_id,$vmname,$websockify,$vncport,$node_id,$confirm) {
 			sleep(5);
 			$ssh->exec('sudo /bin/sh /home/kontrolvm/killconsole.sh '.$vncport.'');
 			sleep(5);
+			$disks = getDisks($vm_id);
+			foreach ($disks as $disk) {
+				deleteDisk($vm_id,$disk['disk_id'],$disk['disk_name'],$node_id);
+			}
 			#echo $ssh->getLog();
 			$ssh->disconnect();
 			$stmt = $conn->prepare("DELETE FROM vms WHERE vm_id =:vm_id");
+			$stmt->bindValue(':vm_id', $vm_id, SQLITE3_INTEGER);
+			$stmt->execute();
+			$stmt = $conn->prepare("DELETE FROM disks WHERE vm_id =:vm_id");
 			$stmt->bindValue(':vm_id', $vm_id, SQLITE3_INTEGER);
 			$stmt->execute();
 			$stmt = $conn->prepare("UPDATE ipv4 SET vmid =:vmid, node =:node, status =:status WHERE vmid =:vm_id");
@@ -1359,25 +1366,124 @@ function setRAM($vm_id,$vmname,$memory,$node_id) {
 	}	
 }
 
-function resizeDisk($vm_id,$vmname,$diskid,$diskname,$disksize,$node_id) {
+function getDisks($vm_id) {
+	include('config.php');
+	$conn = new PDO("sqlite:$db_file_path");
+	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+	try {
+		$sql = "SELECT * FROM disks WHERE vm_id = $vm_id ORDER BY disk_id";
+		$stmt = $conn->prepare($sql);
+		$stmt->execute();
+		$disks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+		return $disks;
+	} catch (PDOException $e) {
+		error_log("Error fetching disk list ($vm_id): " . $e->getMessage());
+		return false;
+	}
+}
+
+function addDisk($vm_id,$vmname,$disk_size,$node_id) {
+	$disk_size = (int)$disk_size;
+	if($disk_size > 0) {
+		include('config.php');
+		$conn = new PDO("sqlite:$db_file_path");
+		$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+		try {
+			$stmt = $conn->prepare("SELECT COUNT(*) FROM disks WHERE vm_id =:vm_id");
+			$stmt->bindValue(':vm_id', $vm_id, SQLITE3_INTEGER);
+			$stmt->execute();
+			$count = $stmt->fetchColumn();
+			$ssh = connectNode($node_id);
+			if($count > 0) {
+				$disknum = $count + 1;
+				$diskfile = $vmname.'-disk'.$disknum.'.img';
+				$file_exists = true;
+				while($file_exists) {
+					$diskfile = $vmname.'-disk'.$disknum.'.img';
+					$checkdisk = $ssh->exec("ls -la /home/kontrolvm/data/$diskfile | wc -l");
+					if ($checkdisk == 1) {
+						$disknum++;
+					} else {
+						$file_exists = false;
+						$letter = chr(96 + $disknum);
+						$volid = "vd".$letter;
+						$disk_name = $vmname.'-disk'.$disknum.'.img';
+					}
+				}
+			} else {
+				$disk_name = $vmname.'-disk'.$disknum.'.img';
+				$volid = 'vda';
+			}
+			$ssh->exec('/usr/bin/qemu-img create -f qcow2 /home/kontrolvm/data/'.$disk_name.' '.$disk_size.'G');
+			$ssh->exec('chmod 0640 /home/kontrolvm/data/'.$disk_name);
+			$ssh->exec('sudo /usr/bin/virsh attach-disk '.$vmname.' /home/kontrolvm/data/'.$disk_name.' '.$volid.' --type disk --cache writeback --config');
+			$ssh->exec('sudo /usr/bin/virsh dumpxml '.$vmname.' --security-info > /home/kontrolvm/xmls/'.$vmname.'.xml');
+			$ssh->disconnect();
+
+			$stmt = $conn->prepare("INSERT INTO disks (disk_name, disk_size, vm_id, node_id, last_updated) VALUES (:disk_name, :disk_size, :vm_id, :node_id, :last_updated)");
+			$stmt->bindValue(':disk_name', "$disk_name", SQLITE3_TEXT);
+			$stmt->bindValue(':disk_size', $disk_size, SQLITE3_INTEGER);
+			$stmt->bindValue(':vm_id', $vm_id, SQLITE3_INTEGER);
+			$stmt->bindValue(':node_id', $node_id, SQLITE3_INTEGER);
+			$stmt->bindValue(':last_updated', time(), SQLITE3_TEXT);
+			$stmt->execute();
+			return true;
+		} catch (PDOException $e) {
+			$error = $e->getMessage();
+			error_log("Error adding VM disk ($vm_id): ".$error);
+			return $error;
+		}
+	} else {
+		$error = "Disk size incorrect.";
+		error_log("Error adding VM disk ($vm_id): ".$error);
+		return $error;
+	}
+}
+
+function resizeDisk($vm_id,$disk_id,$disk_name,$disk_size,$node_id) {
 	include('config.php');
 	$conn = new PDO("sqlite:$db_file_path");
 	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
 	try {
 		$ssh = connectNode($node_id);
-		$ssh->exec('sudo /usr/bin/qemu-img resize /home/kontrolvm/data/'.$diskname.' '.$disksize.'G');
-		$ssh->exec('sudo /usr/bin/virsh dumpxml '.$vmname.' --security-info > /home/kontrolvm/xmls/ '.$vmname.'.xml');
+		$ssh->exec('sudo /usr/bin/qemu-img resize /home/kontrolvm/data/'.$disk_name.' '.$disk_size.'G');
 		$ssh->disconnect();
 
-		$stmt = $conn->prepare("UPDATE disks SET disk_size =:disk_size WHERE disk_id =:diskid");
-		$stmt->bindValue(':disk_size', $disksize, SQLITE3_INTEGER);
-		$stmt->bindValue(':disk_id', $diskid, SQLITE3_INTEGER);
+		$stmt = $conn->prepare("UPDATE disks SET disk_size =:disk_size WHERE disk_id =:disk_id");
+		$stmt->bindValue(':disk_size', $disk_size, SQLITE3_INTEGER);
+		$stmt->bindValue(':disk_id', $disk_id, SQLITE3_INTEGER);
 		$stmt->execute();
 		return true;
 	} catch (PDOException $e) {
-		error_log("Error updating VM disk ($diskid): " . $e->getMessage());
-		return false; 
+		$error = $e->getMessage();
+		error_log("Error updating VM disk ($disk_id): ".$error);
+		return $error;
+	}	
+}
+
+function deleteDisk($vm_id,$disk_id,$disk_name,$node_id) {
+	include('config.php');
+	$conn = new PDO("sqlite:$db_file_path");
+	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+	try {
+		$ssh = connectNode($node_id);
+		$ssh->exec('sudo /usr/bin/virsh detach-disk '.$vmname.' /home/kontrolvm/data/'.$disk_name.' --config');
+		$ssh->exec('sudo /usr/bin/virsh dumpxml '.$vmname.' --security-info > /home/kontrolvm/xmls/'.$vmname.'.xml');
+		$ssh->exec('sudo /bin/sh /home/kontrolvm/cleandata.sh '.$disk_name);
+		$ssh->disconnect();
+
+		$stmt = $conn->prepare("DELETE FROM disks WHERE disk_id =:disk_id");
+		$stmt->bindValue(':disk_id', $disk_id, SQLITE3_INTEGER);
+		$stmt->execute();
+		return true;
+	} catch (PDOException $e) {
+		$error = $e->getMessage();
+		error_log("Error deleting VM disk ($disk_id - $disk_name): ".$error);
+		return $error;
 	}	
 }
 
@@ -1399,8 +1505,9 @@ function setIOW($vm_id,$vmname,$speed,$node_id) {
 		$stmt->execute();
 		return true;
 	} catch (PDOException $e) {
-		error_log("Error updating VM IOW ($vm_id): " . $e->getMessage());
-		return false; 
+		$error = $e->getMessage();
+		error_log("Error updating VM IOW ($vm_id): ".$error);
+		return $error;
 	}	
 }
 
@@ -1663,7 +1770,6 @@ function addCluster($loc, $friendlyname) {
 	include('config.php');
 	$conn = new PDO("sqlite:$db_file_path");
 	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-	$last_updated = time();
 	$sql = "SELECT COUNT(*) FROM clusters WHERE loc =':loc'";
 	$stmt = $conn->prepare($sql);
 	$stmt->bindValue(':loc', "$loc", SQLITE3_TEXT);
@@ -1678,7 +1784,7 @@ function addCluster($loc, $friendlyname) {
 	$stmt->bindValue(':loc', "$loc", SQLITE3_TEXT);
 	$stmt->bindValue(':friendlyname', "$friendlyname", SQLITE3_TEXT);
 	$stmt->bindValue(':status', '1', SQLITE3_INTEGER);
-	$stmt->bindValue(':last_updated', "$last_updated", SQLITE3_TEXT); 
+	$stmt->bindValue(':last_updated', time(), SQLITE3_TEXT);
 
 	$result = $stmt->execute();
 

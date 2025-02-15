@@ -15,6 +15,14 @@ if (file_exists('config.php')) {
 	die("The config.php file does not exist. Please upload it to the same folder as this file.");
 }
 
+function addSetting($name,$value) {
+	$stmt = $conn->prepare("INSERT INTO settings (setting_name, setting_value) VALUES (:setting_name, :setting_value)");
+	$stmt->bindValue(':setting_name', "$name", SQLITE3_TEXT);
+	$stmt->bindValue(':setting_value', "$value", SQLITE3_TEXT);
+	$stmt->execute();
+	return true;
+}
+
 //Generate the super user for later.
 $username = "admin";
 $password = substr(md5(time()), 0, 16);
@@ -116,15 +124,7 @@ try {
 		protected INTEGER,
 		loc TEXT,
 		cpu_cores INTEGER,
-		memory INTEGER, 
-		disk1 TEXT,
-		disk_space1 INTEGER,
-		disk2 TEXT,
-		disk_space2 INTEGER,
-		disk3 TEXT,
-		disk_space3 INTEGER,
-		disk4 TEXT,
-		disk_space4 INTEGER,
+		memory INTEGER,
 		ipv4 INTEGER,
 		ipv6 INTEGER,
 		mac_address TEXT,
@@ -144,6 +144,14 @@ try {
 		created_at DATETIME,
 		last_updated DATETIME
 	)",
+	'disks' => "CREATE TABLE IF NOT EXISTS disks (
+		disk_id INTEGER PRIMARY KEY AUTOINCREMENT,
+		disk_name TEXT NOT NULL,
+		disk_size INTEGER,
+		vm_id INTEGER,
+		node_id INTEGER,
+		last_updated DATETIME
+	)",
 	'clusters' => "CREATE TABLE IF NOT EXISTS clusters (
 		clusterid INTEGER PRIMARY KEY AUTOINCREMENT,
 		loc TEXT NOT NULL,
@@ -151,17 +159,33 @@ try {
 		notes TEXT,
 		status INTEGER,
 		last_updated DATETIME
+	)",
+	'settings' => "CREATE TABLE IF NOT EXISTS settings (
+		setting_id INTEGER PRIMARY KEY AUTOINCREMENT,
+		setting_name TEXT NOT NULL,
+		setting_value TEXT NOT NULL
 	)"
 	];
 	foreach ($tables as $name => $sql) {
 		$stmt = $conn->prepare($sql);
 		$stmt->execute();
 	}
+	// Create Super Admin account
 	$stmt = $conn->prepare("INSERT INTO staff (staff_username, staff_password, staff_active) VALUES (:username, :password, :active)");
 	$stmt->bindValue(':username', "$username", SQLITE3_TEXT);
 	$stmt->bindValue(':password', "$hashedPassword", SQLITE3_TEXT);
 	$stmt->bindValue(':active', '1', SQLITE3_INTEGER);
 	$stmt->execute();
+	
+	//// Populate default settings
+	//$setting = [
+	//'bgupdate' => "true",
+	//'' => "",
+	//'' => "",
+	//];
+	//foreach ($setting as $name => $value) {
+	//	addSetting($name,$value);
+	//}
 	
 	//Create the SSH key
 	$privateKey = EC::createKey('Ed25519');
