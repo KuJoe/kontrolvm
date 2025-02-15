@@ -495,7 +495,7 @@ function editNode($node_id, $hostname, $ipaddr, $sshport, $status, $lastvm, $las
 	}
 }
 
-function editVM($vm_id, $name, $hostname, $disk1, $disk_space1, $notes, $mac_address, $vncpw, $vncport, $websockify, $loc, $status, $protected) {
+function editVM($vm_id, $name, $hostname, $notes, $mac_address, $vncpw, $vncport, $websockify, $loc, $status, $protected) {
 	include('config.php');
 	$conn = new PDO("sqlite:$db_file_path");
 	$encpw = encrypt($vncpw);
@@ -506,8 +506,6 @@ function editVM($vm_id, $name, $hostname, $disk1, $disk_space1, $notes, $mac_add
 				ip_address =:ipaddr,
 				status =:status,
 				protected =:protected,
-				disk1 =:disk1,
-				disk_space1 =:disk_space1,
 				mac_address =:mac_address,
 				notes =:notes,
 				vncpw =:vncpw,
@@ -522,8 +520,6 @@ function editVM($vm_id, $name, $hostname, $disk1, $disk_space1, $notes, $mac_add
 	$stmt->bindValue(':hostname', "$hostname", SQLITE3_TEXT);
 	$stmt->bindParam(':status', $status, SQLITE3_INTEGER);
 	$stmt->bindParam(':protected', $protected, SQLITE3_INTEGER);
-	$stmt->bindValue(':disk1', "$disk1", SQLITE3_TEXT);
-	$stmt->bindParam(':disk_space1', $disk_space1, SQLITE3_INTEGER);
 	$stmt->bindValue(':mac_address', "$mac_address", SQLITE3_TEXT);
 	$stmt->bindValue(':notes', "$notes", SQLITE3_TEXT);
 	$stmt->bindValue(':vncpw', "$encpw", SQLITE3_TEXT);
@@ -1326,7 +1322,7 @@ function setCPU($vm_id,$vmname,$cpu,$node_id) {
 		$ssh = connectNode($node_id);
 		$ssh->exec('sudo /usr/bin/virsh setvcpus '.$vmname.' '.$cpu.' --config --maximum');
 		$ssh->exec('sudo /usr/bin/virsh setvcpus '.$vmname.' '.$cpu.' --config');
-		$ssh->exec('sudo /usr/bin/virsh dumpxml '.$vmname.' --security-info > /usr/local/wyvern/xmls/ '.$vmname.'.xml');
+		$ssh->exec('sudo /usr/bin/virsh dumpxml '.$vmname.' --security-info > /home/kontrolvm/xmls/ '.$vmname.'.xml');
 		$ssh->disconnect();
 
 		$stmt = $conn->prepare("UPDATE vms SET cpu_cores =:cpu_cores WHERE vm_id =:vm_id");
@@ -1349,7 +1345,7 @@ function setRAM($vm_id,$vmname,$memory,$node_id) {
 		$ssh = connectNode($node_id);
 		$ssh->exec('sudo /usr/bin/virsh setmaxmem '.$vmname.' '.$memory.'G --config');
 		$ssh->exec('sudo /usr/bin/virsh setmem '.$vmname.' '.$memory.'G --config');
-		$ssh->exec('sudo /usr/bin/virsh dumpxml '.$vmname.' --security-info > /usr/local/wyvern/xmls/ '.$vmname.'.xml');
+		$ssh->exec('sudo /usr/bin/virsh dumpxml '.$vmname.' --security-info > /home/kontrolvm/xmls/ '.$vmname.'.xml');
 		$ssh->disconnect();
 
 		$stmt = $conn->prepare("UPDATE vms SET memory =:memory WHERE vm_id =:vm_id");
@@ -1359,6 +1355,28 @@ function setRAM($vm_id,$vmname,$memory,$node_id) {
 		return true;
 	} catch (PDOException $e) {
 		error_log("Error updating VM IOW ($vm_id): " . $e->getMessage());
+		return false; 
+	}	
+}
+
+function resizeDisk($vm_id,$vmname,$diskid,$diskname,$disksize,$node_id) {
+	include('config.php');
+	$conn = new PDO("sqlite:$db_file_path");
+	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+	try {
+		$ssh = connectNode($node_id);
+		$ssh->exec('sudo /usr/bin/qemu-img resize /home/kontrolvm/data/'.$diskname.' '.$disksize.'G');
+		$ssh->exec('sudo /usr/bin/virsh dumpxml '.$vmname.' --security-info > /home/kontrolvm/xmls/ '.$vmname.'.xml');
+		$ssh->disconnect();
+
+		$stmt = $conn->prepare("UPDATE disks SET disk_size =:disk_size WHERE disk_id =:diskid");
+		$stmt->bindValue(':disk_size', $disksize, SQLITE3_INTEGER);
+		$stmt->bindValue(':disk_id', $diskid, SQLITE3_INTEGER);
+		$stmt->execute();
+		return true;
+	} catch (PDOException $e) {
+		error_log("Error updating VM disk ($diskid): " . $e->getMessage());
 		return false; 
 	}	
 }
