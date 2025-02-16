@@ -417,39 +417,13 @@ function deleteNode($node_id,$hostname,$confirm) {
 	}
 }
 
-function updateNode($node_id, $cpu_cores, $total_memory, $disk_space, $make, $model, $cpu, $vms, $os_version, $kernel_version, $libvirt_version) {
+function updateNode($node_id, $node_data) {
 	include('config.php');
 	$conn = new PDO("sqlite:$db_file_path");
-	$sql = "UPDATE nodes SET 
-				cpu_cores =:cpu_cores,
-				total_memory =:total_memory,
-				disk_space =:disk_space,
-				make =:make,
-				model =:model,
-				cpu =:cpu,
-				vms =:vms,
-				os_version =:os_version,
-				kernel_version =:kernel_version,
-				libvirt_version =:libvirt_version,
-				last_updated =:last_updated
-			WHERE node_id =:node_id";
-
-	$stmt = $conn->prepare($sql);
-
-	$stmt->bindParam(':cpu_cores', $cpu_cores, SQLITE3_INTEGER);
-	$stmt->bindParam(':total_memory', $total_memory, SQLITE3_INTEGER);
-	$stmt->bindParam(':disk_space', $disk_space, SQLITE3_INTEGER);
-	$stmt->bindValue(':make', "$make", SQLITE3_TEXT);
-	$stmt->bindValue(':model', "$model", SQLITE3_TEXT);
-	$stmt->bindValue(':cpu', "$cpu", SQLITE3_TEXT);
-	$stmt->bindParam(':vms', $vms, SQLITE3_INTEGER);
-	$stmt->bindValue(':os_version', "$os_version", SQLITE3_TEXT);
-	$stmt->bindValue(':kernel_version', "$kernel_version", SQLITE3_TEXT);
-	$stmt->bindValue(':libvirt_version', "$libvirt_version", SQLITE3_TEXT);
-	$stmt->bindValue(':last_updated', time(), SQLITE3_TEXT);
-	$stmt->bindParam(':node_id', $node_id, SQLITE3_INTEGER);
-
-	if ($stmt->execute()) {
+	$node_data[':node_id'] = $node_id;
+	$node_data[':last_updated'] = time();
+	$stmt = $conn->prepare("UPDATE nodes SET cpu_cores =:cpu_cores,total_memory =:total_memory,disk_space =:disk_space,make =:make,model =:model,cpu =:cpu,vms =:vms,os_version =:os_version,kernel_version =:kernel_version,libvirt_version =:libvirt_version,last_updated =:last_updated WHERE node_id =:node_id");
+	if ($stmt->execute($node_data)) {
 		return true;
 	} else {
 		$error = "Error updating node: " . $conn->lastErrorMsg();
@@ -457,38 +431,17 @@ function updateNode($node_id, $cpu_cores, $total_memory, $disk_space, $make, $mo
 	}
 }
 
-function editNode($node_id, $hostname, $ipaddr, $sshport, $status, $lastvm, $lastvnc, $lastws, $loc) {
+function editNode($node_id, $node_data) {
 	include('config.php');
 	$conn = new PDO("sqlite:$db_file_path");
-	$sql = "UPDATE nodes SET 
-				hostname =:hostname,
-				ipaddr =:ipaddr,
-				sshport =:sshport,
-				status =:status,
-				lastvm =:lastvm,
-				lastvnc =:lastvnc,
-				lastws =:lastws,
-				loc =:loc,
-				last_updated =:last_updated 
-			WHERE node_id =:node_id";
+	$node_data[':node_id'] = $node_id;
+	$node_data[':last_updated'] = time();
+	$stmt = $conn->prepare("UPDATE nodes SET hostname =:hostname,ipaddr =:ipaddr,sshport =:sshport,status =:status,lastvm =:lastvm,lastvnc =:lastvnc,lastws =:lastws,loc =:loc,last_updated =:last_updated WHERE node_id =:node_id");
 
-	$stmt = $conn->prepare($sql);
-	
-	$stmt->bindValue(':hostname', "$hostname", SQLITE3_TEXT);
-	$stmt->bindValue(':ipaddr', "$ipaddr", SQLITE3_TEXT);
-	$stmt->bindValue(':sshport', $sshport, SQLITE3_INTEGER);
-	$stmt->bindValue(':last_updated', time(), SQLITE3_TEXT);
-	$stmt->bindParam(':status', $status, SQLITE3_INTEGER);
-	$stmt->bindParam(':lastvm', $lastvm, SQLITE3_INTEGER);
-	$stmt->bindParam(':lastvnc', $lastvnc, SQLITE3_INTEGER);
-	$stmt->bindParam(':lastws', $lastws, SQLITE3_INTEGER);
-	$stmt->bindValue(':loc', "$loc", SQLITE3_TEXT);
-	$stmt->bindParam(':node_id', $node_id, SQLITE3_INTEGER);
-
-	if ($stmt->execute()) {
+	if ($stmt->execute($node_data)) {
 		return true;
 	} else {
-		$error = "Error updating node: " . $conn->lastErrorMsg();
+		$error = "Error editing node: " . $conn->lastErrorMsg();
 		return $error;
 	}
 }
@@ -504,7 +457,7 @@ function editVM($vm_id,$vm_data) {
 	if ($stmt->execute($vm_data)) {
 		return true;
 	} else {
-		$error = "Error updating node: " . $conn->lastErrorMsg();
+		$error = "Error editing VM: " . $conn->lastErrorMsg();
 		return $error;
 	}
 }
@@ -627,8 +580,8 @@ function getNodeInfo($node_id) {
 		$libvirt_version = $ssh->exec('virsh --version');
 		
 		$ssh->disconnect();
-		
-		updateNode($node_id, $cpu, $ram, $total_disk, $make, $model, $cpumodel, $vms, $os_version, $kernel_version, $libvirt_version);
+		$node_data = [':cpu_cores' => $cpu,':total_memory' => $ram,':disk_space' => $total_disk,':make' => $make,':model' => $model,':cpu' => $cpumodel,':vms' => $vms,':os_version' => $os_version,':kernel_version' => $kernel_version,':libvirt_version' => $libvirt_version];
+		updateNode($node_id, $node_data);
 		return true;
 	} catch (Exception $e) {
 		error_log("Error connecting to $node_id: " . $e->getMessage());

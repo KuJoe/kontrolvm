@@ -41,19 +41,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 	$token = $_POST["csrf_token"];
 	if (validateCSRFToken($token)) {
 		if (isset($_POST['editNode'])) {
-			$hostname = $_POST["hostname"];
-			$ipaddr = $_POST["ipaddr"];
-			$sshport = $_POST["sshport"];
-			$lastvm = $_POST["lastvm"];
-			$lastvnc = $_POST["lastvnc"];
-			$lastws = $_POST["lastws"];
-			$loc = $_POST["loc"];
-			if(isset($_POST["status"])) {
-				$status = '1';
-			} else {
-				$status = '0';
-			}
-			$result = editNode($node_id, $hostname, $ipaddr, $sshport, $status, $lastvm, $lastvnc, $lastws, $loc);
+			$node_data = [':hostname' => $_POST["hostname"],':ipaddr' => $_POST["ipaddr"],':sshport' => $_POST["sshport"],':lastvm' => $_POST["lastvm"],':lastvnc' => $_POST["lastvnc"],':lastws' => $_POST["lastws"],':loc' => $_POST["loc"],':status' => isset($_POST["status"])? 1: 0];
+			$result = editNode($node_id, $node_data);
 			if($result === true) {
 				header("Location: node.php?id=". (int)$node_id. "&s=1");
 			} else {
