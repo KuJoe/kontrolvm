@@ -129,14 +129,14 @@ function sendMail($message,$subject,$email) {
 		try {
 			$mail->SMTPDebug = SMTP::DEBUG_OFF;
 			$mail->isSMTP();
-			$mail->Host       = $smtp_server;
-			$mail->SMTPAuth   = true;
-			$mail->Username   = $smtp_user;
-			$mail->Password   = $smtp_password;
+			$mail->Host			 = $smtp_server;
+			$mail->SMTPAuth	 = true;
+			$mail->Username	 = $smtp_user;
+			$mail->Password	 = $smtp_password;
 			if($smtp_tls) {
 				$mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
 			}
-			$mail->Port       = $smtp_port;
+			$mail->Port			 = $smtp_port;
 
 			// Recipients
 			$mail->setFrom($smtp_sender, 'KontrolVM');
@@ -145,7 +145,7 @@ function sendMail($message,$subject,$email) {
 			// Content
 			$mail->isHTML(true);
 			$mail->Subject = $subject;
-			$mail->Body    = $message;
+			$mail->Body		= $message;
 			$mail->AltBody = strip_tags($message);
 
 			$mail->send();
@@ -1174,47 +1174,20 @@ function createVM($memory,$disk_space,$cpu_cores,$loc) {
 		$ssh->exec('/bin/rm -rf /home/kontrolvm/addrs/'.$vmname.'');
 		$ssh->exec('/bin/touch /home/kontrolvm/addrs/'.$vmname.'');
 		$ssh->exec('sudo /bin/sh /home/kontrolvm/create_console.sh '.$wsport.' '.$vncport.'');
-		
-		$stmt = $conn->prepare("INSERT INTO vms (name, hostname, node_id, status, loc, cpu_cores, memory, mac_address, nic, iow, vncpw, vncport, websockify, network, netdriver, diskdriver, bootorder, created_at, last_updated, protected) 
-												VALUES (:name,:hostname,:node_id,:status,:loc,:cpu_cores,:memory,:mac_address,:nic,:iow,:vncpw,:vncport,:websockify,:network,:netdriver,:diskdriver,:bootorder,:created_at,:last_updated,:protected)");
-		$stmt->bindValue(':name', "$vmname", SQLITE3_TEXT);
-		$stmt->bindValue(':hostname', "$vmname", SQLITE3_TEXT);
-		$stmt->bindValue(':status', '1', SQLITE3_INTEGER);
-		$stmt->bindValue(':node_id', $node_id, SQLITE3_INTEGER);
-		$stmt->bindValue(':loc', "$loc", SQLITE3_TEXT);
-		$stmt->bindValue(':cpu_cores', $cpu_cores, SQLITE3_INTEGER);
-		$stmt->bindValue(':memory', $memory, SQLITE3_INTEGER);
-		$stmt->bindValue(':protected', '0', SQLITE3_INTEGER);
-		$stmt->bindValue(':mac_address', "$macaddr", SQLITE3_TEXT);
-		$stmt->bindValue(':nic', '1000', SQLITE3_INTEGER);
-		$stmt->bindValue(':iow', '1000', SQLITE3_INTEGER);
-		$stmt->bindValue(':vncpw', "$encpw", SQLITE3_TEXT);
-		$stmt->bindValue(':vncport', $vncport, SQLITE3_INTEGER);
-		$stmt->bindValue(':websockify', $wsport, SQLITE3_INTEGER);
-		$stmt->bindValue(':network', "$network", SQLITE3_TEXT);
-		$stmt->bindValue(':netdriver', "virtio", SQLITE3_TEXT);
-		$stmt->bindValue(':diskdriver', "virtio", SQLITE3_TEXT);
-		$stmt->bindValue(':bootorder', "cdrom", SQLITE3_TEXT);
-		$stmt->bindValue(':created_at', time(), SQLITE3_TEXT);
-		$stmt->bindValue(':last_updated', time(), SQLITE3_TEXT);
-		$stmt->execute();
-		
+
+		$data = [':name' => $vmname,':hostname' => $vmname,':status' => 1,':node_id' => $node_id,':loc' => $loc,':cpu_cores' => $cpu_cores,':memory' => $memory,':protected' => 0,':mac_address' => $macaddr,':nic' => 1000,':iow' => 1000,':vncpw' => $encpw,':vncport' => $vncport,':websockify' => $wsport,':network' => $network,':netdriver' => 'virtio',':diskdriver' => 'virtio',':bootorder' => 'cdrom',':created_at' => time(),':last_updated' => time()];
+		$stmt = $conn->prepare("INSERT INTO vms (name, hostname, node_id, status, loc, cpu_cores, memory, mac_address, nic, iow, vncpw, vncport, websockify, network, netdriver, diskdriver, bootorder, created_at, last_updated, protected) VALUES (:name,:hostname,:node_id,:status,:loc,:cpu_cores,:memory,:mac_address,:nic,:iow,:vncpw,:vncport,:websockify,:network,:netdriver,:diskdriver,:bootorder,:created_at,:last_updated,:protected)");
+		$stmt->execute($data);
+
 		$vm_id = $conn->lastInsertId();	
-		$stmt = $conn->prepare("INSERT INTO disks (disk_name, disk_size, vm_id, node_id, last_updated) VALUES (:disk_name, :disk_size, :vm_id, :node_id, :last_updated)");
-		$stmt->bindValue(':disk_name', "$disk1", SQLITE3_TEXT);
-		$stmt->bindValue(':disk_size', $disk_space, SQLITE3_INTEGER);
-		$stmt->bindValue(':vm_id', $vm_id, SQLITE3_INTEGER);
-		$stmt->bindValue(':node_id', $node_id, SQLITE3_INTEGER);
-		$stmt->bindValue(':last_updated', time(), SQLITE3_TEXT);
-		$stmt->execute();	
-		
+		$data = [':disk_name' => $disk1,':disk_size' => $disk_space,':vm_id' => $vm_id,':node_id' => $node_id,':last_updated' => time()];
+		$stmt = $conn->prepare("INSERT INTO disks (disk_name, disk_size, vm_id, node_id, last_updated) VALUES (:disk_name,:disk_size,:vm_id,:node_id,:last_updated)");
+		$stmt->execute($data);
+
+		$data = [':lastvnc' => $vncport,':lastws' => $wsport,':lastvm' => $vmnum,':node_id' => $node_id];
 		$stmt = $conn->prepare("UPDATE nodes SET lastvnc =:lastvnc, lastws =:lastws, lastvm =:lastvm WHERE node_id =:node_id");
-		$stmt->bindValue(':lastvnc', $vncport, SQLITE3_INTEGER);
-		$stmt->bindValue(':lastws', $wsport, SQLITE3_INTEGER);
-		$stmt->bindValue(':lastvm', $vmnum, SQLITE3_INTEGER);
-		$stmt->bindValue(':node_id', $node_id, SQLITE3_INTEGER);
-		$stmt->execute();
-			
+		$stmt->execute($data);
+
 		return true;
 	} catch (PDOException $e) {
 		error_log("Error creating VM ($vmname): " . $e->getMessage());
