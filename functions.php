@@ -493,40 +493,15 @@ function editNode($node_id, $hostname, $ipaddr, $sshport, $status, $lastvm, $las
 	}
 }
 
-function editVM($vm_id, $name, $hostname, $notes, $mac_address, $vncpw, $vncport, $websockify, $loc, $status, $protected) {
+function editVM($vm_id,$vm_data) {
 	include('config.php');
 	$conn = new PDO("sqlite:$db_file_path");
 	$encpw = encrypt($vncpw);
-	$sql = "UPDATE vms SET
-				name =:name,
-				hostname =:hostname,
-				ip_address =:ipaddr,
-				status =:status,
-				protected =:protected,
-				mac_address =:mac_address,
-				notes =:notes,
-				vncpw =:vncpw,
-				vncport =:vncport,
-				websockify =:websockify,
-				loc =:loc,
-				last_updated =:last_updated
-			WHERE vm_id =:vm_id";
+	$vm_data[':vm_id'] = $vm_id;
+	$vm_data[':last_updated'] = time();
+	$stmt = $conn->prepare("UPDATE vms SET name =:name,hostname =:hostname,notes =:notes,mac_address =:mac_address,vncpw =:vncpw,vncport =:vncport,websockify =:websockify,loc =:loc,status =:status,protected =:protected,last_updated =:last_updated WHERE vm_id =:vm_id");
 
-	$stmt = $conn->prepare($sql);
-	$stmt->bindValue(':name', "$name", SQLITE3_TEXT);
-	$stmt->bindValue(':hostname', "$hostname", SQLITE3_TEXT);
-	$stmt->bindParam(':status', $status, SQLITE3_INTEGER);
-	$stmt->bindParam(':protected', $protected, SQLITE3_INTEGER);
-	$stmt->bindValue(':mac_address', "$mac_address", SQLITE3_TEXT);
-	$stmt->bindValue(':notes', "$notes", SQLITE3_TEXT);
-	$stmt->bindValue(':vncpw', "$encpw", SQLITE3_TEXT);
-	$stmt->bindParam(':vncport', $vncport, SQLITE3_INTEGER);
-	$stmt->bindParam(':websockify', $websockify, SQLITE3_INTEGER);
-	$stmt->bindValue(':loc', "$loc", SQLITE3_TEXT);
-	$stmt->bindValue(':last_updated', time(), SQLITE3_TEXT);
-	$stmt->bindParam(':vm_id', $vm_id, SQLITE3_INTEGER);
-
-	if ($stmt->execute()) {
+	if ($stmt->execute($vm_data)) {
 		return true;
 	} else {
 		$error = "Error updating node: " . $conn->lastErrorMsg();

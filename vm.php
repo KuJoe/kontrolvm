@@ -76,29 +76,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 	$token = $_POST["csrf_token"];
 	if (validateCSRFToken($token)) {
 		if (isset($_POST['update_vm'])) {
-			$name = $_POST["name"];
-			$hostname = $_POST["hostname"];
-			if(isset($_POST["notes"])) {
-				$notes = $_POST["notes"];
-			} else {
-				$notes = ' ';
-			}
-			$vncpw = $_POST["vncpw"];
-			$vncport = $_POST["vncport"];
-			$websockify = $_POST["websockify"];
-			$mac_address = $_POST["mac_address"];
-			$loc = $_POST["loc"];
-			if(isset($_POST["status"])) {
-				$status = '1';
-			} else {
-				$status = '0';
-			}
-			if(isset($_POST["protected"])) {
-				$protected = '1';
-			} else {
-				$protected = '0';
-			}
-			$result = editVM($vm_id, $name, $hostname, $notes, $mac_address, $vncpw, $vncport, $websockify, $loc, $status, $protected);
+			$vm_data = [':name' => $_POST["name"],':hostname' => $_POST["hostname"],':notes' => isset($_POST["notes"])? $_POST["notes"]: ' ',':vncpw' => $_POST["vncpw"],':vncport' => $_POST["vncport"],':websockify' => $_POST["websockify"],':mac_address' => $_POST["mac_address"],':loc' => $_POST["loc"],':status' => isset($_POST["status"])? 1: 0,':protected' => isset($_POST["protected"])? 1: 0];
+			$result = editVM($vm_id,$vm_data);
 			if($result === true) {
 				header("Location: vm.php?id=". (int)$vm_id. "&s=1");
 			} else {
