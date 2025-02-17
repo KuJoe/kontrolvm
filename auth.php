@@ -185,7 +185,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 		<br />
 		<h1>Two-Factor Authentication</h1>
 		<p>Please enter your OTP:
-		<form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post"> 
+		<form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post">
 			<input type="hidden" name="staff_id" value="<?php echo htmlspecialchars($_SESSION['staff_id']);?>"> 
 			<input type="text" name="otp" required>
 			<br />
