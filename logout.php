@@ -2,14 +2,10 @@
 /** KontrolVM By KuJoe (https://github.com/KuJoe/kontrolvm) **/
 
 session_start();
-$_SESSION = array();
-if (ini_get("session.use_cookies")) {
-		$params = session_get_cookie_params();
-		setcookie(session_name(), '', time() - 42000,
-				$params["path"], $params["domain"],
-				$params["secure"], $params["httponly"]
-		);
-}
+unset($_SESSION['username']);
+unset($_SESSION['password']);
+unset($_SESSION['loggedin']);
+unset($_SESSION['mfa_required']);
 session_destroy();
 header("refresh:3;url=index.php");
 

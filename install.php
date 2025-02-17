@@ -164,6 +164,11 @@ try {
 		setting_id INTEGER PRIMARY KEY AUTOINCREMENT,
 		setting_name TEXT NOT NULL,
 		setting_value TEXT NOT NULL
+	)",
+	'logs' => "CREATE TABLE IF NOT EXISTS logs (
+		log_id INTEGER PRIMARY KEY AUTOINCREMENT,
+		log_message TEXT NOT NULL,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 	)"
 	];
 	foreach ($tables as $name => $sql) {

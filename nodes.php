@@ -6,10 +6,14 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 	header("Location: index.php"); 
 	exit; 
 } else {
-	if (isset($_GET['s']) AND $_GET['s'] == '1') {
-		$success = "Node added successfully.";
-	} elseif (isset($_GET['s']) AND $_GET['s'] == '2') {
-		$success = "Nodes updated.";
+	if(isset($_GET['s']) ) {
+		if($_GET['s'] == '1') {
+			$success = "Node added successfully.";
+		} elseif ($_GET['s'] == '2') {
+			$success = "Nodes updated.";
+		} elseif ($_GET['s'] == '3') {
+			$error = "Node ID missing.";
+		}
 	}
 	define('AmAllowed', TRUE);
 	require_once('config.php');

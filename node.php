@@ -19,7 +19,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 		require_once('functions.php');
 		$node = getNodeDetails($node_id);
 	} else {
-		error_log("Error node ID missing.");
+		header("Location: nodes.php?s=3");
 		exit;
 	}
 }

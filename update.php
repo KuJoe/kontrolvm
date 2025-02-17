@@ -1,58 +1,56 @@
 <?PHP
 /** KontrolVM By KuJoe (https://github.com/KuJoe/kontrolvm) **/
 
-require_once('config.php');
-require_once('functions.php');
-if("0.2" !== KONTROLVM_VERSION) {
-	$error = "KontrolVM incorrect version.";
+session_start();
+if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
+	header("Location: index.php"); 
+	exit; 
 } else {
-	try {
-		$db = new PDO("sqlite:$db_file_path");
-		$db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+	define('AmAllowed', TRUE);
+	require_once('config.php');
+	require_once('functions.php');
+	if("0.2" !== KONTROLVM_VERSION) {
+		$error = "KontrolVM incorrect version.";
+	} else {
+		try {
+			$db = new PDO("sqlite:$db_file_path");
+			$db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-		// SQL statement to alter the table
-		$sql = "ALTER TABLE staff RENAME TO staff_old;
-				CREATE TABLE staff (
-				staff_id INTEGER PRIMARY KEY AUTOINCREMENT,
-				staff_username TEXT NOT NULL DEFAULT '',
-				staff_email TEXT,
-				staff_password TEXT NOT NULL DEFAULT 0,
-				staff_pwreset TEXT,
-				staff_active INTEGER NOT NULL DEFAULT 0,
-				staff_rememberme_token TEXT,
-				staff_mfa TEXT,
-				staff_ip TEXT,
-				staff_lastlogin TEXT,
-				staff_failed_logins INTEGER NOT NULL DEFAULT 0,
-				staff_locked DATETIME NOT NULL DEFAULT '1970-01-01 00:00:01'
-			);
-			INSERT INTO staff SELECT * FROM staff_old;
-			DROP TABLE staff_old;
-			
-			CREATE TABLE IF NOT EXISTS settings (
-				setting_id INTEGER PRIMARY KEY AUTOINCREMENT,
-				setting_name TEXT NOT NULL,
-				setting_value TEXT NOT NULL
-			)
-			
-			CREATE TABLE IF NOT EXISTS disks (
-				disk_id INTEGER PRIMARY KEY AUTOINCREMENT,
-				disk_name TEXT NOT NULL,
-				disk_size INTEGER,
-				vm_id INTEGER,
-				node_id INTEGER,
-				last_updated DATETIME
-			)
-			";
+			// SQL statement to alter the table
+			$sql = "
+				ALTER TABLE staff DROP COLUMN staff_salt;
+				
+				CREATE TABLE IF NOT EXISTS settings (
+					setting_id INTEGER PRIMARY KEY AUTOINCREMENT,
+					setting_name TEXT NOT NULL,
+					setting_value TEXT NOT NULL
+				);
+				
+				CREATE TABLE IF NOT EXISTS disks (
+					disk_id INTEGER PRIMARY KEY AUTOINCREMENT,
+					disk_name TEXT NOT NULL,
+					disk_size INTEGER,
+					vm_id INTEGER,
+					node_id INTEGER,
+					last_updated DATETIME
+				);
+				
+				CREATE TABLE IF NOT EXISTS logs (
+					log_id INTEGER PRIMARY KEY AUTOINCREMENT,
+					log_message TEXT NOT NULL,
+					created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+				);
+				";
 
-		$db->exec($sql);
+			$db->exec($sql);
 
-		$success = "Database updates have been applied.";
-	} catch (PDOException $e) {
-		$error = "Error altering table: ". $e->getMessage();
+			$success = "Database updates have been applied.";
+		} catch (PDOException $e) {
+			$error = "Error updating tables: ". $e->getMessage();
+		}
+
+		$db = null;
 	}
-
-	$db = null;
 }
 ?>
 <!DOCTYPE html>
@@ -111,8 +109,6 @@ if("0.2" !== KONTROLVM_VERSION) {
 			<br />
 			<div><?php echo $success; ?></div> 
 			<p>
-			<br />
-			<a href="index.php">LOGIN</a>
 			</p>
 		<?php } ?>
 		<br /><br />
