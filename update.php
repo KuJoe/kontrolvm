@@ -2,54 +2,58 @@
 /** KontrolVM By KuJoe (https://github.com/KuJoe/kontrolvm) **/
 
 require_once('config.php');
+require_once('functions.php');
+if("0.2" !== KONTROLVM_VERSION) {
+	$error = "KontrolVM incorrect version.";
+} else {
+	try {
+		$db = new PDO("sqlite:$db_file_path");
+		$db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-try {
-	$db = new PDO("sqlite:$db_file_path");
-	$db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+		// SQL statement to alter the table
+		$sql = "ALTER TABLE staff RENAME TO staff_old;
+				CREATE TABLE staff (
+				staff_id INTEGER PRIMARY KEY AUTOINCREMENT,
+				staff_username TEXT NOT NULL DEFAULT '',
+				staff_email TEXT,
+				staff_password TEXT NOT NULL DEFAULT 0,
+				staff_pwreset TEXT,
+				staff_active INTEGER NOT NULL DEFAULT 0,
+				staff_rememberme_token TEXT,
+				staff_mfa TEXT,
+				staff_ip TEXT,
+				staff_lastlogin TEXT,
+				staff_failed_logins INTEGER NOT NULL DEFAULT 0,
+				staff_locked DATETIME NOT NULL DEFAULT '1970-01-01 00:00:01'
+			);
+			INSERT INTO staff SELECT * FROM staff_old;
+			DROP TABLE staff_old;
+			
+			CREATE TABLE IF NOT EXISTS settings (
+				setting_id INTEGER PRIMARY KEY AUTOINCREMENT,
+				setting_name TEXT NOT NULL,
+				setting_value TEXT NOT NULL
+			)
+			
+			CREATE TABLE IF NOT EXISTS disks (
+				disk_id INTEGER PRIMARY KEY AUTOINCREMENT,
+				disk_name TEXT NOT NULL,
+				disk_size INTEGER,
+				vm_id INTEGER,
+				node_id INTEGER,
+				last_updated DATETIME
+			)
+			";
 
-	// SQL statement to alter the table
-	$sql = "ALTER TABLE staff RENAME TO staff_old;
-			CREATE TABLE staff (
-			staff_id INTEGER PRIMARY KEY AUTOINCREMENT,
-			staff_username TEXT NOT NULL DEFAULT '',
-			staff_email TEXT,
-			staff_password TEXT NOT NULL DEFAULT 0,
-			staff_pwreset TEXT,
-			staff_active INTEGER NOT NULL DEFAULT 0,
-			staff_rememberme_token TEXT,
-			staff_mfa TEXT,
-			staff_ip TEXT,
-			staff_lastlogin TEXT,
-			staff_failed_logins INTEGER NOT NULL DEFAULT 0,
-			staff_locked DATETIME NOT NULL DEFAULT '1970-01-01 00:00:01'
-		);
-		INSERT INTO staff SELECT * FROM staff_old;
-		DROP TABLE staff_old;
-		
-		CREATE TABLE IF NOT EXISTS settings (
-			setting_id INTEGER PRIMARY KEY AUTOINCREMENT,
-			setting_name TEXT NOT NULL,
-			setting_value TEXT NOT NULL
-		)
-		
-		CREATE TABLE IF NOT EXISTS disks (
-			disk_id INTEGER PRIMARY KEY AUTOINCREMENT,
-			disk_name TEXT NOT NULL,
-			disk_size INTEGER,
-			vm_id INTEGER,
-			node_id INTEGER,
-			last_updated DATETIME
-		)
-		";
+		$db->exec($sql);
 
-	$db->exec($sql);
+		$success = "Database updates have been applied.";
+	} catch (PDOException $e) {
+		$error = "Error altering table: ". $e->getMessage();
+	}
 
-	$success = "Database updates have been applied.";
-} catch (PDOException $e) {
-echo "Error altering table: ". $e->getMessage();
+	$db = null;
 }
-
-$db = null;
 ?>
 <!DOCTYPE html>
 <html lang="en">

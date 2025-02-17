@@ -26,7 +26,12 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 	}
 }
 $token = getCSRFToken();
-$last_run_time = getLastRunTime('updateNodes.php'); 
+$last_run_time = getLastRunTime('updateNodes.php');
+$script_name = 'dbBackup.php';
+$last_backup = getLastRunTime($script_name); 
+if (!$last_backup || time() - $last_backup >= 86400) {
+	include($script_name);
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
