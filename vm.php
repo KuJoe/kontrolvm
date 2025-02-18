@@ -60,8 +60,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 		$vm = getVMDetails($vm_id);
 		$node = getNodeDetails($vm['node_id']);
 	} else {
-		error_log("Error VM ID missing.");
-		header("Location: vms.php");
+		header("Location: vms.php?s=3");
 	}
 }
 #print_r($node);
@@ -652,8 +651,8 @@ if ($vm) {
 			</div>
 <?php
 } else {
-	error_log("Error finding VM.");
-	exit;
+	logError("Error finding VM.");
+	header("Location: vms.php?s=3");
 }
 ?>
 		</div>

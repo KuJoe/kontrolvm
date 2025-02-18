@@ -68,6 +68,7 @@ $isos = getISOs();
 		<li><a class="active" href="isos.php">ISOs</a></li>
 		<li><a href="ipv4.php">IPv4 Addresses</a></li>
 		<li><a href="ipv6.php">IPv6 Addresses</a></li>
+		<li><a href="logs.php">Logs</a></li>
 	</ul>
 	<div class="container">
 		<p style="float:right;"><button id="addBtn" class="stylish-button"><i class="fa-solid fa-square-plus"></i> ADD ISO</button></p>

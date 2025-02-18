@@ -1900,4 +1900,32 @@ function verifyToken($token,$email) {
 	}
 	return false;
 }
+
+function getLogs($perPage,$offset) {
+	include('config.php');
+	$conn = new PDO("sqlite:$db_file_path");
+	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+	try {
+		$stmt = $conn->prepare("SELECT * FROM logs ORDER BY created_at DESC LIMIT $perPage OFFSET $offset");
+		$stmt->execute();
+		$logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+		return $logs;
+	} catch (PDOException $e) {
+		logError("Error fetching logs: " . $e->getMessage());
+		return false;
+	}
+}
+
+function getLogsTotal() {
+	include('config.php');
+	$conn = new PDO("sqlite:$db_file_path");
+	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+	try {
+		$totalLogs = $conn->query("SELECT COUNT(*) FROM logs")->fetchColumn();
+		return $totalLogs;
+	} catch (PDOException $e) {
+		logError("Error fetching logs: " . $e->getMessage());
+		return false;
+	}
+}
 ?>

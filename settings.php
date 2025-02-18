@@ -44,6 +44,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 		<li><a href="isos.php">ISOs</a></li>
 		<li><a href="ipv4.php">IPv4 Addresses</a></li>
 		<li><a href="ipv6.php">IPv6 Addresses</a></li>
+		<li><a href="logs.php">Logs</a></li>
 	</ul>
 	<div class="container">
 		<h1>Settings</h1>

@@ -607,6 +607,23 @@ button.btnaction:active{
 	cursor: pointer;
 }
 
+.pagination {
+	width: 100%;
+	margin-top: 20px;
+	text-align: center;
+}
+.pagination a {
+	padding: 5px 10px;
+	margin: 2px;
+	border: 1px solid #ddd;
+	text-decoration: none;
+	color: #333;
+}
+.pagination a.active {
+	background-color: #007bff;
+	color: white;
+}
+
 /* Dark Mode Styles */
 body.dark-mode {
 	background-color: #333;
