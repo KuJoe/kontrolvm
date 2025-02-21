@@ -808,7 +808,7 @@ function addIPs($ipaddress, $gwip, $loc) {
 			$error = "IP address exists.";
 			return $error;
 		} else {
-			$stmt = $conn->prepare('INSERT INTO ipv4 (ipaddress, gwip, node, loc, vmid, status, notes, last_updated) VALUES (:ipaddress, :gwip, :node, :loc, :vmid, :status, :notes, :last_updated)');
+			$stmt = $conn->prepare('INSERT INTO ipv4 (ipaddress, gwip, node, loc, vmid, status, reserved, notes, last_updated) VALUES (:ipaddress, :gwip, :node, :loc, :vmid, :status, :reserved, :notes, :last_updated)');
 		}
 	} else {
 		$checkip = $ipaddress."::";
@@ -822,7 +822,7 @@ function addIPs($ipaddress, $gwip, $loc) {
 				$error = "IP address exists.";
 				return $error;
 			} else {
-				$stmt = $conn->prepare('INSERT INTO ipv6 (ipaddress, gwip, node, loc, vmid, status, notes, last_updated) VALUES (:ipaddress, :gwip, :node, :loc, :vmid, :status, :notes, :last_updated)');
+				$stmt = $conn->prepare('INSERT INTO ipv6 (ipaddress, gwip, node, loc, vmid, status, reserved, notes, last_updated) VALUES (:ipaddress, :gwip, :node, :loc, :vmid, :status, :reserved, :notes, :last_updated)');
 			}
 		} else {
 			$error = "Not a valid IP address.";
@@ -835,7 +835,8 @@ function addIPs($ipaddress, $gwip, $loc) {
 	$stmt->bindValue(':loc', "$loc", SQLITE3_TEXT);
 	$stmt->bindValue(':vmid', '0', SQLITE3_INTEGER);
 	$stmt->bindValue(':status', '1', SQLITE3_INTEGER);
-	$stmt->bindValue(':notes', ' ', SQLITE3_INTEGER);
+	$stmt->bindValue(':reserved', '0', SQLITE3_INTEGER);
+	$stmt->bindValue(':notes', ' ', SQLITE3_TEXT);
 	$stmt->bindValue(':last_updated', time(), SQLITE3_TEXT);
 
 	$result = $stmt->execute();

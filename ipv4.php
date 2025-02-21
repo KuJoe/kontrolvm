@@ -157,7 +157,6 @@ $clusters = getClusters('1');
 					<th>Cluster</th>
 					<th>Node</th>
 					<th>Available</th>
-					<th>Notes</th>
 					<th>Actions</th>
 				</tr>
 			</thead>
@@ -178,7 +177,7 @@ $clusters = getClusters('1');
 						echo "<img src='assets/0.png' alt='Unavailable'>";
 					}
 					echo "</td>";
-					echo "<td style='font-size:small;'>" . $ip['notes'] . "</td><td>";
+					echo "<td>";
 					echo '<form action="'.htmlspecialchars($_SERVER["PHP_SELF"]).'" method="post"> 
 							<input type="hidden" name="csrf_token" value="'.$csrfToken.'">
 							<input type="hidden" name="ipid" value="'.$ipid.'">
