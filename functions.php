@@ -760,9 +760,10 @@ function downloadISOs($download, $filename) {
 			$node_id = $server['node_id'];
 			$ssh = connectNode($node_id);
 			$ssh->exec('wget -O /home/kontrolvm/isos/'.$filename.' '.$download.' &');
-			sleep(5);
+			sleep(1);
 			#echo $ssh->getLog();
 			$ssh->disconnect();
+			return true;
 		} catch (PDOException $e) {
 			logError("Error downloading ISO ($node_id): " . $e->getMessage());
 			return false; 
@@ -1553,7 +1554,7 @@ function mountISO($vm_id,$vmname,$ostemplate,$node_id) {
 	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 	try {
 		$ssh = connectNode($node_id);
-		$ssh->exec('sudo /usr/bin/virsh attach-disk '.$vmname.' /home/kontrolvm/isos/'.$ostemplate.' sda --type cdrom --mode readonly');
+		$ssh->exec('sudo /usr/bin/virsh attach-disk '.$vmname.' /home/kontrolvm/isos/'.$ostemplate.' sda --type cdrom --mode readonly --persistent');
 		$ssh->exec('sudo /usr/bin/virsh change-media '.$vmname.' sda /home/kontrolvm/isos/'.$ostemplate.' --insert --live --config');
 		$ssh->exec('sudo /usr/bin/virsh dumpxml '.$vmname.' --security-info > /home/kontrolvm/xmls/'.$vmname.'.xml');
 		$ssh->exec('sudo /bin/sed -ie \'s/<boot dev=\x27hd\x27\/>/<boot dev=\x27cdrom\x27\/>/g\' /home/kontrolvm/xmls/'.$vmname.'.xml');
