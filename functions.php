@@ -1073,11 +1073,10 @@ function createVM($memory,$disk_space,$cpu_cores,$loc) {
 	$conn = new PDO("sqlite:$db_file_path");
 	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-	try {	
-		$sql = "SELECT * FROM nodes WHERE loc =:loc AND status =:status";
-		$stmt = $conn->prepare($sql);
-		$stmt->bindParam(':loc', $loc, SQLITE3_TEXT);
-		$stmt->bindValue(':status', '1', SQLITE3_INTEGER);
+	try {
+		$stmt = $conn->prepare("SELECT * FROM nodes WHERE loc = :loc AND status = :status");
+		$stmt->bindValue(':loc', $loc, PDO::PARAM_STR);
+		$stmt->bindValue(':status', 1, PDO::PARAM_INT);
 		$stmt->execute();
 		$node = $stmt->fetch(PDO::FETCH_ASSOC);
 		if ($node) {
@@ -1086,7 +1085,7 @@ function createVM($memory,$disk_space,$cpu_cores,$loc) {
 			$wsport = $node["lastws"]+1;
 			$vmnum = $node["lastvm"]+1;
 		} else {
-			logError("Error finding an available node: " . $e->getMessage());
+			logError("Error finding an available node ($loc).");
 			return false; 
 		}
 

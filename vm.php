@@ -475,7 +475,7 @@ if ($vm) {
 						$csrf = '<input type="hidden" name="csrf_token" value="'.$csrfToken.'">';
 						$diskname = '<input type="hidden" name="disk_name" value="'.$name.'">';
 						$diskid = '<input type="hidden" name="disk_id" value="'.$disk_id.'">';
-						echo "<form id='resize_disk' action='vm.php?id=$vm_id' method='post'>$csrf $diskname $diskid $name : <input type='text' id='disk_size' name='disk_size' value='$size' style='text-align:center;width:40px;'> GB <button class='stylish-button' id='resize_disk' name='resize_disk'>Resize</button> <button class='stylish-button' id='delete_disk' name='delete_disk'>Delete</button></form>";
+						echo "<form id='resize_disk' action='vm.php?id=$vm_id' method='post'>$csrf $diskname $diskid $name : <input type='text' id='disk_size' name='disk_size' value='$size' style='text-align:center;width:80px;'> GB <button class='stylish-button' id='resize_disk' name='resize_disk'>Resize</button> <button class='stylish-button' id='delete_disk' name='delete_disk'>Delete</button></form>";
 					endforeach;?>
 					</div>
 				</div>
