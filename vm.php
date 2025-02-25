@@ -508,7 +508,7 @@ if ($vm) {
 						$size = $backup['backup_size']."MB";
 						$backup_id = $backup['backup_id'];
 						$created_at = $backup['created_at'];
-						echo "$name | $size | $created_at";
+						echo "$name | $size | ".date('m/j/Y @ g:i:s A', $created_at);
 					endforeach;?>
 					</div>
 				</div>
