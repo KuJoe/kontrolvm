@@ -40,6 +40,14 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 					log_message TEXT NOT NULL,
 					created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 				);
+				CREATE TABLE IF NOT EXISTS backups (
+					backup_id INTEGER PRIMARY KEY AUTOINCREMENT,
+					backup_name TEXT NOT NULL,
+					backup_size INTEGER,
+					vm_id INTEGER,
+					node_id INTEGER,
+					created_at DATETIME
+				);
 				";
 
 			$db->exec($sql);

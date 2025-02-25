@@ -59,7 +59,6 @@ echo "     PasswordAuthentication no" >> /etc/ssh/sshd_config
 
 echo "Creating directories/files for KontrolVM..." > /dev/tty 
 cd
-touch /var/www/html/index.html
 mkdir /home/kontrolvm/.ssh
 touch /home/kontrolvm/.ssh/authorized_keys
 mkdir /home/kontrolvm/tc
@@ -70,6 +69,8 @@ mkdir /home/kontrolvm/data
 mkdir /home/kontrolvm/iow
 mkdir /home/kontrolvm/isos
 mkdir /home/kontrolvm/xmls
+mkdir /home/kontrolvm/kvm_backups
+mkdir /home/kontrolvm/backups_tmp
 touch /home/kontrolvm/ip4
 touch /home/kontrolvm/ip6
 
@@ -82,6 +83,8 @@ wget -N https://raw.githubusercontent.com/KuJoe/kontrolvm/refs/heads/main/script
 wget -N https://raw.githubusercontent.com/KuJoe/kontrolvm/refs/heads/main/scripts/iolimits.sh
 wget -N https://raw.githubusercontent.com/KuJoe/kontrolvm/refs/heads/main/scripts/tc_start.sh
 wget -N https://raw.githubusercontent.com/KuJoe/kontrolvm/refs/heads/main/scripts/tc_stop.sh
+wget -N https://raw.githubusercontent.com/KuJoe/kontrolvm/refs/heads/main/scripts/backup_vm.sh
+wget -N https://raw.githubusercontent.com/KuJoe/kontrolvm/refs/heads/main/scripts/restore_vm.sh
 wget -O /home/kontrolvm/isos/systemrescue-amd64.iso https://sourceforge.net/projects/systemrescuecd/files/sysresccd-x86/11.03/systemrescue-11.03-amd64.iso/download
 echo "kontrolvm_version=0.1" > /home/kontrolvm/conf/kontrolvm.conf
 echo '#!/bin/sh' > /home/kontrolvm/create_console.sh

@@ -379,6 +379,8 @@ function addNode($hostname, $ipaddr, $sshport, $rootpw, $loc) {
 			$kontrolvmip = $_SERVER['SERVER_ADDR'];
 			$sshkeypublic = 'from="'.$kontrolvmip.'" '.$sshkeypublic;
 			$ssh->exec("echo '$sshkeypublic' >> /home/kontrolvm/.ssh/authorized_keys");
+			$kontrolvm_url = dirname((empty($_SERVER['HTTPS']) ? 'http' : 'https') . "://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]");
+			$ssh->exec("echo 'kontrolvm_url=$kontrolvm_url' >> /home/kontrolvm/conf/kontrolvm.conf");
 			$ssh->disconnect();
 		} else {
 			throw new Exception("SSH connection with password failed.");
@@ -1336,9 +1338,10 @@ function addDisk($vm_id,$vmname,$disk_size,$node_id) {
 				$volid = 'vda';
 			}
 			$ssh->exec('/usr/bin/qemu-img create -f qcow2 /home/kontrolvm/data/'.$disk_name.' '.$disk_size.'G');
-			$ssh->exec('chmod 0640 /home/kontrolvm/data/'.$disk_name);
-			$ssh->exec('sudo /usr/bin/virsh attach-disk '.$vmname.' /home/kontrolvm/data/'.$disk_name.' '.$volid.' --type disk --cache writeback --config');
-			$ssh->exec('sudo /usr/bin/virsh dumpxml '.$vmname.' --security-info > /home/kontrolvm/xmls/'.$vmname.'.xml');
+			$ssh->exec("chmod 0640 /home/kontrolvm/data/$disk_name");
+			$ssh->exec("sudo /usr/bin/virsh attach-disk $vmname /home/kontrolvm/data/$disk_name $volid --type disk --cache writeback --config --persistent");
+			$ssh->exec("sudo /usr/bin/virsh dumpxml $vmname --security-info > /home/kontrolvm/xmls/$vmname.xml");
+			$ssh->exec("sudo /usr/bin/virsh define /home/kontrolvm/xmls/$vmname.xml");
 			$ssh->disconnect();
 
 			$stmt = $conn->prepare("INSERT INTO disks (disk_name, disk_size, vm_id, node_id, last_updated) VALUES (:disk_name, :disk_size, :vm_id, :node_id, :last_updated)");
@@ -1361,7 +1364,7 @@ function addDisk($vm_id,$vmname,$disk_size,$node_id) {
 	}
 }
 
-function resizeDisk($vm_id,$disk_id,$disk_name,$disk_size,$node_id) {
+function resizeDisk($vm_id,$vmname,$disk_id,$disk_name,$disk_size,$node_id) {
 	include('config.php');
 	$conn = new PDO("sqlite:$db_file_path");
 	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -1383,16 +1386,16 @@ function resizeDisk($vm_id,$disk_id,$disk_name,$disk_size,$node_id) {
 	}	
 }
 
-function deleteDisk($vm_id,$disk_id,$disk_name,$node_id) {
+function deleteDisk($vm_id,$vmname,$disk_id,$disk_name,$node_id) {
 	include('config.php');
 	$conn = new PDO("sqlite:$db_file_path");
 	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
 	try {
 		$ssh = connectNode($node_id);
-		$ssh->exec('sudo /usr/bin/virsh detach-disk '.$vmname.' /home/kontrolvm/data/'.$disk_name.' --config');
-		$ssh->exec('sudo /usr/bin/virsh dumpxml '.$vmname.' --security-info > /home/kontrolvm/xmls/'.$vmname.'.xml');
-		$ssh->exec('sudo /bin/sh /home/kontrolvm/cleandata.sh '.$disk_name);
+		$ssh->exec("sudo /usr/bin/virsh detach-disk $vmname /home/kontrolvm/data/$disk_name --config --persistent");
+		$ssh->exec("sudo /usr/bin/virsh dumpxml $vmname --security-info > /home/kontrolvm/xmls/$vmname.xml");
+		$ssh->exec("sudo /bin/sh /home/kontrolvm/cleandata.sh $disk_name");
 		$ssh->disconnect();
 
 		$stmt = $conn->prepare("DELETE FROM disks WHERE disk_id =:disk_id");
@@ -1929,4 +1932,46 @@ function getLogsTotal() {
 		return false;
 	}
 }
+
+function backupVM($vm_id,$vmname,$node_id) {
+	include('config.php');
+	$backup_name = $vmname.'_'.date('Ydmhis');
+	$conn = new PDO("sqlite:$db_file_path");
+	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+	try {
+		$ssh = connectNode($node_id);
+		$ssh->exec('sudo /home/kontrolvm/backup_vm.sh '.$vmname.' '.$backup_name.' > /dev/null 2>&1 &');
+		#echo $ssh->getLog();
+		$ssh->disconnect();
+
+		$stmt = $conn->prepare('INSERT INTO backups (backup_name, vm_id, node_id, created_at) VALUES (:backup_name, :vm_id, :node_id, :created_at)');
+		$stmt->bindValue(':backup_name', "$backup_name.tar.gz", SQLITE3_TEXT);
+		$stmt->bindValue(':vm_id', $vm_id, SQLITE3_INTEGER);
+		$stmt->bindValue(':node_id', $node_id, SQLITE3_INTEGER);
+		$stmt->bindValue(':created_at', time(), SQLITE3_TEXT);
+		$stmt->execute();
+		return true;
+	} catch (PDOException $e) {
+		logError("Error backing up VM ($vm_id): " . $e->getMessage());
+		return false; 
+	}
+}
+
+function getBackups($vm_id) {
+	include('config.php');
+	$conn = new PDO("sqlite:$db_file_path");
+	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+	try {
+		$sql = "SELECT * FROM backups WHERE vm_id = $vm_id ORDER BY backup_id";
+		$stmt = $conn->prepare($sql);
+		$stmt->execute();
+		$backups = $stmt->fetchAll(PDO::FETCH_ASSOC);
+		return $backups;
+	} catch (PDOException $e) {
+		logError("Error fetching backup list ($vm_id): " . $e->getMessage());
+		return false;
+	}
+}
+
 ?>

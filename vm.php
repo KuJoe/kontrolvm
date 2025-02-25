@@ -50,6 +50,8 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 				$success = "VM disk added successfully.";
 			} elseif ($_GET['s'] == '16') {
 				$success = "VM disk deleted successfully.";
+			} elseif ($_GET['s'] == '17') {
+				$success = "VM backup started successfully.";
 			}
 		}
 		$vm_id = $_GET['id'];
@@ -105,7 +107,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 			$disk_id= $_POST["disk_id"];
 			$disk_name = $_POST["disk_name"];
 			$disk_size = $_POST["disk_size"];
-			$result = resizeDisk($vm_id,$disk_id,$disk_name,$disk_size,$vm['node_id']);
+			$result = resizeDisk($vm_id,$vm['name'],$disk_id,$disk_name,$disk_size,$vm['node_id']);
 			if($result === true) {
 				header("Location: vm.php?id=". (int)$vm_id. "&s=14");
 			} else {
@@ -113,9 +115,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 			}
 		}
 		if (isset($_POST['add_disk'])) {
-			$vmname = $_POST["vmname"];
 			$disk_size = $_POST["disk_size"];
-			$result = addDisk($vm_id,$vmname,$disk_size,$vm['node_id']);
+			$result = addDisk($vm_id,$vm['name'],$disk_size,$vm['node_id']);
 			if($result === true) {
 				header("Location: vm.php?id=". (int)$vm_id. "&s=15");
 			} else {
@@ -125,7 +126,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 		if (isset($_POST['delete_disk'])) {
 			$disk_id= $_POST["disk_id"];
 			$disk_name = $_POST["disk_name"];
-			$result = deleteDisk($vm_id,$disk_id,$disk_name,$vm['node_id']);
+			$result = deleteDisk($vm_id,$vm['name'],$disk_id,$disk_name,$vm['node_id']);
 			if($result === true) {
 				header("Location: vm.php?id=". (int)$vm_id. "&s=16");
 			} else {
@@ -259,6 +260,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 				$error = "VM update boot order failed: ".$result;
 			}
 		}
+		if (isset($_POST['backupvm'])) {
+			$result = backupVM($vm_id,$vm['name'],$vm['node_id']);
+			if($result === true) {
+				header("Location: vm.php?id=". (int)$vm_id. "&s=17");
+			} else {
+				$error = "VM backup failed: ".$result;
+			}
+		}
 		if (isset($_POST['destroyVM'])) {
 			if (isset($_POST['confirm'])) {
 				$confirm = $_POST['confirm'];
@@ -291,6 +300,7 @@ if ($vm) {
 	}
 	$isoList = getISOs();
 	$disks = getDisks($vm_id);
+	$backups = getBackups($vm_id);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -482,6 +492,29 @@ if ($vm) {
 				<br />
 				<hr />
 				<br />
+				<h2>Backup/Restore</h2>
+				<div class="disk-list">
+						<form id="backupvm" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post">
+						<input type="hidden" name="csrf_token" value="<?php echo $csrfToken; ?>">
+						<input type="hidden" name="id" value="<?php echo $vm_id; ?>">
+						<button class="stylish-button" id="backupvm" name="backupvm">Backup</button>
+						</form>
+					<br />
+					<hr />
+					<br />
+					<h3>Backups</h3>
+					<?php foreach ($backups as $backup):
+						$name = $backup['backup_name'];
+						$size = $backup['backup_size']."MB";
+						$backup_id = $backup['backup_id'];
+						$created_at = $backup['created_at'];
+						echo "$name | $size | $created_at";
+					endforeach;?>
+					</div>
+				</div>
+				<br />
+				<hr />
+				<br />
 				<table>
 					<tr>
 						<td style="background-color:#999;">CPU Cores:</td>
@@ -545,7 +578,7 @@ if ($vm) {
 						</td>
 					</tr>
 				</table>
-<br />
+				<br />
 				<hr />
 				<br />
 				<table>
