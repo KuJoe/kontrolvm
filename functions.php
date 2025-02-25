@@ -1104,7 +1104,7 @@ function createVM($memory,$disk_space,$cpu_cores,$loc) {
 				
 		$ssh = connectNode($node_id);
 		$ssh->exec('sudo /usr/bin/virt-install --name '.$vmname.' --ram '.$memorymb.' --vcpus='.$cpu_cores.' --disk path=/home/kontrolvm/data/'.$disk1.',size='.$disk_space.',format=qcow2,bus=virtio,cache=writeback --network=bridge:br0,model=virtio --cdrom /home/kontrolvm/isos/systemrescue-amd64.iso --os-variant linux2022 --osinfo generic --noautoconsole --graphics vnc,listen=0.0.0.0,port='.$vncport.',password='.$password.',keymap=en-us --hvm --boot uefi');
-		$ssh->exec('/bin/rm -rf /home/kontrolvm/xmls/'.$vmname.'.xml');
+		$ssh->exec('/usr/bin/rm -rf /home/kontrolvm/xmls/'.$vmname.'.xml');
 		$ssh->exec('/bin/touch /home/kontrolvm/xmls/'.$vmname.'.xml');
 		$ssh->exec('sudo /usr/bin/virsh destroy '.$vmname.'');
 		$ssh->exec('sudo /usr/bin/virsh change-media '.$vmname.' sda /home/kontrolvm/isos/systemrescue-amd64.iso --insert --config');
@@ -1119,7 +1119,7 @@ function createVM($memory,$disk_space,$cpu_cores,$loc) {
 		$ssh->exec('sudo /bin/sed -ie \'s/<boot dev=\x27hd\x27\/>/<boot dev=\x27cdrom\x27\/>/g\' /home/kontrolvm/xmls/'.$vmname.'.xml');
 		$macaddr = $ssh->exec("sudo virsh domiflist ". $vmname ." | awk 'NR==3{print $5}'");
 		$network = $ssh->exec("sudo virsh domiflist ". $vmname ." | awk 'NR==3{print $1}'");
-		$ssh->exec('/bin/rm -rf /home/kontrolvm/addrs/'.$vmname.'');
+		$ssh->exec('/usr/bin/rm -rf /home/kontrolvm/addrs/'.$vmname.'');
 		$ssh->exec('/bin/touch /home/kontrolvm/addrs/'.$vmname.'');
 		$ssh->exec('sudo /bin/sh /home/kontrolvm/create_console.sh '.$wsport.' '.$vncport.'');
 
@@ -1416,7 +1416,7 @@ function setIOW($vm_id,$vmname,$speed,$node_id) {
 
 	try {
 		$ssh = connectNode($node_id);
-		$ssh->exec('/bin/rm -rf /home/kontrolvm/iow/'.$vmname.'');
+		$ssh->exec('/usr/bin/rm -rf /home/kontrolvm/iow/'.$vmname.'');
 		$ssh->exec('echo "virsh blkdeviotune '.$vmname.' vda --write_bytes_sec $(expr 1024 \* 1024 \* '.$speed.')" > /home/kontrolvm/iow/'.$vmname.'');
 		$ssh->exec('sudo /bin/sh /home/kontrolvm/iow/'.$vmname.'');
 		$ssh->disconnect();
@@ -1440,7 +1440,7 @@ function setNIC($vm_id,$vmname,$nicToChange,$speed,$node_id) {
 
 	try {
 		$ssh = connectNode($node_id);
-		$ssh->exec('/bin/rm -rf /home/kontrolvm/tc/'.$vmname.'');
+		$ssh->exec('/usr/bin/rm -rf /home/kontrolvm/tc/'.$vmname.'');
 		$ssh->exec('echo "/sbin/tc qdisc del dev '.$nicToChange.' root" >> /home/kontrolvm/tc_stop.sh');
 		$ssh->exec('echo "/sbin/tc qdisc del dev '.$nicToChange.' ingress" >> /home/kontrolvm/tc_stop.sh');
 		$ssh->exec('echo "/sbin/tc qdisc add dev '.$nicToChange.' root" >> /home/kontrolvm/tc/'.$vmname.'');
@@ -1510,7 +1510,7 @@ function enableVNC($vm_id,$vmname,$websockify,$vncport,$node_id) {
 		$ssh->exec('sudo /bin/sh /home/kontrolvm/killconsole.sh '.$vncport);
 		sleep(2);
 		$ssh->exec('sudo /bin/sh /home/kontrolvm/create_console.sh '.$websockify.' '.$vncport);
-		$ssh->exec('/bin/rm -rf /home/kontrolvm/disabledvnc/'.$vncport.'');
+		$ssh->exec('/usr/bin/rm -rf /home/kontrolvm/disabledvnc/'.$vncport.'');
 		$ssh->exec('sudo /sbin/iptables -D INPUT -p tcp --destination-port '.$vncport.' -j DROP');
 		#echo $ssh->getLog();
 		$ssh->disconnect();
@@ -1957,6 +1957,27 @@ function backupVM($vm_id,$vmname,$node_id) {
 	}
 }
 
+function deleteBackup($vm_id,$backup_name,$backup_id,$node_id) {
+	include('config.php');
+	$conn = new PDO("sqlite:$db_file_path");
+	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+	try {
+		$ssh = connectNode($node_id);
+		$ssh->exec("/usr/bin/rm -rf /home/kontrolvm/kvm_backups/$backup_name");
+		$ssh->disconnect();
+
+		$stmt = $conn->prepare("DELETE FROM backups WHERE backup_id =:backup_id");
+		$stmt->bindValue(':backup_id', $backup_id, SQLITE3_INTEGER);
+		$stmt->execute();
+		return true;
+	} catch (PDOException $e) {
+		$error = $e->getMessage();
+		logError("Error deleting VM backup ($backup_id - $backup_name): ".$error);
+		return $error;
+	}	
+}
+
 function getBackups($vm_id) {
 	include('config.php');
 	$conn = new PDO("sqlite:$db_file_path");
@@ -1971,6 +1992,28 @@ function getBackups($vm_id) {
 	} catch (PDOException $e) {
 		logError("Error fetching backup list ($vm_id): " . $e->getMessage());
 		return false;
+	}
+}
+
+
+function getBackupInfo($backup_name,$node_id) {
+	include('config.php');
+	$conn = new PDO("sqlite:$db_file_path");
+	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+	try {
+		$ssh = connectNode($node_id);
+		$backup_size = $ssh->exec("/usr/bin/stat -c '%s' /home/kontrolvm/kvm_backups/$backup_name | awk '{printf \"%.2f MB\", \$1 / (1024 * 1024)}'");
+		#echo $ssh->getLog();
+		$ssh->disconnect();
+		
+		$stmt = $conn->prepare("UPDATE backups SET backup_size =:backup_size WHERE backup_name =:backup_name");
+		$stmt->bindValue(':backup_size', $backup_size, SQLITE3_INTEGER);
+		$stmt->bindValue(':backup_name', "$backup_name", SQLITE3_TEXT);
+		$stmt->execute();
+	} catch (PDOException $e) {
+		logError("Error fetching node details: " . $e->getMessage());
+		return false; 
 	}
 }
 

@@ -52,6 +52,8 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 				$success = "VM disk deleted successfully.";
 			} elseif ($_GET['s'] == '17') {
 				$success = "VM backup started successfully.";
+			} elseif ($_GET['s'] == '18') {
+				$success = "VM backup deleted successfully.";
 			}
 		}
 		$vm_id = $_GET['id'];
@@ -266,6 +268,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 				header("Location: vm.php?id=". (int)$vm_id. "&s=17");
 			} else {
 				$error = "VM backup failed: ".$result;
+			}
+		}
+		if (isset($_POST['deleteBackup'])) {
+			$backup_id = $_POST['backup_id'];
+			$backup_name = $_POST['backup_name'];
+			$result = deleteBackup($vm_id,$backup_name,$backup_id,$vm['node_id']);
+			if($result === true) {
+				header("Location: vm.php?id=". (int)$vm_id. "&s=18");
+			} else {
+				$error = "VM backup delete failed: ".$result;
 			}
 		}
 		if (isset($_POST['destroyVM'])) {
@@ -504,11 +516,20 @@ if ($vm) {
 					<br />
 					<h3>Backups</h3>
 					<?php foreach ($backups as $backup):
-						$name = $backup['backup_name'];
-						$size = $backup['backup_size']."MB";
+						$backup_name = $backup['backup_name'];
+						$size = $backup['backup_size'];
+						getBackupInfo($backup_name,$vm['node_id']);
+						if($size > 0) {
+							$size = $size."MB";
+						} else {
+							$size = "<b>IN PROGRESS</b>";
+						}
 						$backup_id = $backup['backup_id'];
 						$created_at = $backup['created_at'];
-						echo "$name | $size | ".date('m/j/Y @ g:i:s A', $created_at);
+						$csrf = '<input type="hidden" name="csrf_token" value="'.$csrfToken.'">';
+						$backupname = '<input type="hidden" name="backup_name" value="'.$backup_name.'">';
+						$backup_id = '<input type="hidden" name="backup_id" value="'.$backup_id.'">';
+						echo "<form id='deleteBackup' action='vm.php?id=$vm_id' method='post'>$csrf $backupname $backup_id $backup_name | $size | ".date('m/j/Y @ g:i:s A', $created_at)."<button class='stylish-button' id='deleteBackup' name='deleteBackup'>Delete</button></form><br />";
 					endforeach;?>
 					</div>
 				</div>
