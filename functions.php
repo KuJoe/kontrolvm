@@ -1995,7 +1995,6 @@ function getBackups($vm_id) {
 	}
 }
 
-
 function getBackupInfo($backup_name,$node_id) {
 	include('config.php');
 	$conn = new PDO("sqlite:$db_file_path");
@@ -2011,8 +2010,36 @@ function getBackupInfo($backup_name,$node_id) {
 		$stmt->bindValue(':backup_size', $backup_size, SQLITE3_INTEGER);
 		$stmt->bindValue(':backup_name', "$backup_name", SQLITE3_TEXT);
 		$stmt->execute();
+		return true;
 	} catch (PDOException $e) {
 		logError("Error fetching node details: " . $e->getMessage());
+		return false; 
+	}
+}
+
+function restoreVM($backup_name,$vm_name,$vnc_port,$vm_id,$node_id) {
+	include('config.php');
+	$conn = new PDO("sqlite:$db_file_path");
+	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+	try {
+		$ssh = connectNode($node_id);
+		$ssh = connectNode($node_id);
+		$ssh->exec('sudo /usr/bin/virsh destroy '.$vm_name.'');
+		$ssh->exec('sudo /usr/bin/virsh undefine '.$vm_name.'');
+		$ssh->exec('sudo /usr/bin/virsh undefine '.$vm_name.' --nvram');
+		$ssh->exec('sudo /usr/bin/virsh destroy '.$vm_name.'');
+		$disks = getDisks($vm_id);
+		foreach ($disks as $disk) {
+			$diskname = $disk['disk_name'];
+			$ssh->exec("sudo /bin/sh /home/kontrolvm/cleandata.sh $diskname");
+		}
+		$ssh->exec('sudo /home/kontrolvm/restore_vm.sh '.$backup_name.' '.$vm_name.' '.$vnc_port.' > /dev/null 2>&1 &');
+		#echo $ssh->getLog();
+		$ssh->disconnect();
+		return true;
+	} catch (PDOException $e) {
+		logError("Error starting VM restore: " . $e->getMessage());
 		return false; 
 	}
 }

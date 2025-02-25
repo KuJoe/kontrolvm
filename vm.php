@@ -54,6 +54,8 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 				$success = "VM backup started successfully.";
 			} elseif ($_GET['s'] == '18') {
 				$success = "VM backup deleted successfully.";
+			} elseif ($_GET['s'] == '19') {
+				$success = "VM restore started successfully, this might take a while.";
 			}
 		}
 		$vm_id = $_GET['id'];
@@ -278,6 +280,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 				header("Location: vm.php?id=". (int)$vm_id. "&s=18");
 			} else {
 				$error = "VM backup delete failed: ".$result;
+			}
+		}
+		if (isset($_POST['restoreVM'])) {
+			$backup_name = $_POST['backup_name'];
+			$result = restoreVM($backup_name,$vm['name'],$vm['vncport'],$vm_id,$vm['node_id']);
+			if($result === true) {
+				header("Location: vm.php?id=". (int)$vm_id. "&s=19");
+			} else {
+				$error = "VM restore failed: ".$result;
 			}
 		}
 		if (isset($_POST['destroyVM'])) {
@@ -529,7 +540,7 @@ if ($vm) {
 						$csrf = '<input type="hidden" name="csrf_token" value="'.$csrfToken.'">';
 						$backupname = '<input type="hidden" name="backup_name" value="'.$backup_name.'">';
 						$backup_id = '<input type="hidden" name="backup_id" value="'.$backup_id.'">';
-						echo "<form id='deleteBackup' action='vm.php?id=$vm_id' method='post'>$csrf $backupname $backup_id $backup_name | $size | ".date('m/j/Y @ g:i:s A', $created_at)."<button class='stylish-button' id='deleteBackup' name='deleteBackup'>Delete</button></form><br />";
+						echo "<form id='deleteBackup' action='vm.php?id=$vm_id' method='post'>$csrf $backupname $backup_id $backup_name | $size | ".date('m/j/Y @ g:i:s A', $created_at)." <button class='stylish-button' id='restoreVM' name='restoreVM'>Restore</button> <button class='stylish-button' id='deleteBackup' name='deleteBackup'>Delete</button></form><br />";
 					endforeach;?>
 					</div>
 				</div>

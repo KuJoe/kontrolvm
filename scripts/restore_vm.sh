@@ -77,8 +77,9 @@ NEW_MAC=$(printf "%02x:%02x:%02x:%02x:%02x:%02x" $((RANDOM % 256)) $((RANDOM % 2
 NEW_MAC=$(echo "$NEW_MAC" | sed 's/:\(.\)$/:\1/')
 sed -i "s/address='[0-9a-fA-F:]*'/address='$NEW_MAC'/" "$NEW_XML_FILE"
 virsh define "$NEW_XML_FILE"
+virsh start "$NEW_VM_NAME"
 
 # Clean up the temporary directory
 rm -rf "$VM_TEMP_DIR"
 
-echo "VM '$NEW_VM_NAME' defined.  You can now start it with 'virsh start $NEW_VM_NAME'."
+echo "VM '$NEW_VM_NAME' restored."
