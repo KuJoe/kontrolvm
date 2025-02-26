@@ -54,8 +54,7 @@ $isos = getISOs();
 		<label class="logo"><a href="index.php"><img src="assets/logo.png" alt="KontrolVM Logo"></a></label>
 		<ul>
 			<li><a href="index.php">Dashboard</a></li>
-			<li><a href="nodes.php">Nodes</a></li>
-			<li><a href="vms.php">VMs</a></li>
+			<li><a href="clusters.php">Infrastructure</a></li>
 			<li><a href="users.php">Users</a></li>
 			<li><a class="active" href="settings.php">Settings</a></li>
 			<li style="font-weight: bold;"><a href="account.php"><?php echo htmlspecialchars($_SESSION["username"]); ?></a></li>
@@ -64,7 +63,6 @@ $isos = getISOs();
 	</nav>
 	<ul class="submenu">
 		<li><a href="settings.php">General</a></li>
-		<li><a href="clusters.php">Clusters</a></li>
 		<li><a class="active" href="isos.php">ISOs</a></li>
 		<li><a href="ipv4.php">IPv4 Addresses</a></li>
 		<li><a href="ipv6.php">IPv6 Addresses</a></li>
@@ -108,7 +106,7 @@ $isos = getISOs();
 			<tbody>
 			<?php
 				foreach ($isos as $iso) {
-					$templateid = $iso['templateid'];
+					$template_id = $iso['template_id'];
 					echo '<tr>';
 					echo "<td class='tname'>" . $iso['friendlyname'] . "</td>";
 					echo "<td style='font-size:small;'>" . $iso['filename'] . "</td>";

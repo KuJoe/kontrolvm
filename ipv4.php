@@ -35,8 +35,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 		if (isset($_POST['add_ip'])) {
 			$ipaddress = $_POST["ipaddress"];
 			$gwip = $_POST["gwip"];
-			$loc = $_POST["loc"];
-			$result = addIPs($ipaddress, $gwip, $loc);
+			$cluster = $_POST["cluster"];
+			$result = addIPs($ipaddress, $gwip, $cluster);
 			if($result === true) {
 				header("Location: ipv4.php?s=1");
 			} else {
@@ -44,7 +44,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 			}
 		}
 		if (isset($_POST['delete_ip'])) {
-			$idToChange = $_POST['ipid'];
+			$idToChange = $_POST['ip_id'];
 			$ipToChange = $_POST['ipaddress'];
 			$result = deleteIP($idToChange,$ipToChange);
 			if($result === true) {
@@ -54,7 +54,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 			}
 		}	
 		if (isset($_POST['reserve_ip'])) {
-			$idToChange = $_POST['ipid'];
+			$idToChange = $_POST['ip_id'];
 			$ipToChange = $_POST['ipaddress'];
 			$result = reserveIP($idToChange,$ipToChange);
 			if($result === true) {
@@ -64,7 +64,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 			}
 		}	
 		if (isset($_POST['unreserve_ip'])) {
-			$idToChange = $_POST['ipid'];
+			$idToChange = $_POST['ip_id'];
 			$ipToChange = $_POST['ipaddress'];
 			$result = unreserveIP($idToChange,$ipToChange);
 			if($result === true) {
@@ -98,8 +98,7 @@ $clusters = getClusters('1');
 		<label class="logo"><a href="index.php"><img src="assets/logo.png" alt="KontrolVM Logo"></a></label>
 		<ul>
 			<li><a href="index.php">Dashboard</a></li>
-			<li><a href="nodes.php">Nodes</a></li>
-			<li><a href="vms.php">VMs</a></li>
+			<li><a href="clusters.php">Infrastructure</a></li>
 			<li><a href="users.php">Users</a></li>
 			<li><a class="active" href="settings.php">Settings</a></li>
 			<li style="font-weight: bold;"><a href="account.php"><?php echo htmlspecialchars($_SESSION["username"]); ?></a></li>
@@ -108,7 +107,6 @@ $clusters = getClusters('1');
 	</nav>
 	<ul class="submenu">
 		<li><a href="settings.php">General</a></li>
-		<li><a href="clusters.php">Clusters</a></li>
 		<li><a href="isos.php">ISOs</a></li>
 		<li><a class="active" href="ipv4.php">IPv4 Addresses</a></li>
 		<li><a href="ipv6.php">IPv6 Addresses</a></li>
@@ -127,10 +125,10 @@ $clusters = getClusters('1');
 					<input type="text" id="ipaddress" name="ipaddress" required><br><br>
 					<label for="gwip">Gateway:</label>
 					<input type="text" id="gwip" name="gwip" required><br><br>
-					<label for="loc">Cluster:</label>
-					<select name="loc" style="text-align:center;">
+					<label for="cluster">Cluster:</label>
+					<select name="cluster" style="text-align:center;">
 					<?php foreach ($clusters as $cluster):?>
-							<option value="<?php echo htmlspecialchars($cluster['loc']);?>">
+							<option value="<?php echo htmlspecialchars($cluster['cluster_id']);?>">
 					<?php echo htmlspecialchars($cluster['friendlyname']);?> 
 						</option>
 					<?php endforeach;?>
@@ -163,12 +161,12 @@ $clusters = getClusters('1');
 			<tbody>
 			<?php
 				foreach ($ips as $ip) {
-					$ipid = $ip['ipid'];
+					$ip_id = $ip['ip_id'];
 					echo '<tr>';
 					echo "<td class='tname'>" . $ip['ipaddress'] . "</td>";
 					echo "<td style='font-size:small;'>" . $ip['vmid'] . "</td>";
 					echo "<td style='font-size:small;'>" . $ip['gwip'] . "</td>";
-					echo "<td style='font-size:small;'>" . getClusterName($ip['loc']) . "</td>";
+					echo "<td style='font-size:small;'>" . getClusterName($ip['cluster']) . "</td>";
 					echo "<td style='font-size:small;'>" . getNodeName($ip['node']) . "</td>";
 					echo "<td><span class='ticon' style='padding-right:4px;'>Available: </span>";
 					if ($ip['reserved'] == "0") {
@@ -180,13 +178,13 @@ $clusters = getClusters('1');
 					echo "<td>";
 					echo '<form action="'.htmlspecialchars($_SERVER["PHP_SELF"]).'" method="post"> 
 							<input type="hidden" name="csrf_token" value="'.$csrfToken.'">
-							<input type="hidden" name="ipid" value="'.$ipid.'">
+							<input type="hidden" name="ip_id" value="'.$ip_id.'">
 							<input type="hidden" name="ipaddress" value="'.$ip['ipaddress'].'">
 							<button type="submit" class="stylish-button" name="delete_ip">Delete</button>
 						  </form>';
 					echo '<br /><form action="'.htmlspecialchars($_SERVER["PHP_SELF"]).'" method="post"> 
 							<input type="hidden" name="csrf_token" value="'.$csrfToken.'">
-							<input type="hidden" name="ipid" value="'.$ipid.'">
+							<input type="hidden" name="ip_id" value="'.$ip_id.'">
 							<input type="hidden" name="ipaddress" value="'.$ip['ipaddress'].'">';
 					if ($ip['reserved'] == "1") {
 						echo '<button type="submit" class="stylish-button" name="unreserve_ip">Enable</button>';

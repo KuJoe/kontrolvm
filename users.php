@@ -63,15 +63,14 @@ if(isset($_GET['state']) AND $_GET['state'] == "all") {
 		<label class="logo"><a href="index.php"><img src="assets/logo.png" alt="KontrolVM Logo"></a></label>
 		<ul>
 			<li><a href="index.php">Dashboard</a></li>
-			<li><a href="nodes.php">Nodes</a></li>
-			<li><a href="vms.php">VMs</a></li>
-			<li><a href="users.php">Users</a></li>
+			<li><a href="clusters.php">Infrastructure</a></li>
+			<li><a class="active" href="users.php">Users</a></li>
 			<li><a href="settings.php">Settings</a></li>
 			<li style="font-weight: bold;"><a href="account.php"><?php echo htmlspecialchars($_SESSION["username"]); ?></a></li>
 			<li><a href="logout.php"><i class="fa fa-sign-out" aria-hidden="true"></i></a></li>
 		</ul>
 	</nav>
-	<div class="container" style="min-width:350px;max-width:1500px;">
+	<div class="container" style="max-width:1500px;">
 		<p style="float:right;"><button id="addBtn" class="stylish-button"><i class="fa-solid fa-square-plus"></i> CREATE USER</button></p>
 		<div id="addModal" class="modal">
 			<div class="modal-content">

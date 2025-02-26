@@ -36,9 +36,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 		$hostname = $_POST["hostname"];
 		$ipaddr = $_POST["ipaddr"];
 		$sshport = $_POST["sshport"];
-		$loc = $_POST["loc"];
+		$cluster = $_POST["cluster"];
 		$rootpw = $_POST["rootpw"];
-		$result = addNode($hostname, $ipaddr, $sshport, $rootpw, $loc);
+		$result = addNode($hostname, $ipaddr, $sshport, $rootpw, $cluster);
 		if($result === true) {
 			include('updateNodes.php');
 			header("Location: nodes.php?state=all&s=1");
@@ -79,14 +79,18 @@ if ((!$last_run_time || time() - $last_run_time >= 3600) AND isset($bgupdate)) {
 		<label class="logo"><a href="index.php"><img src="assets/logo.png" alt="KontrolVM Logo"></a></label>
 		<ul>
 			<li><a href="index.php">Dashboard</a></li>
-			<li><a class="active" href="nodes.php">Nodes</a></li>
-			<li><a href="vms.php">VMs</a></li>
+			<li><a class="active" href="clusters.php">Infrastructure</a></li>
 			<li><a href="users.php">Users</a></li>
 			<li><a href="settings.php">Settings</a></li>
 			<li style="font-weight: bold;"><a href="account.php"><?php echo htmlspecialchars($_SESSION["username"]); ?></a></li>
 			<li><a href="logout.php"><i class="fa fa-sign-out" aria-hidden="true"></i></a></li>
 		</ul>
 	</nav>
+	<ul class="submenu">
+		<li><a href="clusters.php">Clusters</a></li>
+		<li><a class="active" href="nodes.php">Nodes</a></li>
+		<li><a href="vms.php">VMs</a></li>
+	</ul>
 	<div class="container">
 		<p style="float:right;"><button id="addBtn" class="stylish-button"><i class="fa-solid fa-square-plus"></i> ADD NODE</button></p>
 		<div id="addModal" class="modal">
@@ -104,10 +108,10 @@ if ((!$last_run_time || time() - $last_run_time >= 3600) AND isset($bgupdate)) {
 					<input type="text" id="sshport" name="sshport" required><br><br>
 					<label for="rootpw">Root Password:</label>
 					<input type="password" id="rootpw" name="rootpw" required><br><br>
-					<label for="loc">Cluster:</label>
-					<select name="loc">
+					<label for="cluster">Cluster:</label>
+					<select name="cluster">
 					<?php foreach ($clusters as $cluster):?>
-							<option value="<?php echo htmlspecialchars($cluster['loc']);?>">
+							<option value="<?php echo htmlspecialchars($cluster['cluster_id']);?>">
 					<?php echo htmlspecialchars($cluster['friendlyname']);?> 
 						</option>
 					<?php endforeach;?>

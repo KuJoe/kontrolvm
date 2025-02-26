@@ -13,10 +13,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 		$success = "Cluster deleted successfully.";
 	}
 	if (isset($_GET['s']) AND $_GET['s'] == '3') {
-		$success = "Cluster enabled successfully.";
-	}
-	if (isset($_GET['s']) AND $_GET['s'] == '4') {
-		$success = "Cluster disabled successfully.";
+		$success = "Cluster ID not found.";
 	}
 	define('AmAllowed', TRUE);
 	require_once('config.php');
@@ -33,40 +30,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 	$token = $_POST["csrf_token"];
 	if (validateCSRFToken($token)) {
 		if (isset($_POST['add_cluster'])) {
-			$loc = $_POST["loc"];
 			$friendlyname = $_POST["friendlyname"];
-			$result = addCluster($loc, $friendlyname);
+			$result = addCluster($friendlyname);
 			if($result === true) {
 				header("Location: clusters.php?s=1");
 			} else {
 				$error = "Cluster add failed: ".$result;
-			}
-		}
-		if (isset($_POST['delete_cluster'])) {
-			$clusterid = $_POST['clusterid'];
-			$result = deleteCluster($clusterid);
-			if($result === true) {
-				header("Location: clusters.php?s=2");
-			} else {
-				$error = "Cluster deletion failed: ".$result;
-			}
-		}
-		if (isset($_POST['enable_cluster'])) {
-			$clusterid = $_POST['clusterid'];
-			$result = enableCluster($clusterid);
-			if($result === true) {
-				header("Location: clusters.php?s=3");
-			} else {
-				$error = "Enabling cluster failed: ".$result;
-			}
-		}
-		if (isset($_POST['disable_cluster'])) {
-			$clusterid = $_POST['clusterid'];
-			$result = disableCluster($clusterid);
-			if($result === true) {
-				header("Location: clusters.php?s=4");
-			} else {
-				$error = "Disabling cluster failed: ".$result;
 			}
 		}	
 	} else {
@@ -92,21 +61,17 @@ $clusters = getClusters('all');
 		<label class="logo"><a href="index.php"><img src="assets/logo.png" alt="KontrolVM Logo"></a></label>
 		<ul>
 			<li><a href="index.php">Dashboard</a></li>
-			<li><a href="nodes.php">Nodes</a></li>
-			<li><a href="vms.php">VMs</a></li>
+			<li><a class="active" href="clusters.php">Infrastructure</a></li>
 			<li><a href="users.php">Users</a></li>
-			<li><a class="active" href="settings.php">Settings</a></li>
+			<li><a href="settings.php">Settings</a></li>
 			<li style="font-weight: bold;"><a href="account.php"><?php echo htmlspecialchars($_SESSION["username"]); ?></a></li>
 			<li><a href="logout.php"><i class="fa fa-sign-out" aria-hidden="true"></i></a></li>
 		</ul>
 	</nav>
 	<ul class="submenu">
-		<li><a href="settings.php">General</a></li>
 		<li><a class="active" href="clusters.php">Clusters</a></li>
-		<li><a href="isos.php">ISOs</a></li>
-		<li><a href="ipv4.php">IPv4 Addresses</a></li>
-		<li><a href="ipv6.php">IPv6 Addresses</a></li>
-		<li><a href="logs.php">Logs</a></li>
+		<li><a href="nodes.php">Nodes</a></li>
+		<li><a href="vms.php">VMs</a></li>
 	</ul>
 	<div class="container">
 		<p style="float:right;"><button id="addBtn" class="stylish-button"><i class="fa-solid fa-square-plus"></i> ADD CLUSTER</button></p>
@@ -117,8 +82,6 @@ $clusters = getClusters('all');
 				<br />
 				<form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post"> 
 					<input type="hidden" name="csrf_token" value="<?php echo $csrfToken; ?>">
-					<label for="loc">Cluster Identifier:</label>
-					<input type="text" id="loc" name="loc" placeholder="ie: us1, cluster01, homelab" maxlength="20" required><br><br>
 					<label for="friendlyname">Friendly Name:</label>
 					<input type="text" id="friendlyname" name="friendlyname" maxlength="20" required><br><br>
 					<center><button type="submit" class="stylish-button" name="add_cluster"><i class="fa-solid fa-square-plus"></i> ADD IP</button></center>
@@ -139,39 +102,21 @@ $clusters = getClusters('all');
 				<tr>
 					<th>Cluster Name</th>
 					<th>Status</th>
-					<th>Notes</th>
-					<th>Actions</th>
 				</tr>
 			</thead>
 			<tbody>
 			<?php
 				foreach ($clusters as $cluster) {
-					$clusterid = $cluster['clusterid'];
+					$cluster_id = $cluster['cluster_id'];
 					echo '<tr>';
-					echo "<td class='tname'>" . $cluster['friendlyname'] . "</td>";
+					echo "<td class='tname'><a href='cluster.php?id=$cluster_id' />" . $cluster['friendlyname'] . "</a></td>";
 					echo "<td><span class='ticon' style='padding-right:4px;'>Status: </span>";
 					if ($cluster['status'] == "1") {
 						echo "<img src='assets/1.png' alt='Enabled'>";
 					} else {
 						echo "<img src='assets/0.png' alt='Disabled'>";
 					}
-					echo "</td>";
-					echo "<td style='font-size:small;'>" . $cluster['notes'] . "</td><td>";
-					echo '<form style="padding:10px;" action="'.htmlspecialchars($_SERVER["PHP_SELF"]).'" method="post"> 
-							<input type="hidden" name="csrf_token" value="'.$csrfToken.'">
-							<input type="hidden" name="clusterid" value="'.$clusterid.'">
-							<button type="submit" class="stylish-button" name="delete_cluster">Delete</button>
-						  </form>';
-					echo '<form style="padding:10px;" action="'.htmlspecialchars($_SERVER["PHP_SELF"]).'" method="post">  
-							<input type="hidden" name="csrf_token" value="'.$csrfToken.'">
-							<input type="hidden" name="clusterid" value="'.$clusterid.'">';
-					if ($cluster['status'] == "1") {
-						echo '<button type="submit" class="stylish-button" name="disable_cluster">Disable</button>';
-					} else {
-						echo '<button type="submit" class="stylish-button" name="enable_cluster">Enable</button>';
-					}
-					echo '</form>';
-					echo '</td></tr>';
+					echo "</td></tr>";
 				}
 			?>
 			</tbody>

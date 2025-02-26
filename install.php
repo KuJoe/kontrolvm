@@ -37,11 +37,11 @@ try {
 		node_id INTEGER PRIMARY KEY AUTOINCREMENT,
 		hostname TEXT NOT NULL UNIQUE,
 		ipaddr TEXT NOT NULL,
+		cluster INTEGER,
 		cpu_cores INTEGER,
 		total_memory INTEGER, 
 		disk_space INTEGER,
 		sshport INTEGER,
-		loc TEXT,
 		sshuser TEXT,
 		sshkey TEXT,
 		uptime TEXT,
@@ -63,12 +63,12 @@ try {
 		last_updated DATETIME
 	)",
 	'last_run' => "CREATE TABLE IF NOT EXISTS last_run (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		run_id INTEGER PRIMARY KEY AUTOINCREMENT,
 		script_name TEXT NOT NULL,
 		last_run_time INTEGER
 	)",
 	'ostemplates' => "CREATE TABLE IF NOT EXISTS ostemplates (
-		templateid INTEGER PRIMARY KEY AUTOINCREMENT,
+		template_id INTEGER PRIMARY KEY AUTOINCREMENT,
 		filename TEXT NOT NULL,
 		friendlyname TEXT NOT NULL,
 		type TEXT NOT NULL,
@@ -77,25 +77,25 @@ try {
 		added DATETIME
 	)",
 	'ipv4' => "CREATE TABLE IF NOT EXISTS ipv4 (
-		ipid INTEGER PRIMARY KEY AUTOINCREMENT,
+		ip_id INTEGER PRIMARY KEY AUTOINCREMENT,
 		ipaddress TEXT NOT NULL,
 		gwip TEXT NOT NULL,
 		vmid INTEGER,
 		reserved INTEGER,
 		node INTEGER,
-		loc TEXT,
+		cluster INTEGER,
 		notes TEXT,
 		status INTEGER,
 		last_updated DATETIME
 	)",
 	'ipv6' => "CREATE TABLE IF NOT EXISTS ipv6 (
-		ipid INTEGER PRIMARY KEY AUTOINCREMENT,
+		ip_id INTEGER PRIMARY KEY AUTOINCREMENT,
 		ipaddress TEXT NOT NULL,
 		gwip TEXT NOT NULL,
 		vmid INTEGER,
 		reserved INTEGER,
 		node INTEGER,
-		loc TEXT,
+		cluster INTEGER,
 		notes TEXT,
 		status INTEGER,
 		last_updated DATETIME
@@ -122,7 +122,7 @@ try {
 		ip_address TEXT,
 		status INTEGER,
 		protected INTEGER,
-		loc TEXT,
+		cluster INTEGER,
 		cpu_cores INTEGER,
 		memory INTEGER,
 		ipv4 INTEGER,
@@ -153,10 +153,10 @@ try {
 		last_updated DATETIME
 	)",
 	'clusters' => "CREATE TABLE IF NOT EXISTS clusters (
-		clusterid INTEGER PRIMARY KEY AUTOINCREMENT,
-		loc TEXT NOT NULL,
+		cluster_id INTEGER PRIMARY KEY AUTOINCREMENT,
 		friendlyname TEXT NOT NULL,
 		notes TEXT,
+		deployment INTEGER,
 		status INTEGER,
 		last_updated DATETIME
 	)",

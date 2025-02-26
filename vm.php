@@ -81,7 +81,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 	$token = $_POST["csrf_token"];
 	if (validateCSRFToken($token)) {
 		if (isset($_POST['update_vm'])) {
-			$vm_data = [':name' => $_POST["name"],':hostname' => $_POST["hostname"],':notes' => isset($_POST["notes"])? $_POST["notes"]: ' ',':vncpw' => $_POST["vncpw"],':vncport' => $_POST["vncport"],':websockify' => $_POST["websockify"],':mac_address' => $_POST["mac_address"],':loc' => $_POST["loc"],':status' => isset($_POST["status"])? 1: 0,':protected' => isset($_POST["protected"])? 1: 0];
+			$vm_data = [':name' => $_POST["name"],':hostname' => $_POST["hostname"],':notes' => isset($_POST["notes"])? $_POST["notes"]: ' ',':vncpw' => $_POST["vncpw"],':vncport' => $_POST["vncport"],':websockify' => $_POST["websockify"],':mac_address' => $_POST["mac_address"],':cluster' => $_POST["cluster"],':status' => isset($_POST["status"])? 1: 0,':protected' => isset($_POST["protected"])? 1: 0];
 			$result = editVM($vm_id,$vm_data);
 			if($result === true) {
 				header("Location: vm.php?id=". (int)$vm_id. "&s=1");
@@ -337,14 +337,18 @@ if ($vm) {
 		<label class="logo"><a href="index.php"><img src="assets/logo.png" alt="KontrolVM Logo"></a></label>
 		<ul>
 			<li><a href="index.php">Dashboard</a></li>
-			<li><a href="nodes.php">Nodes</a></li>
-			<li><a class="active" href="vms.php">VMs</a></li>
+			<li><a class="active" href="clusters.php">Infrastructure</a></li>
 			<li><a href="users.php">Users</a></li>
 			<li><a href="settings.php">Settings</a></li>
 			<li style="font-weight: bold;"><a href="account.php"><?php echo htmlspecialchars($_SESSION["username"]); ?></a></li>
 			<li><a href="logout.php"><i class="fa fa-sign-out" aria-hidden="true"></i></a></li>
 		</ul>
 	</nav>
+	<ul class="submenu">
+		<li><a href="clusters.php">Clusters</a></li>
+		<li><a href="nodes.php">Nodes</a></li>
+		<li><a class="active" href="vms.php">VMs</a></li>
+	</ul>
 	<div class="container">
 		<div id="server-status" style="float:right;"> 
 			<img src="assets/loading.gif" alt="Loading..."> 
@@ -435,17 +439,18 @@ if ($vm) {
 						</tr>
 						<tr>
 							<td style="background-color:#999;">Cluster:</td>
-							<td><select id="myInput9" name="loc" style="text-align:center;width:80%;">
+							<td><select id="myInput9" name="cluster" style="text-align:center;width:80%;">
 								<?php foreach ($clusters as $cluster):?>
-									<?php if($cluster['loc'] == $vm['loc']) { ?>
-										<option value="<?php echo htmlspecialchars($cluster['loc']);?>" selected> 
+									<?php if($cluster['id'] == $vm['cluster']) { ?>
+										<option value="<?php echo htmlspecialchars($cluster['id']);?>" selected> 
 									<?php } else { ?>
-										<option value="<?php echo htmlspecialchars($cluster['loc']);?>">
+										<option value="<?php echo htmlspecialchars($cluster['id']);?>">
 									<?php } ?>
 								<?php echo htmlspecialchars($cluster['friendlyname']);?> 
 									</option>
 								<?php endforeach;?>
 								</select>
+							</td>
 						</tr>
 						<tr>
 							<td style="background-color:#999;">Name:</td>

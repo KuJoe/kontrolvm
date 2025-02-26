@@ -32,8 +32,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 		$memory = trim($_POST["memory"]);
 		$disk_space1 = trim($_POST["disk_space1"]);
 		$cpu_cores = trim($_POST["cpu_cores"]);
-		$loc = $_POST["loc"];
-		$result = createVM($memory,$disk_space1,$cpu_cores,$loc);
+		$cluster = $_POST["cluster"];
+		$result = createVM($memory,$disk_space1,$cpu_cores,$cluster);
 		if($result === true) {
 			header("Location: vms.php?state=all&s=1");
 		} else {
@@ -67,15 +67,19 @@ $clusters = getClusters('1');
 		<label class="logo"><a href="index.php"><img src="assets/logo.png" alt="KontrolVM Logo"></a></label>
 		<ul>
 			<li><a href="index.php">Dashboard</a></li>
-			<li><a href="nodes.php">Nodes</a></li>
-			<li><a class="active" href="vms.php">VMs</a></li>
+			<li><a class="active" href="clusters.php">Infrastructure</a></li>
 			<li><a href="users.php">Users</a></li>
 			<li><a href="settings.php">Settings</a></li>
 			<li style="font-weight: bold;"><a href="account.php"><?php echo htmlspecialchars($_SESSION["username"]); ?></a></li>
 			<li><a href="logout.php"><i class="fa fa-sign-out" aria-hidden="true"></i></a></li>
 		</ul>
 	</nav>
-	<div class="container" style="min-width:350px;max-width:1500px;">
+	<ul class="submenu">
+		<li><a href="clusters.php">Clusters</a></li>
+		<li><a href="nodes.php">Nodes</a></li>
+		<li><a class="active" href="vms.php">VMs</a></li>
+	</ul>
+	<div class="container" style="max-width:1500px;">
 		<p style="float:right;"><button id="addBtn" class="stylish-button"><i class="fa-solid fa-square-plus"></i> CREATE VM</button></p>
 		<div id="addModal" class="modal">
 			<div class="modal-content"">
@@ -90,10 +94,10 @@ $clusters = getClusters('1');
 					<input type="text" id="cpu_cores" name="cpu_cores" placeholder="2" required><br><br>
 					<label for="disk_space1">Disk Space (GB):</label>
 					<input type="text" id="disk_space1" name="disk_space1" placeholder="50" required><br><br>
-					<label for="loc">Cluster:</label>
-					<select name="loc" style="text-align:center;">
+					<label for="cluster">Cluster:</label>
+					<select name="cluster" style="text-align:center;">
 					<?php foreach ($clusters as $cluster):?>
-							<option value="<?php echo htmlspecialchars($cluster['loc']);?>">
+							<option value="<?php echo htmlspecialchars($cluster['cluster_id']);?>">
 					<?php echo htmlspecialchars($cluster['friendlyname']);?> 
 						</option>
 					<?php endforeach;?>

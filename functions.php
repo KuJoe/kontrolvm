@@ -223,6 +223,38 @@ function checkLockedOut($staff_id) {
 	return false;
 }
 
+function checkNodeCleaned($node_id) {
+	include('config.php');
+	$conn = new PDO("sqlite:$db_file_path");
+	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    try {
+        $stmt = $conn->prepare("SELECT COUNT(*) FROM vms WHERE node_id =:node_id");
+		$stmt->bindValue(':node_id', $node_id, SQLITE3_INTEGER);
+		$stmt->execute();
+		$count = $stmt->fetchColumn();
+    } catch(PDOException $e) {
+		logError("Database error (checkNodeCleaned): " . $e->getMessage());
+		return false;
+	}
+    return $count > 0 ? false : true;
+}
+
+function checkClusterCleaned($cluster) {
+	include('config.php');
+	$conn = new PDO("sqlite:$db_file_path");
+	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+	
+	try {
+		$stmt = $conn->prepare("SELECT COUNT(*) FROM nodes WHERE cluster =:cluster");
+		$stmt->bindValue(':cluster', $cluster, SQLITE3_INTEGER);
+		$stmt->execute();
+		$count = $stmt->fetchColumn();
+	} catch (PDOException $e) {
+		logError("Error counting active nodes: " . $e->getMessage());
+		return false;
+	}
+    return $count > 0 ? false : true;
+}
 
 function createUser($username,$email) {
 	include('config.php');
@@ -244,7 +276,7 @@ function createUser($username,$email) {
 }
 
 function deleteUser($staff_id,$confirm) {
-	if($confirm = 1) {
+	if($confirm) {
 		include('config.php');
 		$conn = new PDO("sqlite:$db_file_path");
 		$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -263,7 +295,7 @@ function deleteUser($staff_id,$confirm) {
 			return false; 
 		}
 	} else {
-		logError("No confirmation ($staff_id): " . $e->getMessage());
+		logError("No confirmation ($staff_id)");
 		return false;
 	}
 }
@@ -322,16 +354,15 @@ function getStaffDetails($staff_id) {
 	}
 }
 
-function getClusterName($loc) {
-	$loc = trim($loc);
+function getClusterName($cluster_id) {
 	include('config.php');
 	try {
 		$conn = new PDO("sqlite:$db_file_path");
 		$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-		$sql = "SELECT friendlyname FROM clusters WHERE loc =:loc";
+		$sql = "SELECT friendlyname FROM clusters WHERE cluster_id =:cluster_id";
 		$stmt = $conn->prepare($sql);
-		$stmt->bindValue(':loc', "$loc", SQLITE3_TEXT);
+		$stmt->bindValue(':cluster_id', "$cluster_id", SQLITE3_INTEGER);
 		$stmt->execute();
 
 		$friendlyname = $stmt->fetchColumn();
@@ -363,7 +394,7 @@ function getNodeName($node_id) {
 	}
 }
 
-function addNode($hostname, $ipaddr, $sshport, $rootpw, $loc) {
+function addNode($hostname, $ipaddr, $sshport, $rootpw, $cluster) {
 	include('config.php');
 	try {
 		$rootpw = trim($rootpw);
@@ -392,13 +423,13 @@ function addNode($hostname, $ipaddr, $sshport, $rootpw, $loc) {
 	try {
 		$conn = new PDO("sqlite:$db_file_path");
 		$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-		$stmt = $conn->prepare('INSERT INTO nodes (hostname, ipaddr, sshport, loc, sshuser, sshkey, lastvnc, lastws, lastvm, status, last_updated) VALUES (:hostname, :ipaddr, :sshport, :loc, :sshuser, :sshkey, :lastvnc, :lastws, :lastvm, :status, :last_updated)');
+		$stmt = $conn->prepare('INSERT INTO nodes (hostname, ipaddr, sshport, cluster, sshuser, sshkey, lastvnc, lastws, lastvm, status, last_updated) VALUES (:hostname, :ipaddr, :sshport, :cluster, :sshuser, :sshkey, :lastvnc, :lastws, :lastvm, :status, :last_updated)');
 		$stmt->bindValue(':hostname', "$hostname", SQLITE3_TEXT);
 		$stmt->bindValue(':ipaddr', "$ipaddr", SQLITE3_TEXT);
 		$stmt->bindValue(':sshport', $sshport, SQLITE3_INTEGER);
+		$stmt->bindValue(':cluster', $cluster, SQLITE3_INTEGER);
 		$stmt->bindValue(':sshuser', "$sshusernow", SQLITE3_TEXT);
 		$stmt->bindValue(':sshkey', "$sshkeypriv", SQLITE3_TEXT);
-		$stmt->bindValue(':loc', "$loc", SQLITE3_TEXT);
 		$stmt->bindValue(':lastvnc', '5901', SQLITE3_INTEGER);
 		$stmt->bindValue(':lastws', '6901', SQLITE3_INTEGER);
 		$stmt->bindValue(':lastvm', '0', SQLITE3_INTEGER);
@@ -414,24 +445,29 @@ function addNode($hostname, $ipaddr, $sshport, $rootpw, $loc) {
 }
 
 function deleteNode($node_id,$hostname,$confirm) {
-	if($confirm = 1) {
-		$hostname = trim($hostname);
-		include('config.php');
-		$conn = new PDO("sqlite:$db_file_path");
-		$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-		try {
-			$sql = "DELETE FROM nodes WHERE node_id =:node_id AND hostname =:hostname";
-			$stmt = $conn->prepare($sql);
-			$stmt->bindValue(':node_id', $node_id, SQLITE3_INTEGER);
-			$stmt->bindValue(':hostname', "$hostname", SQLITE3_TEXT);
-			$stmt->execute();
-			return true;
-		} catch (PDOException $e) {
-			logError("Error deleting node: ". $e->getMessage());
+	if($confirm) {
+		if(checkNodeCleaned($node_id)) {
+			$hostname = trim($hostname);
+			include('config.php');
+			$conn = new PDO("sqlite:$db_file_path");
+			$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+			try {
+				$sql = "DELETE FROM nodes WHERE node_id =:node_id AND hostname =:hostname";
+				$stmt = $conn->prepare($sql);
+				$stmt->bindValue(':node_id', $node_id, SQLITE3_INTEGER);
+				$stmt->bindValue(':hostname', "$hostname", SQLITE3_TEXT);
+				$stmt->execute();
+				return true;
+			} catch (PDOException $e) {
+				logError("Error deleting node: ". $e->getMessage());
+				return false;
+			}
+		} else {
+			logError("Node has VMs on it ($node_id)");
 			return false;
 		}
 	} else {
-		logError("No confirmation ($node_id): " . $e->getMessage());
+		logError("No confirmation ($node_id)");
 		return false;
 	}
 }
@@ -455,7 +491,7 @@ function editNode($node_id, $node_data) {
 	$conn = new PDO("sqlite:$db_file_path");
 	$node_data[':node_id'] = $node_id;
 	$node_data[':last_updated'] = time();
-	$stmt = $conn->prepare("UPDATE nodes SET hostname =:hostname,ipaddr =:ipaddr,sshport =:sshport,status =:status,lastvm =:lastvm,lastvnc =:lastvnc,lastws =:lastws,loc =:loc,last_updated =:last_updated WHERE node_id =:node_id");
+	$stmt = $conn->prepare("UPDATE nodes SET hostname =:hostname,ipaddr =:ipaddr,sshport =:sshport,status =:status,lastvm =:lastvm,lastvnc =:lastvnc,lastws =:lastws,cluster =:cluster,last_updated =:last_updated WHERE node_id =:node_id");
 
 	if ($stmt->execute($node_data)) {
 		return true;
@@ -471,7 +507,7 @@ function editVM($vm_id,$vm_data) {
 	$encpw = encrypt($vncpw);
 	$vm_data[':vm_id'] = $vm_id;
 	$vm_data[':last_updated'] = time();
-	$stmt = $conn->prepare("UPDATE vms SET name =:name,hostname =:hostname,notes =:notes,mac_address =:mac_address,vncpw =:vncpw,vncport =:vncport,websockify =:websockify,loc =:loc,status =:status,protected =:protected,last_updated =:last_updated WHERE vm_id =:vm_id");
+	$stmt = $conn->prepare("UPDATE vms SET name =:name,hostname =:hostname,notes =:notes,mac_address =:mac_address,vncpw =:vncpw,vncport =:vncport,websockify =:websockify,cluster =:cluster,status =:status,protected =:protected,last_updated =:last_updated WHERE vm_id =:vm_id");
 
 	if ($stmt->execute($vm_data)) {
 		return true;
@@ -513,6 +549,24 @@ function getVMDetails($vm_id) {
 		return $node; 
 	} catch (PDOException $e) {
 		logError("Error fetching node details: " . $e->getMessage());
+		return false; 
+	}
+}
+
+function getClusterDetails($cluster_id) {
+	include('config.php');
+	$conn = new PDO("sqlite:$db_file_path");
+	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+	try {
+		$sql = "SELECT * FROM clusters WHERE cluster_id =:cluster_id";
+		$stmt = $conn->prepare($sql);
+		$stmt->bindParam(':cluster_id', $cluster_id, SQLITE3_INTEGER);
+		$stmt->execute();
+		$cluster = $stmt->fetch(PDO::FETCH_ASSOC);
+		return $cluster; 
+	} catch (PDOException $e) {
+		logError("Error fetching cluster details: " . $e->getMessage());
 		return false; 
 	}
 }
@@ -615,9 +669,9 @@ function getServerList($status) {
 
 	try {
 		if($status == "all") {
-			$sql = "SELECT * FROM nodes ORDER BY hostname";
+			$sql = "SELECT * FROM nodes ORDER BY hostname ASC";
 		} else {
-			$sql = "SELECT * FROM nodes WHERE status = $status ORDER BY hostname";
+			$sql = "SELECT * FROM nodes WHERE status = $status ORDER BY hostname ASC";
 		}
 		$stmt = $conn->prepare($sql);
 		$stmt->execute();
@@ -635,9 +689,9 @@ function getClusters($status) {
 	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 	try {
 		if($status == "all") {
-		$sql = "SELECT * FROM clusters ORDER BY friendlyname";
+		$sql = "SELECT * FROM clusters ORDER BY friendlyname ASC";
 		} else {
-			$sql = "SELECT * FROM clusters WHERE status = $status ORDER BY friendlyname";
+			$sql = "SELECT * FROM clusters WHERE status = $status ORDER BY friendlyname ASC";
 		}
 		$stmt = $conn->prepare($sql);
 		$stmt->execute();
@@ -796,14 +850,13 @@ function getIPs($version) {
 	}
 }
 
-function addIPs($ipaddress, $gwip, $loc) {
+function addIPs($ipaddress, $gwip, $cluster) {
 	$ipaddress = trim($ipaddress);
 	include('config.php');
 	$conn = new PDO("sqlite:$db_file_path");
 	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 	if(filter_var($ipaddress, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
-		$sql = "SELECT COUNT(*) FROM ipv4 WHERE ipaddress =':ipaddress'";
-		$stmt = $conn->prepare($sql);
+		$stmt = $conn->prepare("SELECT COUNT(*) FROM ipv4 WHERE ipaddress =:ipaddress");
 		$stmt->bindValue(':ipaddress', "$ipaddress", SQLITE3_TEXT);
 		$stmt->execute();
 		$count = $stmt->fetchColumn();
@@ -811,7 +864,7 @@ function addIPs($ipaddress, $gwip, $loc) {
 			$error = "IP address exists.";
 			return $error;
 		} else {
-			$stmt = $conn->prepare('INSERT INTO ipv4 (ipaddress, gwip, node, loc, vmid, status, reserved, notes, last_updated) VALUES (:ipaddress, :gwip, :node, :loc, :vmid, :status, :reserved, :notes, :last_updated)');
+			$stmt = $conn->prepare('INSERT INTO ipv4 (ipaddress, gwip, node, cluster, vmid, status, reserved, notes, last_updated) VALUES (:ipaddress, :gwip, :node, :cluster, :vmid, :status, :reserved, :notes, :last_updated)');
 		}
 	} else {
 		$checkip = $ipaddress."::";
@@ -825,7 +878,7 @@ function addIPs($ipaddress, $gwip, $loc) {
 				$error = "IP address exists.";
 				return $error;
 			} else {
-				$stmt = $conn->prepare('INSERT INTO ipv6 (ipaddress, gwip, node, loc, vmid, status, reserved, notes, last_updated) VALUES (:ipaddress, :gwip, :node, :loc, :vmid, :status, :reserved, :notes, :last_updated)');
+				$stmt = $conn->prepare('INSERT INTO ipv6 (ipaddress, gwip, node, cluster, vmid, status, reserved, notes, last_updated) VALUES (:ipaddress, :gwip, :node, :cluster, :vmid, :status, :reserved, :notes, :last_updated)');
 			}
 		} else {
 			$error = "Not a valid IP address.";
@@ -835,7 +888,7 @@ function addIPs($ipaddress, $gwip, $loc) {
 	$stmt->bindValue(':ipaddress', "$ipaddress", SQLITE3_TEXT);
 	$stmt->bindValue(':gwip', "$gwip", SQLITE3_TEXT);
 	$stmt->bindValue(':node', '0', SQLITE3_TEXT);
-	$stmt->bindValue(':loc', "$loc", SQLITE3_TEXT);
+	$stmt->bindValue(':cluster', "$cluster", SQLITE3_INTEGER);
 	$stmt->bindValue(':vmid', '0', SQLITE3_INTEGER);
 	$stmt->bindValue(':status', '1', SQLITE3_INTEGER);
 	$stmt->bindValue(':reserved', '0', SQLITE3_INTEGER);
@@ -852,19 +905,19 @@ function addIPs($ipaddress, $gwip, $loc) {
 	}
 }
 
-function deleteIP($ipid,$ipaddress) {
+function deleteIP($ip_id,$ipaddress) {
 	$ipaddress = trim($ipaddress);
 	include('config.php');
 	$conn = new PDO("sqlite:$db_file_path");
 	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 	try {
 		if(filter_var($ipaddress, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
-			$sql = "DELETE FROM ipv4 WHERE ipid =:ipid";
+			$sql = "DELETE FROM ipv4 WHERE ip_id =:ip_id";
 		} else {
-			$sql = "DELETE FROM ipv6 WHERE ipid =:ipid";
+			$sql = "DELETE FROM ipv6 WHERE ip_id =:ip_id";
 		}
 		$stmt = $conn->prepare($sql);
-		$stmt->bindValue(':ipid', $ipid, SQLITE3_INTEGER);
+		$stmt->bindValue(':ip_id', $ip_id, SQLITE3_INTEGER);
 		$stmt->execute();
 		return true;
 	} catch (PDOException $e) {
@@ -873,20 +926,20 @@ function deleteIP($ipid,$ipaddress) {
 	}
 }
 
-function reserveIP($ipid,$ipaddress) {
+function reserveIP($ip_id,$ipaddress) {
 	$ipaddress = trim($ipaddress);
 	include('config.php');
 	$conn = new PDO("sqlite:$db_file_path");
 	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 	try {
 		if(filter_var($ipaddress, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
-			$sql = "UPDATE ipv4 SET reserved =:reserved WHERE ipid =:ipid";
+			$sql = "UPDATE ipv4 SET reserved =:reserved WHERE ip_id =:ip_id";
 		} else {
-			$sql = "UPDATE ipv6 SET reserved =:reserved WHERE ipid =:ipid";
+			$sql = "UPDATE ipv6 SET reserved =:reserved WHERE ip_id =:ip_id";
 		}
 		$stmt = $conn->prepare($sql);
 		$stmt->bindValue(':reserved', '1', SQLITE3_INTEGER);
-		$stmt->bindValue(':ipid', $ipid, SQLITE3_INTEGER);
+		$stmt->bindValue(':ip_id', $ip_id, SQLITE3_INTEGER);
 		$stmt->execute();
 		return true;
 	} catch (PDOException $e) {
@@ -895,20 +948,20 @@ function reserveIP($ipid,$ipaddress) {
 	}
 }
 
-function unreserveIP($ipid,$ipaddress) {
+function unreserveIP($ip_id,$ipaddress) {
 	$ipaddress = trim($ipaddress);
 	include('config.php');
 	$conn = new PDO("sqlite:$db_file_path");
 	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 	try {
 		if(filter_var($ipaddress, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
-			$sql = "UPDATE ipv4 SET reserved =:reserved WHERE ipid =:ipid";
+			$sql = "UPDATE ipv4 SET reserved =:reserved WHERE ip_id =:ip_id";
 		} else {
-			$sql = "UPDATE ipv6 SET reserved =:reserved WHERE ipid =:ipid";
+			$sql = "UPDATE ipv6 SET reserved =:reserved WHERE ip_id =:ip_id";
 		}
 		$stmt = $conn->prepare($sql);
 		$stmt->bindValue(':reserved', '0', SQLITE3_INTEGER);
-		$stmt->bindValue(':ipid', $ipid, SQLITE3_INTEGER);
+		$stmt->bindValue(':ip_id', $ip_id, SQLITE3_INTEGER);
 		$stmt->execute();
 		return true;
 	} catch (PDOException $e) {
@@ -923,8 +976,7 @@ function getTotalCPU() {
 	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 	
 	try {
-		$sql = "SELECT SUM(cpu_cores) AS total_cores FROM nodes";
-		$stmt = $conn->prepare($sql);
+		$stmt = $conn->prepare("SELECT SUM(cpu_cores) AS total_cores FROM nodes");
 		$stmt->execute();
 		$result = $stmt->fetch(PDO::FETCH_ASSOC);
 		$total_cores = $result['total_cores'];
@@ -945,8 +997,7 @@ function getTotalDisk() {
 	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 	
 	try {
-		$sql = "SELECT SUM(disk_space) AS total_disk FROM nodes";
-		$stmt = $conn->prepare($sql);
+		$stmt = $conn->prepare("SELECT SUM(disk_space) AS total_disk FROM nodes");
 		$stmt->execute();
 		$result = $stmt->fetch(PDO::FETCH_ASSOC);
 		$total_disk = $result['total_disk'];
@@ -967,8 +1018,7 @@ function getTotalRAM() {
 	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 	
 	try {
-		$sql = "SELECT SUM(total_memory) AS total_ram FROM nodes";
-		$stmt = $conn->prepare($sql);
+		$stmt = $conn->prepare("SELECT SUM(total_memory) AS total_ram FROM nodes");
 		$stmt->execute();
 		$result = $stmt->fetch(PDO::FETCH_ASSOC);
 		$total_ram = $result['total_ram'];
@@ -989,8 +1039,7 @@ function getTotalVMs() {
 	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 	
 	try {
-		$sql = "SELECT SUM(vms) AS total_vms FROM nodes";
-		$stmt = $conn->prepare($sql);
+		$stmt = $conn->prepare("SELECT SUM(vms) AS total_vms FROM nodes");
 		$stmt->execute();
 		$result = $stmt->fetch(PDO::FETCH_ASSOC);
 		$total_vms = $result['total_vms'];
@@ -1011,10 +1060,9 @@ function getTotalNodes() {
 	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 	
 	try {
-		$sql = "SELECT COUNT(*) FROM nodes WHERE status = 1";
-		$stmt = $conn->prepare($sql);
+		$stmt = $conn->prepare("SELECT COUNT(*) FROM nodes WHERE status = 1");
 		$stmt->execute();
-		$count = $stmt->fetchColumn(); // Fetch the count directly
+		$count = $stmt->fetchColumn();
 		if($count) {
 			return $count;
 		} else {
@@ -1070,15 +1118,15 @@ function updateLastRunTime($script_name) {
 	}
 }
 
-function createVM($memory,$disk_space,$cpu_cores,$loc) {
+function createVM($memory,$disk_space,$cpu_cores,$cluster) {
 	include('config.php');
 	$conn = new PDO("sqlite:$db_file_path");
 	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
 	try {
-		$stmt = $conn->prepare("SELECT * FROM nodes WHERE loc = :loc AND status = :status");
-		$stmt->bindValue(':loc', $loc, PDO::PARAM_STR);
-		$stmt->bindValue(':status', 1, PDO::PARAM_INT);
+		$stmt = $conn->prepare("SELECT * FROM nodes WHERE cluster = :cluster AND status = :status ORDER BY vms ASC LIMIT 1");
+		$stmt->bindValue(':cluster', $cluster, SQLITE3_INTEGER);
+		$stmt->bindValue(':status', 1, SQLITE3_INTEGER);
 		$stmt->execute();
 		$node = $stmt->fetch(PDO::FETCH_ASSOC);
 		if ($node) {
@@ -1087,7 +1135,7 @@ function createVM($memory,$disk_space,$cpu_cores,$loc) {
 			$wsport = $node["lastws"]+1;
 			$vmnum = $node["lastvm"]+1;
 		} else {
-			logError("Error finding an available node ($loc).");
+			logError("Error finding an available node ($cluster).");
 			return false; 
 		}
 
@@ -1123,8 +1171,8 @@ function createVM($memory,$disk_space,$cpu_cores,$loc) {
 		$ssh->exec('/bin/touch /home/kontrolvm/addrs/'.$vmname.'');
 		$ssh->exec('sudo /bin/sh /home/kontrolvm/create_console.sh '.$wsport.' '.$vncport.'');
 
-		$data = [':name' => $vmname,':hostname' => $vmname,':status' => 1,':node_id' => $node_id,':loc' => $loc,':cpu_cores' => $cpu_cores,':memory' => $memory,':protected' => 0,':mac_address' => $macaddr,':nic' => 1000,':iow' => 1000,':vncpw' => $encpw,':vncport' => $vncport,':websockify' => $wsport,':network' => $network,':netdriver' => 'virtio',':diskdriver' => 'virtio',':bootorder' => 'cdrom',':created_at' => time(),':last_updated' => time()];
-		$stmt = $conn->prepare("INSERT INTO vms (name, hostname, node_id, status, loc, cpu_cores, memory, mac_address, nic, iow, vncpw, vncport, websockify, network, netdriver, diskdriver, bootorder, created_at, last_updated, protected) VALUES (:name,:hostname,:node_id,:status,:loc,:cpu_cores,:memory,:mac_address,:nic,:iow,:vncpw,:vncport,:websockify,:network,:netdriver,:diskdriver,:bootorder,:created_at,:last_updated,:protected)");
+		$data = [':name' => $vmname,':hostname' => $vmname,':status' => 1,':node_id' => $node_id,':cluster' => $cluster,':cpu_cores' => $cpu_cores,':memory' => $memory,':protected' => 0,':mac_address' => $macaddr,':nic' => 1000,':iow' => 1000,':vncpw' => $encpw,':vncport' => $vncport,':websockify' => $wsport,':network' => $network,':netdriver' => 'virtio',':diskdriver' => 'virtio',':bootorder' => 'cdrom',':created_at' => time(),':last_updated' => time()];
+		$stmt = $conn->prepare("INSERT INTO vms (name, hostname, node_id, status, cluster, cpu_cores, memory, mac_address, nic, iow, vncpw, vncport, websockify, network, netdriver, diskdriver, bootorder, created_at, last_updated, protected) VALUES (:name,:hostname,:node_id,:status,:cluster,:cpu_cores,:memory,:mac_address,:nic,:iow,:vncpw,:vncport,:websockify,:network,:netdriver,:diskdriver,:bootorder,:created_at,:last_updated,:protected)");
 		$stmt->execute($data);
 
 		$vm_id = $conn->lastInsertId();	
@@ -1196,7 +1244,7 @@ function shutdownVM($vm_id,$vmname,$node_id) {
 }
 
 function destroyVM($vm_id,$vmname,$websockify,$vncport,$node_id,$confirm) {
-	if($confirm = 1) {
+	if($confirm) {
 		include('config.php');
 		$conn = new PDO("sqlite:$db_file_path");
 		$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -1236,7 +1284,7 @@ function destroyVM($vm_id,$vmname,$websockify,$vncport,$node_id,$confirm) {
 			return false; 
 		}
 	} else {
-		logError("No confirmation ($vm_id): " . $e->getMessage());
+		logError("No confirmation ($vm_id)");
 		return false;
 	}
 }
@@ -1293,7 +1341,7 @@ function getDisks($vm_id) {
 	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
 	try {
-		$sql = "SELECT * FROM disks WHERE vm_id = $vm_id ORDER BY disk_id";
+		$sql = "SELECT * FROM disks WHERE vm_id = $vm_id ORDER BY disk_id ASC";
 		$stmt = $conn->prepare($sql);
 		$stmt->execute();
 		$disks = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -1686,61 +1734,74 @@ function bootOrder($vm_id,$vmname,$boot,$node_id) {
 	}
 }
 
-function addCluster($loc, $friendlyname) {
-	$loc = trim($loc);
+function addCluster($friendlyname) {
 	$friendlyname = trim($friendlyname);
 	include('config.php');
 	$conn = new PDO("sqlite:$db_file_path");
 	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-	$sql = "SELECT COUNT(*) FROM clusters WHERE loc =':loc'";
-	$stmt = $conn->prepare($sql);
-	$stmt->bindValue(':loc', "$loc", SQLITE3_TEXT);
-	$stmt->execute();
-	$count = $stmt->fetchColumn();
-	if ($count > 0) {
-		$error = "Cluster address exists.";
-		return $error;
-	} else {
-		$stmt = $conn->prepare('INSERT INTO clusters (loc, friendlyname, status, last_updated) VALUES (:loc, :friendlyname, :status, :last_updated)');
-	}
-	$stmt->bindValue(':loc', "$loc", SQLITE3_TEXT);
+	$stmt = $conn->prepare('INSERT INTO clusters (friendlyname, deployment, status, last_updated) VALUES (:friendlyname, :deployment, :status, :last_updated)');
 	$stmt->bindValue(':friendlyname', "$friendlyname", SQLITE3_TEXT);
+	$stmt->bindValue(':deployment', '1', SQLITE3_INTEGER);
 	$stmt->bindValue(':status', '1', SQLITE3_INTEGER);
 	$stmt->bindValue(':last_updated', time(), SQLITE3_TEXT);
-
 	$result = $stmt->execute();
-
 	if ($result) {
 		return true;
 	} else {
 		$error = "Error inserting cluster: " . $conn->lastErrorMsg();
+		logError($error);
 		return $error;
 	}
 }
 
-function deleteCluster($clusterid) {
+function editCluster($cluster_id, $cluster_data) {
 	include('config.php');
 	$conn = new PDO("sqlite:$db_file_path");
-	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-	try {
-		$stmt = $conn->prepare("DELETE FROM clusters WHERE clusterid =:clusterid");
-		$stmt->bindValue(':clusterid', $clusterid, SQLITE3_INTEGER);
-		$stmt->execute();
+	$cluster_data[':cluster_id'] = $cluster_id;
+	$cluster_data[':last_updated'] = time();
+	$stmt = $conn->prepare("UPDATE clusters SET friendlyname =:friendlyname,deployment =:deployment,last_updated =:last_updated WHERE cluster_id =:cluster_id");
+	if ($stmt->execute($cluster_data)) {
 		return true;
-	} catch (PDOException $e) {
-		logError("Error deleting cluster: ". $e->getMessage());
+	} else {
+		$error = "Error editing cluster: " . $conn->lastErrorMsg();
+		logError($error);
+		return $error;
+	}
+}
+
+function deleteCluster($cluster_id,$confirm) {
+	if($confirm) {
+		if(checkClusterCleaned($cluster_id)) {
+			include('config.php');
+			$conn = new PDO("sqlite:$db_file_path");
+			$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+			try {
+				$stmt = $conn->prepare("DELETE FROM clusters WHERE cluster_id =:cluster_id");
+				$stmt->bindValue(':cluster_id', $cluster_id, SQLITE3_INTEGER);
+				$stmt->execute();
+				return true;
+			} catch (PDOException $e) {
+				logError("Error deleting cluster: ". $e->getMessage());
+				return false;
+			}
+		} else {
+			logError("Cluster has nodes assigned to it ($cluster_id)");
+			return false;
+		}
+	} else {
+		logError("No confirmation ($cluster_id)");
 		return false;
 	}
 }
 
-function enableCluster($clusterid) {
+function enableCluster($cluster_id) {
 	include('config.php');
 	$conn = new PDO("sqlite:$db_file_path");
 	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 	try {
-		$stmt = $conn->prepare("UPDATE clusters SET status =:status WHERE clusterid =:clusterid");
+		$stmt = $conn->prepare("UPDATE clusters SET status =:status WHERE cluster_id =:cluster_id");
 		$stmt->bindValue(':status', '1', SQLITE3_INTEGER);
-		$stmt->bindValue(':clusterid', $clusterid, SQLITE3_INTEGER);
+		$stmt->bindValue(':cluster_id', $cluster_id, SQLITE3_INTEGER);
 		$stmt->execute();
 		return true;
 	} catch (PDOException $e) {
@@ -1749,14 +1810,14 @@ function enableCluster($clusterid) {
 	}
 }
 
-function disableCluster($clusterid) {
+function disableCluster($cluster_id) {
 	include('config.php');
 	$conn = new PDO("sqlite:$db_file_path");
 	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 	try {
-		$stmt = $conn->prepare("UPDATE clusters SET status =:status WHERE clusterid =:clusterid");
+		$stmt = $conn->prepare("UPDATE clusters SET status =:status WHERE cluster_id =:cluster_id");
 		$stmt->bindValue(':status', '0', SQLITE3_INTEGER);
-		$stmt->bindValue(':clusterid', $clusterid, SQLITE3_INTEGER);
+		$stmt->bindValue(':cluster_id', $cluster_id, SQLITE3_INTEGER);
 		$stmt->execute();
 		return true;
 	} catch (PDOException $e) {
@@ -1984,7 +2045,7 @@ function getBackups($vm_id) {
 	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
 	try {
-		$sql = "SELECT * FROM backups WHERE vm_id = $vm_id ORDER BY backup_id";
+		$sql = "SELECT * FROM backups WHERE vm_id = $vm_id ORDER BY backup_id ASC";
 		$stmt = $conn->prepare($sql);
 		$stmt->execute();
 		$backups = $stmt->fetchAll(PDO::FETCH_ASSOC);

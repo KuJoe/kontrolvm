@@ -41,7 +41,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 	$token = $_POST["csrf_token"];
 	if (validateCSRFToken($token)) {
 		if (isset($_POST['editNode'])) {
-			$node_data = [':hostname' => $_POST["hostname"],':ipaddr' => $_POST["ipaddr"],':sshport' => $_POST["sshport"],':lastvm' => $_POST["lastvm"],':lastvnc' => $_POST["lastvnc"],':lastws' => $_POST["lastws"],':loc' => $_POST["loc"],':status' => isset($_POST["status"])? 1: 0];
+			$node_data = [':hostname' => $_POST["hostname"],':ipaddr' => $_POST["ipaddr"],':sshport' => $_POST["sshport"],':lastvm' => $_POST["lastvm"],':lastvnc' => $_POST["lastvnc"],':lastws' => $_POST["lastws"],':cluster' => $_POST["cluster"],':status' => isset($_POST["status"])? 1: 0];
 			$result = editNode($node_id, $node_data);
 			if($result === true) {
 				header("Location: node.php?id=". (int)$node_id. "&s=1");
@@ -93,14 +93,18 @@ if ($node) {
 		<label class="logo"><a href="index.php"><img src="assets/logo.png" alt="KontrolVM Logo"></a></label>
 		<ul>
 			<li><a href="index.php">Dashboard</a></li>
-			<li><a class="active" href="nodes.php">Nodes</a></li>
-			<li><a href="vms.php">VMs</a></li>
+			<li><a class="active" href="clusters.php">Infrastructure</a></li>
 			<li><a href="users.php">Users</a></li>
 			<li><a href="settings.php">Settings</a></li>
 			<li style="font-weight: bold;"><a href="account.php"><?php echo htmlspecialchars($_SESSION["username"]); ?></a></li>
 			<li><a href="logout.php"><i class="fa fa-sign-out" aria-hidden="true"></i></a></li>
 		</ul>
 	</nav>
+	<ul class="submenu">
+		<li><a href="clusters.php">Clusters</a></li>
+		<li><a class="active" href="nodes.php">Nodes</a></li>
+		<li><a href="vms.php">VMs</a></li>
+	</ul>
 	<div class="container">
 		<h1>Node Details</h1>
 		<?php if (isset($success)) { ?>
@@ -138,12 +142,12 @@ if ($node) {
 					</tr>
 					<tr>
 						<td style="background-color:#999;">Cluster:</td>
-						<td><select id="loc" name="loc" style="text-align:center;width:80%;">
+						<td><select id="cluster" name="cluster" style="text-align:center;width:80%;">
 							<?php foreach ($clusters as $cluster):?>
-								<?php if($cluster['loc'] == $node['loc']) { ?>
-									<option value="<?php echo htmlspecialchars($cluster['loc']);?>" selected> 
+								<?php if($cluster['cluster_id'] == $node['cluster']) { ?>
+									<option value="<?php echo htmlspecialchars($cluster['cluster_id']);?>" selected> 
 								<?php } else { ?>
-									<option value="<?php echo htmlspecialchars($cluster['loc']);?>">
+									<option value="<?php echo htmlspecialchars($cluster['cluster_id']);?>">
 								<?php } ?>
 							<?php echo htmlspecialchars($cluster['friendlyname']);?> 
 								</option>

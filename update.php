@@ -19,6 +19,21 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 			// SQL statement to alter the table
 			$sql = "
 				ALTER TABLE staff DROP COLUMN staff_salt;
+				ALTER TABLE nodes DROP COLUMN loc;
+				ALTER TABLE vms DROP COLUMN loc;
+				ALTER TABLE clusters DROP COLUMN loc;
+				ALTER TABLE ipv4 DROP COLUMN loc;
+				ALTER TABLE ipv6 DROP COLUMN loc;
+				ALTER TABLE clusters ADD COLUMN deployment INTEGER;
+				ALTER TABLE nodes ADD COLUMN cluster INTEGER;
+				ALTER TABLE vms ADD COLUMN cluster INTEGER;
+				ALTER TABLE ipv4 ADD COLUMN cluster INTEGER;
+				ALTER TABLE ipv6 ADD COLUMN cluster INTEGER;
+				ALTER TABLE clusters RENAME COLUMN clusterid TO cluster_id;
+				ALTER TABLE last_run RENAME COLUMN id TO run_id;
+				ALTER TABLE ostemplates  RENAME COLUMN templateid  TO template_id;
+				ALTER TABLE ipv4 RENAME COLUMN ipid TO ip_id;
+				ALTER TABLE ipv6 RENAME COLUMN ipid TO ip_id;
 				
 				CREATE TABLE IF NOT EXISTS settings (
 					setting_id INTEGER PRIMARY KEY AUTOINCREMENT,
