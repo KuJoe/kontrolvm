@@ -11,6 +11,13 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 		if (isset($_GET['s']) AND $_GET['s'] == '1') {
 			$success = "Node updated successfully.";
 		}
+		if (isset($_GET['s'])) {
+			if ($_GET['s'] == '1') {
+				$success = "Node updated successfully.";
+			} elseif ($_GET['s'] == '2') {
+				$success = "Node VMs imported successfully.";
+			}
+		}
 		$node_id = $_GET['id'];
 		require_once('functions.php');
 		$node = getNodeDetails($node_id);
@@ -54,6 +61,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 				header("Location: node.php?id=". (int)$node_id. "&s=1");
 			} else {
 				$error = "Node update failed: ".$result;
+			}
+		}
+		if (isset($_POST['importVMs'])) {
+			$result = importVMs($node_id);
+			if($result === true) {
+				header("Location: node.php?id=". (int)$node_id. "&s=2");
+			} else {
+				$error = "Node import failed: ".$result;
 			}
 		}
 		if (isset($_POST['deleteNode'])) {
@@ -238,6 +253,21 @@ if ($node) {
 				<br />
 				<center><button type="submit" name="editNode" id="editNode" class="stylish-button">SAVE NODE</button><br /></center>
 				</form>
+				<br />
+				<hr />
+				<br />
+				<table>
+					<tr>
+						<td style="background-color:#999;">IMPORT VMS:</td>
+						<td style="padding:10px;">
+						<form id="importVMs" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post">
+						<input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
+						<input type="hidden" name="id" value="<?php echo htmlspecialchars($node_id); ?>">
+						<button type="submit" name="importVMs" id="importVMs" class="stylish-button" style="background-color:green;">IMPORT</button>
+						</form>
+						</td>
+					</tr>					
+				</table>
 				<?php if ($node['status'] == "0") { ?>
 				<br />
 				<hr />

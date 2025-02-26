@@ -1308,6 +1308,97 @@ function destroyVM($vm_id,$vmname,$websockify,$vncport,$node_id,$confirm) {
 	}
 }
 
+function importVMs($node_id) {
+	$node = getNodeDetails($node_id);
+	include('config.php');
+	$conn = new PDO("sqlite:$db_file_path");
+	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+	try {
+		$ssh = connectNode($node_id);
+		$vm_list = $ssh->exec("sudo virsh list --all | tail -n +3 | awk '{print $2}'");
+		$vm_names = explode("\n", trim($vm_list));
+		foreach ($vm_names as $vm_name) {
+			if (empty($vm_name)) continue;
+			$stmt = $conn->prepare("SELECT COUNT(*) FROM vms WHERE name=:name");
+			$stmt->bindParam(':name', $vm_name);
+			$stmt->execute();
+			$count = $stmt->fetchColumn();
+			if ($count > 0) {
+				continue; // Skip to the next VM
+			}			
+			$cpu_cores = $ssh->exec("sudo virsh dominfo ". escapeshellarg($vm_name) ." | grep 'CPU(s)' | awk '{print $2}'");
+			$memory = $ssh->exec("sudo virsh dominfo ". escapeshellarg($vm_name) ." | grep 'Max memory' | awk '{print $3}'");
+			$memory = trim($memory) / 1024 / 1024;
+			
+			$vncport = $ssh->exec("sudo virsh dumpxml ". escapeshellarg($vm_name) ." | grep vnc | awk '{print $3}'");
+			preg_match("/port='(\d+)'/", $vncport, $matches);
+			$vncport = $matches['1'];
+			$websockify = $vncport + 1000;
+			
+			$vncpw = $ssh->exec("sudo virsh dumpxml ". escapeshellarg($vm_name) ." | grep vnc | awk '{print $7}'");
+			if(!$vncpw) {
+				preg_match("/passwd='(.*?)'/", $vncpw, $matches);
+				$vncpw = $matches['1'];
+				$vncpw = encrypt($vncpw);
+			} else {
+				$vncpw = " ";
+			}
+			
+			$diskdriver = $ssh->exec("sudo virsh dumpxml ". escapeshellarg($vm_name) ." | grep 'vda' | awk '{print $3}'");
+			preg_match("/bus='(.*?)'/", $diskdriver, $matches);
+			$diskdriver = $matches['1'];
+			if(empty($diskdriver)) {
+				$diskdriver = $ssh->exec("sudo virsh dumpxml ". escapeshellarg($vm_name) ." | grep 'sda' | awk '{print $3}'");
+				preg_match("/bus='(.*?)'/", $diskdriver, $matches);
+				$diskdriver = $matches['1'];
+			}
+			
+			$bootorder = $ssh->exec("sudo virsh dumpxml ". escapeshellarg($vm_name) ." | grep 'boot dev' | awk '{print $2}'");
+			preg_match("/dev='(.*?)'/", $bootorder, $matches);
+			$bootorder = $matches['1'];
+			$macaddr = $ssh->exec("sudo virsh domiflist ". escapeshellarg($vm_name) ." | awk 'NR==3{print $5}'");
+			$netdriver = $ssh->exec("sudo virsh domiflist ". escapeshellarg($vm_name) ." | awk 'NR==3{print $4}'");
+			$network = $ssh->exec("sudo virsh domiflist ". escapeshellarg($vm_name) ." | awk 'NR==3{print $1}'");
+			$created_at = time();
+							
+			$vm_data = [
+				'node_id' => $node_id,
+				'name' => "$vm_name",
+				'hostname' => "$vm_name",
+				'status' => "1",
+				'cluster' => $node['cluster'],
+				'cpu_cores' => $cpu_cores,
+				'memory' => $memory,
+				'vncport' => $vncport,
+				'vncpw' => "$vncpw",
+				'websockify' => $websockify,
+				'mac_address' => "$macaddr",
+				'netdriver' => "$netdriver",
+				'network' => "$network",
+				'diskdriver' => "$diskdriver",
+				'bootorder' => "$bootorder",
+				'created_at' => $created_at
+			];
+			
+
+			// Insert or update the VM data in the database
+			$sql = "INSERT OR REPLACE INTO vms (
+						node_id, name, hostname, status, cluster, cpu_cores, memory, vncport, vncpw, websockify, mac_address, netdriver, network, diskdriver, bootorder, created_at
+					) VALUES (
+						:node_id,:name,:hostname,:status,:cluster,:cpu_cores,:memory,:vncport,:vncpw,:websockify,:mac_address,:netdriver,:network,:diskdriver,:bootorder,:created_at
+					)";
+			$stmt = $conn->prepare($sql);
+			$stmt->execute($vm_data);
+		}
+	} catch (Exception $e) {
+		$error = "Error updating VM list: ". $e->getMessage();
+		logError($error);
+		return false; 
+	}
+	$conn = null;
+	return true;
+}
+
 function setCPU($vm_id,$vmname,$cpu,$node_id) {
 	include('config.php');
 	$conn = new PDO("sqlite:$db_file_path");
@@ -1360,8 +1451,7 @@ function getDisks($vm_id) {
 	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
 	try {
-		$sql = "SELECT * FROM disks WHERE vm_id = $vm_id ORDER BY disk_id ASC";
-		$stmt = $conn->prepare($sql);
+		$stmt = $conn->prepare("SELECT * FROM disks WHERE vm_id = $vm_id ORDER BY disk_id ASC");
 		$stmt->execute();
 		$disks = $stmt->fetchAll(PDO::FETCH_ASSOC);
 		return $disks;
