@@ -29,11 +29,18 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 		exit;
 	}
 }
-$loggedin_id = $_SESSION['staff_id'];
+$loggedin_id = (int)$_SESSION['staff_id'];
+$myrole = (int)$_SESSION["staff_role"];
 $chkActive = checkActive($loggedin_id);
 $chkLocked = checkLockedOut($loggedin_id);
 if($chkLocked == true OR $chkActive == false) {
 	header("Location: logout.php");
+	exit;
+}
+$chkRole = getStaffRole($loggedin_id);
+$allowedRoles = ['2', '9'];
+if (!in_array($chkRole, $allowedRoles)) {
+	header("Location: home.php?s=99");
 	exit;
 }
 

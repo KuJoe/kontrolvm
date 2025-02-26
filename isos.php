@@ -12,7 +12,8 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 	define('AmAllowed', TRUE);
 	require_once('config.php');
 	require_once('functions.php');
-	$loggedin_id = $_SESSION['staff_id'];
+	$loggedin_id = (int)$_SESSION['staff_id'];
+	$myrole = (int)$_SESSION["staff_role"];
 	$chkActive = checkActive($loggedin_id);
 	$chkLocked = checkLockedOut($loggedin_id);
 	if($chkLocked == true OR $chkActive == false) {

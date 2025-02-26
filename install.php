@@ -109,6 +109,7 @@ try {
 		staff_active INTEGER NOT NULL DEFAULT 0,
 		staff_rememberme_token TEXT,
 		staff_mfa TEXT,
+		staff_role INTEGER,
 		staff_ip TEXT,
 		staff_lastlogin TEXT,
 		staff_failed_logins INTEGER NOT NULL DEFAULT 0,
@@ -184,10 +185,11 @@ try {
 		$stmt->execute();
 	}
 	// Create Super Admin account
-	$stmt = $conn->prepare("INSERT INTO staff (staff_username, staff_password, staff_active) VALUES (:username, :password, :active)");
+	$stmt = $conn->prepare("INSERT INTO staff (staff_username, staff_password, staff_active, staff_role) VALUES (:username, :password, :active, :role)");
 	$stmt->bindValue(':username', "$username", SQLITE3_TEXT);
 	$stmt->bindValue(':password', "$hashedPassword", SQLITE3_TEXT);
 	$stmt->bindValue(':active', '1', SQLITE3_INTEGER);
+	$stmt->bindValue(':role', '9', SQLITE3_INTEGER);
 	$stmt->execute();
 	
 	//// Populate default settings

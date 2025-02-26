@@ -51,12 +51,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 			$user = $stmt->fetch(PDO::FETCH_ASSOC);
 			if($user) {
 				$staff_id = $user['staff_id'];
+				$staff_role = $user['staff_role'];
 				$chkActive = checkActive($staff_id);
 				$chkLocked = checkLockedOut($staff_id);
 				if($chkLocked == false AND $chkActive == true) {
 					if(password_verify($password, $user['staff_password'])) {
 						$_SESSION["username"] = $username;
 						$_SESSION['staff_id'] = $staff_id;
+						$_SESSION['staff_role'] = $staff_role;
 						$staff_lastlogin = time();
 						$stmt = $conn->prepare("UPDATE staff SET staff_ip =:staff_ip, staff_lastlogin =:staff_lastlogin, staff_failed_logins =:staff_failed_logins WHERE staff_id =:staff_id");
 						$stmt->bindValue(':staff_ip', "$remote_addr", SQLITE3_TEXT);

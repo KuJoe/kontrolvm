@@ -34,6 +34,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 				ALTER TABLE ostemplates  RENAME COLUMN templateid  TO template_id;
 				ALTER TABLE ipv4 RENAME COLUMN ipid TO ip_id;
 				ALTER TABLE ipv6 RENAME COLUMN ipid TO ip_id;
+				ALTER TABLE staff ADD COLUMN staff_role INTEGER;
 				
 				CREATE TABLE IF NOT EXISTS settings (
 					setting_id INTEGER PRIMARY KEY AUTOINCREMENT,

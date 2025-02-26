@@ -223,6 +223,22 @@ function checkLockedOut($staff_id) {
 	return false;
 }
 
+function getStaffRole($staff_id) {
+	include('config.php');
+	$conn = new PDO("sqlite:$db_file_path");
+	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+	try {
+		$stmt = $conn->prepare("SELECT staff_role FROM staff WHERE staff_id =:staff_id");
+		$stmt->bindParam(':staff_id', $staff_id, SQLITE3_INTEGER);
+		$stmt->execute();
+		$role = $stmt->fetchColumn();
+		return $role;
+	} catch(PDOException $e) {
+		die("Database error: " . $e->getMessage());
+	}
+	return false;
+}
+
 function checkNodeCleaned($node_id) {
 	include('config.php');
 	$conn = new PDO("sqlite:$db_file_path");
@@ -263,10 +279,11 @@ function createUser($username,$email) {
 	try {
 		$password = generateRandomString();
 		$hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-		$stmt = $conn->prepare('INSERT INTO staff (staff_username, staff_email, staff_password) VALUES (:username, :email, :password)');
-		$stmt->bindValue(':username', "$username", SQLITE3_TEXT);
-		$stmt->bindValue(':email', "$email", SQLITE3_TEXT);
-		$stmt->bindValue(':password', "$hashedPassword", SQLITE3_TEXT);
+		$stmt = $conn->prepare('INSERT INTO staff (staff_username, staff_email, staff_password, staff_role) VALUES (:staff_username, :staff_email, :staff_password, :staff_role)');
+		$stmt->bindValue(':staff_username', "$username", SQLITE3_TEXT);
+		$stmt->bindValue(':staff_email', "$email", SQLITE3_TEXT);
+		$stmt->bindValue(':staff_password', "$hashedPassword", SQLITE3_TEXT);
+		$stmt->bindValue(':staff_role', '1', SQLITE3_INTEGER);
 		$result = $stmt->execute();
 		return $password;
 	} catch (PDOException $e) {
@@ -300,7 +317,7 @@ function deleteUser($staff_id,$confirm) {
 	}
 }
 
-function updateStaff($staff_id,$username,$email,$status,$password1,$password2) {
+function updateStaff($staff_id,$username,$email,$status,$role,$password1,$password2) {
 	include('config.php');
 	$conn = new PDO("sqlite:$db_file_path");
 	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -309,12 +326,13 @@ function updateStaff($staff_id,$username,$email,$status,$password1,$password2) {
 		if(!is_null($password2)) {
 			if($password1 = $password2) {
 				$password = password_hash($password1, PASSWORD_DEFAULT);
-				$stmt = $conn->prepare("UPDATE staff SET staff_username =:username, staff_email =:email, staff_active =:status, staff_password =:password WHERE staff_id =:staff_id");
-				$stmt->bindValue(':username', "$username", SQLITE3_TEXT);
-				$stmt->bindValue(':email', "$email", SQLITE3_TEXT);
-				$stmt->bindValue(':status', $status, SQLITE3_INTEGER);
+				$stmt = $conn->prepare("UPDATE staff SET staff_username =:staff_username, staff_email =:staff_email, staff_active =:staff_active, staff_password =:password, staff_role =:staff_role WHERE staff_id =:staff_id");
+				$stmt->bindValue(':staff_username', "$username", SQLITE3_TEXT);
+				$stmt->bindValue(':staff_email', "$email", SQLITE3_TEXT);
+				$stmt->bindValue(':staff_active', $status, SQLITE3_INTEGER);
 				$stmt->bindValue(':password', "$password", SQLITE3_TEXT);
 				$stmt->bindValue(':staff_id', $staff_id, SQLITE3_INTEGER);
+				$stmt->bindValue(':staff_role', $role, SQLITE3_INTEGER);
 				$stmt->execute();
 				return true;
 			} else {
@@ -322,11 +340,12 @@ function updateStaff($staff_id,$username,$email,$status,$password1,$password2) {
 				return false;
 			}
 		} else {
-			$stmt = $conn->prepare("UPDATE staff SET staff_username =:username, staff_email =:email, staff_active =:status WHERE staff_id =:staff_id");
-			$stmt->bindValue(':username', "$username", SQLITE3_TEXT);
-			$stmt->bindValue(':email', "$email", SQLITE3_TEXT);
-			$stmt->bindValue(':status', $status, SQLITE3_INTEGER);
+			$stmt = $conn->prepare("UPDATE staff SET staff_username =:staff_username, staff_email =:staff_email, staff_active =:staff_active, staff_role =:staff_role WHERE staff_id =:staff_id");
+			$stmt->bindValue(':staff_username', "$username", SQLITE3_TEXT);
+			$stmt->bindValue(':staff_email', "$email", SQLITE3_TEXT);
+			$stmt->bindValue(':staff_active', $status, SQLITE3_INTEGER);
 			$stmt->bindValue(':staff_id', $staff_id, SQLITE3_INTEGER);
+			$stmt->bindValue(':staff_role', $role, SQLITE3_INTEGER);
 			$stmt->execute();
 			return true;
 		}

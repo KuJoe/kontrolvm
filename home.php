@@ -17,12 +17,18 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 	define('AmAllowed', TRUE);
 	require_once('config.php');
 	require_once('functions.php');
-	$loggedin_id = $_SESSION['staff_id'];
+	$loggedin_id = (int)$_SESSION['staff_id'];
+	$myrole = (int)$_SESSION["staff_role"];
 	$chkActive = checkActive($loggedin_id);
 	$chkLocked = checkLockedOut($loggedin_id);
 	if($chkLocked == true OR $chkActive == false) {
 		header("Location: logout.php");
 		exit;
+	}
+	if(isset($_GET['s'])) {
+		if ($_GET['s'] == '99') {
+			$error = "Account does not access to fuction.";
+		}
 	}
 }
 $token = getCSRFToken();
@@ -54,7 +60,12 @@ if (!$last_backup || time() - $last_backup >= 86400) {
 	</nav>
 	<div class="container">
 		<h1>Cluster Overview</h1>
-
+		<?php if (isset($success)) { ?>
+			<div class="success-message"><?php echo $success; ?></div> 
+		<?php } ?>
+		<?php if (isset($error)) { ?>
+			<div class="error-message"><?php echo $error; ?></div> 
+		<?php } ?>
 		<div class="grid">
 			<div class="card">
 				<h2>Nodes</h2>

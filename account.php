@@ -18,9 +18,11 @@ if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 	define('AmAllowed', TRUE);
 	require_once('config.php');
 	require_once('functions.php');
-	$loggedin_id = $_SESSION['staff_id'];
+	$loggedin_id = (int)$_SESSION['staff_id'];
+	$myrole = (int)$_SESSION["staff_role"];
 	$chkActive = checkActive($loggedin_id);
 	$chkLocked = checkLockedOut($loggedin_id);
+	$chkRole = getStaffRole($loggedin_id);
 	if($chkLocked == true OR $chkActive == false) {
 		header("Location: logout.php");
 		exit;
@@ -34,6 +36,13 @@ if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 	} else {
 		error_log("Error: Account ID missing.");
 		exit;
+	}
+	if($staff_id != $loggedin_id) {
+		$allowedRoles = ['1', '9'];
+		if (!in_array($chkRole, $allowedRoles)) {
+			header("Location: home.php?s=99");
+			exit;
+		}
 	}
 	$staff = getStaffDetails($staff_id);
 	if(isset($_GET['s'])) {
@@ -63,6 +72,15 @@ if($_SERVER["REQUEST_METHOD"] == "POST") {
 		if(isset($_POST['save_account'])) {
 			$username = $_POST['username'];
 			$email = $_POST['email'];
+			if($chkRole == '2') {
+				$role = '2';
+			} else {
+				$role = $_POST['role'];
+			}
+			if($role == '9' AND $chkRole != '9') {
+				header("Location: home.php?s=99");
+				exit;
+			}
 			if($staff_id == '1') {
 				$status = '1';
 			} else {
@@ -79,7 +97,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST") {
 				$password1 = NULL;
 				$password2 = NULL;
 			}
-			$result = updateStaff($staff_id,$username,$email,$status,$password1,$password2);
+			$result = updateStaff($staff_id,$username,$email,$status,$role,$password1,$password2);
 			if($result === true) {
 				if($_SESSION["staff_id"] == $_POST["id"]) {
 					$_SESSION["username"] = $username;
@@ -139,6 +157,11 @@ if ($staff) {
 			$state = "";
 		}
 	}
+	$role = $staff['staff_role'];
+	if($role == '9' AND $chkRole != '9') {
+		header("Location: home.php?s=99");
+		exit;
+	}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -182,6 +205,32 @@ if ($staff) {
 			<div class="form-group" style="width:200px;">
 				<label for="status">Active: </label>
 				<input type="checkbox" id="status" name="status"<?php echo $state; ?>>
+			</div>
+			<div class="form-group">
+				<label for="status">User Role: </label>
+				<?php if($chkRole == '2') { ?>
+					<select id="role" name="role" style="text-align:center;" disabled>
+				<?php } else { ?>
+					<select id="role" name="role" style="text-align:center;">
+				<?php } ?>
+				<?php if($role == '1') { ?>
+					<option value="1" selected>IAM Support</option>
+					<option value="2">Infra Support</option>
+					<option value="9">Full Admin</option>
+				<?php } elseif($role == '2') { ?>
+					<option value="1">IAM Support</option>
+					<option value="2" selected>Infra Support</option>
+					<option value="9">Full Admin</option>
+				<?php } elseif($role == '9') { ?>
+					<option value="1">IAM Support</option>
+					<option value="2">Infra Support</option>
+					<option value="9" selected>Full Admin</option>
+				<?php } else { ?>
+					<option value="1">IAM Support</option>
+					<option value="2">Infra Support</option>
+					<option value="9">Full Admin</option>
+				<?php } ?>
+				</select>
 			</div>
 			<h2>Change Password <input type="checkbox" id="password-change" name="password-change"></h2>
 			<div class="form-group password-options">
