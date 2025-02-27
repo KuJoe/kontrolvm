@@ -55,8 +55,8 @@ $isos = getISOs();
 		<label class="logo"><a href="index.php"><img src="assets/logo.png" alt="KontrolVM Logo"></a></label>
 		<ul>
 			<li><a href="index.php">Dashboard</a></li>
-			<li><a href="clusters.php">Infrastructure</a></li>
-			<li><a href="users.php">Users</a></li>
+			<?php if (in_array($myrole, ['2', '9'])) { ?> <li><a href="clusters.php">Infrastructure</a></li> <?php } ?>
+			<?php if (in_array($myrole, ['1', '9'])) { ?> <li><a href="users.php">Users</a></li> <?php } ?>
 			<li><a class="active" href="settings.php">Settings</a></li>
 			<li style="font-weight: bold;"><a href="account.php"><?php echo htmlspecialchars($_SESSION["username"]); ?></a></li>
 			<li><a href="logout.php"><i class="fa fa-sign-out" aria-hidden="true"></i></a></li>
