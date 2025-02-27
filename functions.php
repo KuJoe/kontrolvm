@@ -49,6 +49,17 @@ function generateRandomString($length = 16) {
 	return $randomString;
 }
 
+function generateMAC($macaddr) {
+    if (!preg_match('/^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$/', $macaddr)) {
+        return false;
+    }
+    $octets = explode(':', $macaddr);
+    $newLastOctet = sprintf('%02x', mt_rand(0, 255));
+    $octets[5] = $newLastOctet;
+    $newmacaddr = implode(':', $octets);
+    return $newmacaddr;
+}
+
 function getCSRFToken() {
 	$token = mt_rand();
 	if(empty($_SESSION['csrf_tokens'])) {
@@ -520,10 +531,60 @@ function editNode($node_id, $node_data) {
 	}
 }
 
+function getNetworks($node_id) {
+	include('config.php');
+	$conn = new PDO("sqlite:$db_file_path");
+	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+	try {
+		$stmt = $conn->prepare('SELECT * FROM networks WHERE node_id =:node_id ORDER BY net_name ASC');
+		$stmt->bindValue(':node_id', $node_id, SQLITE3_INTEGER);
+		$stmt->execute();
+		$networks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+		return $networks;
+	} catch (PDOException $e) {
+		logError("Error fetching cluster list: " . $e->getMessage());
+		return false;
+	}
+}
+
+function addNetwork($node_id,$net_name) {
+	include('config.php');
+	$conn = new PDO("sqlite:$db_file_path");
+	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+	try {
+
+		$stmt = $conn->prepare('INSERT INTO networks (net_name, node_id, last_updated) VALUES (:net_name, :node_id, :last_updated)');
+		$stmt->bindValue(':net_name', "$net_name", SQLITE3_TEXT);
+		$stmt->bindValue(':node_id', $node_id, SQLITE3_INTEGER);
+		$stmt->bindValue(':last_updated', time(), SQLITE3_TEXT);
+		$stmt->execute();
+		return true;
+	} catch (PDOException $e) {
+		$error = $e->getMessage();
+		logError("Error adding network ($node_id - $net_name): ".$error);
+		return $error;
+	}
+}
+
+function deleteNetwork($node_id, $net_id) {
+	include('config.php');
+	$conn = new PDO("sqlite:$db_file_path");
+	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+	try {
+		$stmt = $conn->prepare('DELETE FROM networks WHERE net_id =:net_id');
+		$stmt->bindValue(':net_id', $net_id, SQLITE3_INTEGER);
+		$stmt->execute();
+		return true;
+	} catch (PDOException $e) {
+		$error = $e->getMessage();
+		logError("Error deleting network ($node_id - $net_id): ".$error);
+		return $error;
+	}
+}
+
 function editVM($vm_id,$vm_data) {
 	include('config.php');
 	$conn = new PDO("sqlite:$db_file_path");
-	$encpw = encrypt($vncpw);
 	$vm_data[':vm_id'] = $vm_id;
 	$vm_data[':last_updated'] = time();
 	$stmt = $conn->prepare("UPDATE vms SET name =:name,hostname =:hostname,notes =:notes,mac_address =:mac_address,vncpw =:vncpw,vncport =:vncport,websockify =:websockify,cluster =:cluster,status =:status,protected =:protected,last_updated =:last_updated WHERE vm_id =:vm_id");
@@ -1170,7 +1231,7 @@ function createVM($memory,$disk_space,$cpu_cores,$cluster) {
 		$memorymb = $memory * 1024;
 				
 		$ssh = connectNode($node_id);
-		$ssh->exec('sudo /usr/bin/virt-install --name '.$vmname.' --ram '.$memorymb.' --vcpus='.$cpu_cores.' --disk path=/home/kontrolvm/data/'.$disk1.',size='.$disk_space.',format=qcow2,bus=virtio,cache=writeback --network=bridge:br0,model=virtio --cdrom /home/kontrolvm/isos/systemrescue-amd64.iso --os-variant linux2022 --osinfo generic --noautoconsole --graphics vnc,listen=0.0.0.0,port='.$vncport.',password='.$password.',keymap=en-us --hvm --boot uefi');
+		$ssh->exec('sudo /usr/bin/virt-install --name '.$vmname.' --ram '.$memorymb.' --vcpus='.$cpu_cores.' --disk path=/home/kontrolvm/data/'.$disk1.',size='.$disk_space.',format=qcow2,bus=virtio,cache=writeback --network=bridge:virbr0,model=virtio --cdrom /home/kontrolvm/isos/systemrescue-amd64.iso --os-variant linux2022 --osinfo generic --noautoconsole --graphics vnc,listen=0.0.0.0,port='.$vncport.',password='.$password.',keymap=en-us --hvm --boot uefi');
 		$ssh->exec('/usr/bin/rm -rf /home/kontrolvm/xmls/'.$vmname.'.xml');
 		$ssh->exec('/bin/touch /home/kontrolvm/xmls/'.$vmname.'.xml');
 		$ssh->exec('sudo /usr/bin/virsh destroy '.$vmname.'');
@@ -1190,8 +1251,8 @@ function createVM($memory,$disk_space,$cpu_cores,$cluster) {
 		$ssh->exec('/bin/touch /home/kontrolvm/addrs/'.$vmname.'');
 		$ssh->exec('sudo /bin/sh /home/kontrolvm/create_console.sh '.$wsport.' '.$vncport.'');
 
-		$data = [':name' => $vmname,':hostname' => $vmname,':status' => 1,':node_id' => $node_id,':cluster' => $cluster,':cpu_cores' => $cpu_cores,':memory' => $memory,':protected' => 0,':mac_address' => $macaddr,':nic' => 1000,':iow' => 1000,':vncpw' => $encpw,':vncport' => $vncport,':websockify' => $wsport,':network' => $network,':netdriver' => 'virtio',':diskdriver' => 'virtio',':bootorder' => 'cdrom',':created_at' => time(),':last_updated' => time()];
-		$stmt = $conn->prepare("INSERT INTO vms (name, hostname, node_id, status, cluster, cpu_cores, memory, mac_address, nic, iow, vncpw, vncport, websockify, network, netdriver, diskdriver, bootorder, created_at, last_updated, protected) VALUES (:name,:hostname,:node_id,:status,:cluster,:cpu_cores,:memory,:mac_address,:nic,:iow,:vncpw,:vncport,:websockify,:network,:netdriver,:diskdriver,:bootorder,:created_at,:last_updated,:protected)");
+		$data = [':name' => $vmname,':hostname' => $vmname,':status' => 1,':node_id' => $node_id,':cluster' => $cluster,':cpu_cores' => $cpu_cores,':memory' => $memory,':protected' => 0,':mac_address' => $macaddr,':nic' => 1000,':iow' => 1000,':vncpw' => $encpw,':vncport' => $vncport,':websockify' => $wsport,':netdriver' => 'virtio',':diskdriver' => 'virtio',':bootorder' => 'cdrom',':created_at' => time(),':last_updated' => time()];
+		$stmt = $conn->prepare("INSERT INTO vms (name, hostname, node_id, status, cluster, cpu_cores, memory, mac_address, nic, iow, vncpw, vncport, websockify, netdriver, diskdriver, bootorder, created_at, last_updated, protected) VALUES (:name,:hostname,:node_id,:status,:cluster,:cpu_cores,:memory,:mac_address,:nic,:iow,:vncpw,:vncport,:websockify,:netdriver,:diskdriver,:bootorder,:created_at,:last_updated,:protected)");
 		$stmt->execute($data);
 
 		$vm_id = $conn->lastInsertId();	
@@ -1356,9 +1417,7 @@ function importVMs($node_id) {
 			$bootorder = $ssh->exec("sudo virsh dumpxml ". escapeshellarg($vm_name) ." | grep 'boot dev' | awk '{print $2}'");
 			preg_match("/dev='(.*?)'/", $bootorder, $matches);
 			$bootorder = $matches['1'];
-			$macaddr = $ssh->exec("sudo virsh domiflist ". escapeshellarg($vm_name) ." | awk 'NR==3{print $5}'");
 			$netdriver = $ssh->exec("sudo virsh domiflist ". escapeshellarg($vm_name) ." | awk 'NR==3{print $4}'");
-			$network = $ssh->exec("sudo virsh domiflist ". escapeshellarg($vm_name) ." | awk 'NR==3{print $1}'");
 			$created_at = time();
 							
 			$vm_data = [
@@ -1372,9 +1431,7 @@ function importVMs($node_id) {
 				'vncport' => $vncport,
 				'vncpw' => "$vncpw",
 				'websockify' => $websockify,
-				'mac_address' => "$macaddr",
 				'netdriver' => "$netdriver",
-				'network' => "$network",
 				'diskdriver' => "$diskdriver",
 				'bootorder' => "$bootorder",
 				'created_at' => $created_at
@@ -1383,9 +1440,9 @@ function importVMs($node_id) {
 
 			// Insert or update the VM data in the database
 			$sql = "INSERT OR REPLACE INTO vms (
-						node_id, name, hostname, status, cluster, cpu_cores, memory, vncport, vncpw, websockify, mac_address, netdriver, network, diskdriver, bootorder, created_at
+						node_id, name, hostname, status, cluster, cpu_cores, memory, vncport, vncpw, websockify, netdriver, diskdriver, bootorder, created_at
 					) VALUES (
-						:node_id,:name,:hostname,:status,:cluster,:cpu_cores,:memory,:vncport,:vncpw,:websockify,:mac_address,:netdriver,:network,:diskdriver,:bootorder,:created_at
+						:node_id,:name,:hostname,:status,:cluster,:cpu_cores,:memory,:vncport,:vncpw,:websockify,:netdriver,:diskdriver,:bootorder,:created_at
 					)";
 			$stmt = $conn->prepare($sql);
 			$stmt->execute($vm_data);
@@ -1547,7 +1604,6 @@ function deleteDisk($vm_id,$vmname,$disk_id,$disk_name,$node_id) {
 	include('config.php');
 	$conn = new PDO("sqlite:$db_file_path");
 	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
 	try {
 		$ssh = connectNode($node_id);
 		$ssh->exec("sudo /usr/bin/virsh detach-disk $vmname /home/kontrolvm/data/$disk_name --config --persistent");
@@ -1563,7 +1619,77 @@ function deleteDisk($vm_id,$vmname,$disk_id,$disk_name,$node_id) {
 		$error = $e->getMessage();
 		logError("Error deleting VM disk ($disk_id - $disk_name): ".$error);
 		return $error;
-	}	
+	}
+}
+
+function getNICs($vm_id) {
+	include('config.php');
+	$conn = new PDO("sqlite:$db_file_path");
+	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+	try {
+		$stmt = $conn->prepare("SELECT * FROM nics WHERE vm_id = $vm_id ORDER BY nic_id ASC");
+		$stmt->execute();
+		$nics = $stmt->fetchAll(PDO::FETCH_ASSOC);
+		return $nics;
+	} catch (PDOException $e) {
+		logError("Error fetching NIC list ($vm_id): " . $e->getMessage());
+		return false;
+	}
+}
+
+function addNIC($vm_id, $vmname, $network, $macaddr, $node_id) {
+	include('config.php');
+	$conn = new PDO("sqlite:$db_file_path");
+	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+	$newmacaddr = generateMAC($macaddr);
+	$nicCount = count(getNICs($vm_id));
+	$nic_name = $vmname."_".$nicCount+1;
+	try {
+		$ssh = connectNode($node_id);
+		$output = $ssh->exec('sudo /usr/bin/virsh attach-interface '.$vmname.' --type bridge --source '.$network.' --mac '.$newmacaddr.' --target '.$nic_name.' --model virtio --config --live');
+		if (strpos($output, "domain is not running") !== false) {
+			$ssh->exec('sudo /usr/bin/virsh attach-interface '.$vmname.' --type bridge --source '.$network.' --mac '.$newmacaddr.' --target '.$nic_name.' --model virtio --config');
+		}
+		$ssh->exec('sudo /usr/bin/virsh dumpxml '.$vmname.' --security-info > /home/kontrolvm/xmls/'.$vmname.'.xml');
+		#echo $ssh->getLog();
+		$ssh->disconnect();
+
+		$stmt = $conn->prepare('INSERT INTO nics (nic_name, mac_address, vm_id, node_id, last_updated) VALUES (:nic_name, :mac_address, :vm_id, :node_id, :last_updated)');
+		$stmt->bindValue(':nic_name', "$nic_name", SQLITE3_TEXT);
+		$stmt->bindValue(':mac_address', "$newmacaddr", SQLITE3_TEXT);
+		$stmt->bindValue(':vm_id', $vm_id, SQLITE3_INTEGER);
+		$stmt->bindValue(':node_id', $node_id, SQLITE3_INTEGER);
+		$stmt->bindValue(':last_updated', time(), SQLITE3_TEXT);
+		$stmt->execute();
+		return true;
+	} catch (PDOException $e) {
+		$error = $e->getMessage();
+		logError("Error adding VM NIC ($vmname): ".$error);
+		return $error;
+	}
+}
+
+function deleteNIC($node_id, $vmname, $nic_id, $macaddr) {
+	include('config.php');
+	$conn = new PDO("sqlite:$db_file_path");
+	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+	try {
+		$ssh = connectNode($node_id);
+		$ssh->exec('sudo /usr/bin/virsh detach-interface '.$vmname.' --type bridge --mac '.$macaddr.' --config --live --persistent');
+		$ssh->exec('sudo /usr/bin/virsh dumpxml '.$vmname.' --security-info > /home/kontrolvm/xmls/'.$vmname.'.xml');
+		echo $ssh->getLog();
+		$ssh->disconnect();
+
+		$stmt = $conn->prepare('DELETE FROM nics WHERE nic_id =:nic_id');
+		$stmt->bindValue(':nic_id', $nic_id, SQLITE3_INTEGER);
+		$stmt->execute();
+		return true;
+	} catch (PDOException $e) {
+		$error = $e->getMessage();
+		logError("Error deleting VM NIC ($nic_id - $vmname): ".$error);
+		return $error;
+	}
 }
 
 function setIOW($vm_id,$vmname,$speed,$node_id) {

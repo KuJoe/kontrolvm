@@ -63,6 +63,10 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 				$success = "VM backup deleted successfully.";
 			} elseif ($_GET['s'] == '19') {
 				$success = "VM restore started successfully, this might take a while.";
+			} elseif ($_GET['s'] == '20') {
+				$success = "VM NIC added successfully.";
+			} elseif ($_GET['s'] == '21') {
+				$success = "VM NIC deleted successfully.";
 			}
 		}
 		$vm_id = $_GET['id'];
@@ -88,7 +92,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 	$token = $_POST["csrf_token"];
 	if (validateCSRFToken($token)) {
 		if (isset($_POST['update_vm'])) {
-			$vm_data = [':name' => $_POST["name"],':hostname' => $_POST["hostname"],':notes' => isset($_POST["notes"])? $_POST["notes"]: ' ',':vncpw' => $_POST["vncpw"],':vncport' => $_POST["vncport"],':websockify' => $_POST["websockify"],':mac_address' => $_POST["mac_address"],':cluster' => $_POST["cluster"],':status' => isset($_POST["status"])? 1: 0,':protected' => isset($_POST["protected"])? 1: 0];
+			$encpw = encrypt($_POST["vncpw"]);
+			$vm_data = [':name' => $_POST["name"],':hostname' => $_POST["hostname"],':notes' => isset($_POST["notes"])? $_POST["notes"]: ' ',':vncpw' => $encpw,':vncport' => $_POST["vncport"],':websockify' => $_POST["websockify"],':mac_address' => $_POST["mac_address"],':cluster' => $_POST["cluster"],':status' => isset($_POST["status"])? 1: 0,':protected' => isset($_POST["protected"])? 1: 0];
 			$result = editVM($vm_id,$vm_data);
 			if($result === true) {
 				header("Location: vm.php?id=". (int)$vm_id. "&s=1");
@@ -142,6 +147,25 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 				header("Location: vm.php?id=". (int)$vm_id. "&s=16");
 			} else {
 				$error = "VM disk delete failed: ".$result;
+			}
+		}
+		if (isset($_POST['add_nic'])) {
+			$network = $_POST["network"];
+			$result = addNIC($vm_id,$vm['name'],$network,$vm['mac_address'],$vm['node_id']);
+			if($result === true) {
+				header("Location: vm.php?id=". (int)$vm_id. "&s=20");
+			} else {
+				$error = "VM NIC add failed: ".$result;
+			}
+		}
+		if (isset($_POST['delete_nic'])) {
+			$nic_id= $_POST["nic_id"];
+			$mac_address = $_POST["mac_address"];
+			$result = deleteNIC($vm['node_id'],$vm['name'],$nic_id,$mac_address);
+			if($result === true) {
+				header("Location: vm.php?id=". (int)$vm_id. "&s=21");
+			} else {
+				$error = "VM NIC delete failed: ".$result;
 			}
 		}
 		if (isset($_POST['set_iow'])) {
@@ -331,6 +355,8 @@ if ($vm) {
 	$isoList = getISOs();
 	$disks = getDisks($vm_id);
 	$backups = getBackups($vm_id);
+	$nics = getNICs($vm_id);
+	$networks = getNetworks($vm['node_id']);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -448,10 +474,10 @@ if ($vm) {
 							<td style="background-color:#999;">Cluster:</td>
 							<td><select id="myInput9" name="cluster" style="text-align:center;width:80%;">
 								<?php foreach ($clusters as $cluster):?>
-									<?php if($cluster['id'] == $vm['cluster']) { ?>
-										<option value="<?php echo htmlspecialchars($cluster['id']);?>" selected> 
+									<?php if($cluster['cluster_id'] == $vm['cluster']) { ?>
+										<option value="<?php echo htmlspecialchars($cluster['cluster_id']);?>" selected> 
 									<?php } else { ?>
-										<option value="<?php echo htmlspecialchars($cluster['id']);?>">
+										<option value="<?php echo htmlspecialchars($cluster['cluster_id']);?>">
 									<?php } ?>
 								<?php echo htmlspecialchars($cluster['friendlyname']);?> 
 									</option>
@@ -480,10 +506,6 @@ if ($vm) {
 							<td><input type="text" id="myInput7" name="websockify" value="<?php echo htmlspecialchars($vm['websockify']);?>" style="text-align:center;width:60%;" readonly> <input type="checkbox" id="enablemyInput7" onchange="toggleInput('myInput7')"> Override</td>
 						</tr>
 						<tr>
-							<td style="background-color:#999;">Network:</td>
-							<td><input type="text" id="myInput8" name="network" value="<?php echo htmlspecialchars($vm['network']);?>" style="text-align:center;width:60%;" readonly> <input type="checkbox" id="enablemyInput8" onchange="toggleInput('myInput8')"> Override</td>
-						</tr>
-						<tr>
 							<td style="background-color:#999;">Created At:</td>
 							<td><?php echo date('m/j/Y @ g:i:s A', $vm['created_at']); ?></td>
 						</tr>
@@ -506,7 +528,6 @@ if ($vm) {
 						<h3>Add New Disk</h3>
 						<input type="hidden" name="csrf_token" value="<?php echo $csrfToken; ?>">
 						<input type="hidden" name="id" value="<?php echo $vm_id; ?>">
-						<input type="hidden" name="vmname" value="<?php echo $vm['name']; ?>">
 						<input type="number" id="disk_size" name="disk_size" placeholder="10" style="text-align:center;width:80px;"> GB <button class="stylish-button" id="add_disk" name="add_disk">Add Disk</button>
 						</form>
 					<br />
@@ -522,7 +543,38 @@ if ($vm) {
 						$diskid = '<input type="hidden" name="disk_id" value="'.$disk_id.'">';
 						echo "<form id='resize_disk' action='vm.php?id=$vm_id' method='post'>$csrf $diskname $diskid $name : <input type='text' id='disk_size' name='disk_size' value='$size' style='text-align:center;width:80px;'> GB <button class='stylish-button' id='resize_disk' name='resize_disk'>Resize</button> <button class='stylish-button' id='delete_disk' name='delete_disk'>Delete</button></form>";
 					endforeach;?>
-					</div>
+				</div>
+				<br />
+				<hr />
+				<br />
+				<h2>Network Management</h2>
+				<div class="disk-list">
+						<form id="add_nic" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post">
+						<h3>Add New NIC</h3>
+						<input type="hidden" name="csrf_token" value="<?php echo $csrfToken; ?>">
+						<input type="hidden" name="id" value="<?php echo $vm_id; ?>">
+						<select id="network" name="network" style="text-align:center;width:150px;">
+						<?php foreach ($networks as $network):?>
+							<option value="<?php echo htmlspecialchars($network['net_name']);?>">
+							<?php echo htmlspecialchars($network['net_name']);?> 
+							</option>
+						<?php endforeach;?>
+						</select>
+						<button class="stylish-button" id="add_nic" name="add_nic">Add NIC</button>
+						</form>
+					<br />
+					<hr />
+					<br />
+					<h3>Attached NICs</h3>
+					<?php foreach ($nics as $nic):
+						$nic_name = $nic['nic_name'];
+						$nic_id = $nic['nic_id'];
+						$mac = $nic['mac_address'];
+						$csrf = '<input type="hidden" name="csrf_token" value="'.$csrfToken.'">';
+						$macaddr = '<input type="hidden" name="mac_address" value="'.$mac.'">';
+						$nic_id = '<input type="hidden" name="nic_id" value="'.$nic_id.'">';
+						echo "<form id='delete_nic' action='vm.php?id=$vm_id' method='post'>$csrf $macaddr $nic_id $nic_name <button class='stylish-button' id='delete_nic' name='delete_nic'>Delete</button></form>";
+					endforeach;?>
 				</div>
 				<br />
 				<hr />
@@ -554,7 +606,6 @@ if ($vm) {
 						$backup_id = '<input type="hidden" name="backup_id" value="'.$backup_id.'">';
 						echo "<form id='deleteBackup' action='vm.php?id=$vm_id' method='post'>$csrf $backupname $backup_id $backup_name | $size | ".date('m/j/Y @ g:i:s A', $created_at)." <button class='stylish-button' id='restoreVM' name='restoreVM'>Restore</button> <button class='stylish-button' id='deleteBackup' name='deleteBackup'>Delete</button></form><br />";
 					endforeach;?>
-					</div>
 				</div>
 				<br />
 				<hr />

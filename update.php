@@ -56,6 +56,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 					log_message TEXT NOT NULL,
 					created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 				);
+				
 				CREATE TABLE IF NOT EXISTS backups (
 					backup_id INTEGER PRIMARY KEY AUTOINCREMENT,
 					backup_name TEXT NOT NULL,
@@ -63,6 +64,22 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 					vm_id INTEGER,
 					node_id INTEGER,
 					created_at DATETIME
+				);
+				
+				CREATE TABLE IF NOT EXISTS nics (
+					nic_id INTEGER PRIMARY KEY AUTOINCREMENT,
+					nic_name TEXT NOT NULL,
+					mac_address TEXT,
+					vm_id INTEGER,
+					node_id INTEGER,
+					last_updated DATETIME
+				);
+				
+				CREATE TABLE IF NOT EXISTS networks (
+					net_id INTEGER PRIMARY KEY AUTOINCREMENT,
+					net_name TEXT NOT NULL,
+					node_id INTEGER,
+					last_updated DATETIME
 				);
 				";
 

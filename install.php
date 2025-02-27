@@ -120,7 +120,6 @@ try {
 		node_id INTEGER NOT NULL,
 		name TEXT NOT NULL,
 		hostname TEXT NOT NULL,
-		ip_address TEXT,
 		status INTEGER,
 		protected INTEGER,
 		cluster INTEGER,
@@ -128,9 +127,9 @@ try {
 		memory INTEGER,
 		ipv4 INTEGER,
 		ipv6 INTEGER,
-		mac_address TEXT,
 		os_template TEXT,
 		os_type TEXT,
+		mac_address TEXT,
 		nic INTEGER,
 		iow INTEGER,
 		notes TEXT,
@@ -178,6 +177,20 @@ try {
 		vm_id INTEGER,
 		node_id INTEGER,
 		created_at DATETIME
+	)",
+	'nics' => "CREATE TABLE IF NOT EXISTS nics (
+		nic_id INTEGER PRIMARY KEY AUTOINCREMENT,
+		nic_name TEXT NOT NULL,
+		mac_address TEXT,
+		vm_id INTEGER NOT NULL,
+		node_id INTEGER NOT NULL,
+		last_updated DATETIME
+	)",
+	'networks' => "CREATE TABLE IF NOT EXISTS networks (
+		net_id INTEGER PRIMARY KEY AUTOINCREMENT,
+		net_name TEXT NOT NULL,
+		node_id INTEGER NOT NULL,
+		last_updated DATETIME
 	)"
 	];
 	foreach ($tables as $name => $sql) {

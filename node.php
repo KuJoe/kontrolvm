@@ -16,6 +16,10 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 				$success = "Node updated successfully.";
 			} elseif ($_GET['s'] == '2') {
 				$success = "Node VMs imported successfully.";
+			} elseif ($_GET['s'] == '3') {
+				$success = "Network added successfully.";
+			} elseif ($_GET['s'] == '4') {
+				$success = "Network deleted successfully.";
 			}
 		}
 		$node_id = $_GET['id'];
@@ -71,6 +75,22 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 				$error = "Node import failed: ".$result;
 			}
 		}
+		if (isset($_POST['add_network'])) {
+			$result = addNetwork($node_id,$_POST["net_name"]);
+			if($result === true) {
+				header("Location: node.php?id=". (int)$node_id. "&s=3");
+			} else {
+				$error = "Node network add failed: ".$result;
+			}
+		}
+		if (isset($_POST['delete_network'])) {
+			$result = deleteNetwork($node_id,$_POST["id"]);
+			if($result === true) {
+				header("Location: node.php?id=". (int)$node_id. "&s=4");
+			} else {
+				$error = "Node network delete failed: ".$result;
+			}
+		}
 		if (isset($_POST['deleteNode'])) {
 			if (isset($_POST['confirm'])) {
 				$confirm = $_POST['confirm'];
@@ -90,7 +110,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 }
 
 if ($node) {
-	$clusters = getClusters('all');
 	$script_name = 'updateNodes.php';
 	$last_run_time = getLastRunTime($script_name); 
 	if (!$last_run_time || time() - $last_run_time >= 3600) {
@@ -102,6 +121,8 @@ if ($node) {
 	} else {
 		$state = "";
 	}
+	$clusters = getClusters('all');
+	$networks = getNetworks($node_id);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -256,18 +277,41 @@ if ($node) {
 				<br />
 				<hr />
 				<br />
-				<table>
-					<tr>
-						<td style="background-color:#999;">IMPORT VMS:</td>
-						<td style="padding:10px;">
-						<form id="importVMs" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post">
-						<input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
-						<input type="hidden" name="id" value="<?php echo htmlspecialchars($node_id); ?>">
-						<button type="submit" name="importVMs" id="importVMs" class="stylish-button" style="background-color:green;">IMPORT</button>
+				<h2>Network Management</h2>
+				<div class="disk-list">
+						<form id="add_network" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post">
+						<h3>Add New Network</h3>
+						<input type="hidden" name="csrf_token" value="<?php echo $csrfToken; ?>">
+						<input type="hidden" name="id" value="<?php echo $node_id; ?>">
+						<input type="text" id="net_name" name="net_name" placeholder="br1" style="text-align:center;width:80px;"><button class="stylish-button" id="add_network" name="add_network">Add Network</button>
 						</form>
-						</td>
-					</tr>					
-				</table>
+					<br />
+					<hr />
+					<br />
+					<h3>Available Networks</h3>
+					<?php foreach ($networks as $network):
+						$name = $network['net_name'];
+						$net_id = $network['net_id'];
+						$csrf = '<input type="hidden" name="csrf_token" value="'.$csrfToken.'">';
+						$netname = '<input type="hidden" name="net_name" value="'.$name.'">';
+						$netid = '<input type="hidden" name="net_id" value="'.$net_id.'">';
+						echo "<form id='delete_network' action='vm.php?id=$vm_id' method='post'>$csrf $netname $netid $name <button class='stylish-button' id='delete_network' name='delete_network'>Delete</button></form>";
+					endforeach;?>
+				</div>
+				<br />
+				<hr />
+				<br />
+				<h2>Import VMs</h2>
+				<div class="disk-list">
+					<form id="importVMs" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post">
+					<input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
+					<input type="hidden" name="id" value="<?php echo htmlspecialchars($node_id); ?>">
+					<button type="submit" name="importVMs" id="importVMs" class="stylish-button" style="background-color:green;">IMPORT</button>
+					</form>
+				</div>
+				<br />
+				<hr />
+				<br />
 				<?php if ($node['status'] == "0") { ?>
 				<br />
 				<hr />
