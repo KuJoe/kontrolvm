@@ -282,7 +282,7 @@ if ($node) {
 						<form id="add_network" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post">
 						<h3>Add New Network</h3>
 						<input type="hidden" name="csrf_token" value="<?php echo $csrfToken; ?>">
-						<input type="hidden" name="id" value="<?php echo $node_id; ?>">
+						<input type="hidden" name="id" value="<?php echo htmlspecialchars($node_id); ?>">
 						<input type="text" id="net_name" name="net_name" placeholder="br1" style="text-align:center;width:80px;"><button class="stylish-button" id="add_network" name="add_network">Add Network</button>
 						</form>
 					<br />
