@@ -834,9 +834,9 @@ if ($vm) {
 				}
 			});
 		}
-		updateVmStatus('<?php echo $vm['name'];?>','<?php echo $vm['node_id'];?>');
+		updateVmStatus('<?php if(isset($vm)) { echo $vm['name']; }?>','<?php if(isset($vm)) { echo $vm['node_id']; }?>');
 		setInterval(function() {
-			updateVmStatus('<?php echo $vm['name'];?>','<?php echo $vm['node_id'];?>');
+			updateVmStatus('<?php if(isset($vm)) { echo $vm['name']; }?>','<?php if(isset($vm)) { echo $vm['node_id']; }?>');
 		}, 15000);
 	</script>
 </body>

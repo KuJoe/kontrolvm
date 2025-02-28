@@ -1228,7 +1228,9 @@ function createVM($memory,$disk_space,$cpu_cores,$cluster) {
 		$password = substr(md5(rand().rand()), 0, 6);
 		$encpw = encrypt($password);
 		$disk1 = $vmname."-disk1.img";
+		$nic_name = $vmname."_1";
 		$memorymb = $memory * 1024;
+		$timenow = time();
 				
 		$ssh = connectNode($node_id);
 		$ssh->exec('sudo /usr/bin/virt-install --name '.$vmname.' --ram '.$memorymb.' --vcpus='.$cpu_cores.' --disk path=/home/kontrolvm/data/'.$disk1.',size='.$disk_space.',format=qcow2,bus=virtio,cache=writeback --network=bridge:virbr0,model=virtio --cdrom /home/kontrolvm/isos/systemrescue-amd64.iso --os-variant linux2022 --osinfo generic --noautoconsole --graphics vnc,listen=0.0.0.0,port='.$vncport.',password='.$password.',keymap=en-us --hvm --boot uefi');
@@ -1251,17 +1253,21 @@ function createVM($memory,$disk_space,$cpu_cores,$cluster) {
 		$ssh->exec('/bin/touch /home/kontrolvm/addrs/'.$vmname.'');
 		$ssh->exec('sudo /bin/sh /home/kontrolvm/create_console.sh '.$wsport.' '.$vncport.'');
 
-		$data = [':name' => $vmname,':hostname' => $vmname,':status' => 1,':node_id' => $node_id,':cluster' => $cluster,':cpu_cores' => $cpu_cores,':memory' => $memory,':protected' => 0,':mac_address' => $macaddr,':nic' => 1000,':iow' => 1000,':vncpw' => $encpw,':vncport' => $vncport,':websockify' => $wsport,':netdriver' => 'virtio',':diskdriver' => 'virtio',':bootorder' => 'cdrom',':created_at' => time(),':last_updated' => time()];
+		$data = [':name' => $vmname,':hostname' => $vmname,':status' => 1,':node_id' => $node_id,':cluster' => $cluster,':cpu_cores' => $cpu_cores,':memory' => $memory,':protected' => 0,':mac_address' => $macaddr,':nic' => 1000,':iow' => 1000,':vncpw' => $encpw,':vncport' => $vncport,':websockify' => $wsport,':netdriver' => 'virtio',':diskdriver' => 'virtio',':bootorder' => 'cdrom',':created_at' => $timenow,':last_updated' => $timenow];
 		$stmt = $conn->prepare("INSERT INTO vms (name, hostname, node_id, status, cluster, cpu_cores, memory, mac_address, nic, iow, vncpw, vncport, websockify, netdriver, diskdriver, bootorder, created_at, last_updated, protected) VALUES (:name,:hostname,:node_id,:status,:cluster,:cpu_cores,:memory,:mac_address,:nic,:iow,:vncpw,:vncport,:websockify,:netdriver,:diskdriver,:bootorder,:created_at,:last_updated,:protected)");
 		$stmt->execute($data);
 
 		$vm_id = $conn->lastInsertId();	
-		$data = [':disk_name' => $disk1,':disk_size' => $disk_space,':vm_id' => $vm_id,':node_id' => $node_id,':last_updated' => time()];
+		$data = [':disk_name' => $disk1,':disk_size' => $disk_space,':vm_id' => $vm_id,':node_id' => $node_id,':last_updated' => $timenow];
 		$stmt = $conn->prepare("INSERT INTO disks (disk_name, disk_size, vm_id, node_id, last_updated) VALUES (:disk_name,:disk_size,:vm_id,:node_id,:last_updated)");
 		$stmt->execute($data);
 
 		$data = [':lastvnc' => $vncport,':lastws' => $wsport,':lastvm' => $vmnum,':node_id' => $node_id];
 		$stmt = $conn->prepare("UPDATE nodes SET lastvnc =:lastvnc, lastws =:lastws, lastvm =:lastvm WHERE node_id =:node_id");
+		$stmt->execute($data);
+		
+		$data = [':nic_name' => $nic_name,':mac_address' => $macaddr,':vm_id' => $vm_id,':node_id' => $node_id,':last_updated' => $timenow];
+		$stmt = $conn->prepare('INSERT INTO nics (nic_name, mac_address, vm_id, node_id, last_updated) VALUES (:nic_name, :mac_address, :vm_id, :node_id, :last_updated)');
 		$stmt->execute($data);
 
 		return true;
@@ -1336,7 +1342,7 @@ function destroyVM($vm_id,$vmname,$websockify,$vncport,$node_id,$confirm) {
 			sleep(5);
 			$disks = getDisks($vm_id);
 			foreach ($disks as $disk) {
-				deleteDisk($vm_id,$disk['disk_id'],$disk['disk_name'],$node_id);
+				deleteDisk($vm_id,$vmname,$disk['disk_id'],$disk['disk_name'],$node_id);
 			}
 			#echo $ssh->getLog();
 			$ssh->disconnect();
