@@ -28,7 +28,7 @@ All of the current assets and UI are placeholders, I'll find somebody to design 
  - ✅Update user details (username, email, status, password)
  - ✅Cloudflare Turnstile invisible CAPTCHA
  - ✅Multifactor Authentication
- - 🚧User permissions/levels
+ - ✅User permissions/levels
  - ✅Password reset
  - 🚧Notifications
 
@@ -40,7 +40,7 @@ All of the current assets and UI are placeholders, I'll find somebody to design 
  - ✅Get node statistics (CPU, RAM, disk usage, etc.)
  - ✅Update node statistics
  - ✅Enable/disable nodes
- - 🚧Import existing Linux KVM nodes
+ - ✅Import existing Linux KVM nodes
  - 🚧Setup multiple virtual networks (i.e. VLANs, public, private, etc...)
 
 ### VM Management
@@ -59,8 +59,8 @@ All of the current assets and UI are placeholders, I'll find somebody to design 
  - ✅Set boot order for VMs
  - ✅Adjusting VM resources (CPU, RAM, etc...)
  - ✅Adding and removing disks
- - 🚧Adding and removing NICs
- - 🚧Backup/Restore/Snapshot VMs
+ - ✅Adding and removing NICs
+ - ✅Backup/Restore/Snapshot VMs
  - 🚧Migrate VMs between nodes/clusters
  - 🚧IP Management (DHCP, vSwitch, etc...)
  - 🚧Display VM resource usage + history
@@ -72,7 +72,7 @@ All of the current assets and UI are placeholders, I'll find somebody to design 
  - ✅Add clusters
  - ✅Delete clusters
  - ✅Enable/disable clusters
- - 🚧Load balancing
+ - ✅Load balancing
  - 🚧Resource based deployment
 
 ### Other Features
