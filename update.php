@@ -56,6 +56,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 				CREATE TABLE IF NOT EXISTS logs (
 					log_id INTEGER PRIMARY KEY AUTOINCREMENT,
 					log_message TEXT NOT NULL,
+					straff_id INTEGER,
 					created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 				);
 				

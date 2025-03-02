@@ -166,6 +166,7 @@ try {
 	'logs' => "CREATE TABLE IF NOT EXISTS logs (
 		log_id INTEGER PRIMARY KEY AUTOINCREMENT,
 		log_message TEXT NOT NULL,
+		staff_id INTEGER,
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 	)",
 	'backups' => "CREATE TABLE IF NOT EXISTS backups (

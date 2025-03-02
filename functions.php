@@ -24,17 +24,18 @@ function getRealUserIp() {
 	}
 }
 
-function logError($message) {
+function logMessage($message,$staff_id = 0) {
 	include('config.php');
 	$conn = new PDO("sqlite:$db_file_path");
 	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 	try {
-		$stmt = $conn->prepare('INSERT INTO logs (log_message) VALUES (:log_message)');
+		$stmt = $conn->prepare('INSERT INTO logs (log_message,staff_id) VALUES (:log_message,:staff_id)');
 		$stmt->bindValue(':log_message', "$message", SQLITE3_TEXT);
+		$stmt->bindParam(':staff_id', $staff_id, SQLITE3_INTEGER);
 		$result = $stmt->execute();
 		return true;
 	} catch (PDOException $e) {
-		logError("Error writing log ($message): " . $e->getMessage());
+		error_log("Error writing log ($message): " . $e->getMessage());
 		return false; 
 	}
 }
@@ -123,7 +124,7 @@ function connectNode($node_id) {
 			return $ssh;
 		} else {
 			$error = $ssh->getLastError();
-			logError("SSH connection failed for $node_id: $error");
+			logMessage("SSH connection failed for $node_id: $error");
 			return false;
 		}
 	} else {
@@ -177,11 +178,11 @@ function sendMail($message,$subject,$email) {
 			$mail->send();
 			return true;
 		} catch (Exception $e) {
-			logError("Mailer Error: ".$mail->ErrorInfo);
+			logMessage("Mailer Error: ".$mail->ErrorInfo);
 			return false;
 		}
 	} else {
-		logError("Mailer sending error: Please configure the SMTP settings in config.php");
+		logMessage("Mailer sending error: Please configure the SMTP settings in config.php");
 		return false;
 	}
 }
@@ -228,7 +229,7 @@ function checkLockedOut($staff_id) {
 			return false;
 		}
 	} catch(PDOException $e) {
-		logError("Database error (checkLockedOut): " . $e->getMessage());
+		logMessage("Database error (checkLockedOut): " . $e->getMessage());
 		return false;
 	}
 	return false;
@@ -260,7 +261,7 @@ function checkNodeCleaned($node_id) {
 		$stmt->execute();
 		$count = $stmt->fetchColumn();
     } catch(PDOException $e) {
-		logError("Database error (checkNodeCleaned): " . $e->getMessage());
+		logMessage("Database error (checkNodeCleaned): " . $e->getMessage());
 		return false;
 	}
     return $count > 0 ? false : true;
@@ -277,7 +278,7 @@ function checkClusterCleaned($cluster) {
 		$stmt->execute();
 		$count = $stmt->fetchColumn();
 	} catch (PDOException $e) {
-		logError("Error counting active nodes: " . $e->getMessage());
+		logMessage("Error counting active nodes: " . $e->getMessage());
 		return false;
 	}
     return $count > 0 ? false : true;
@@ -298,7 +299,7 @@ function createUser($username,$email) {
 		$result = $stmt->execute();
 		return $password;
 	} catch (PDOException $e) {
-		logError("Error creating staff: " . $e->getMessage());
+		logMessage("Error creating staff: " . $e->getMessage());
 		return false; 
 	}
 }
@@ -315,15 +316,15 @@ function deleteUser($staff_id,$confirm) {
 				$result = $stmt->execute();
 				return true;
 			} else {
-				logError("Cannot delete ID 1 account.");
+				logMessage("Cannot delete ID 1 account.");
 				return false;
 			}
 		} catch (PDOException $e) {
-			logError("Error deleting staff: " . $e->getMessage());
+			logMessage("Error deleting staff: " . $e->getMessage());
 			return false; 
 		}
 	} else {
-		logError("No confirmation ($staff_id)");
+		logMessage("No confirmation ($staff_id)");
 		return false;
 	}
 }
@@ -347,7 +348,7 @@ function updateStaff($staff_id,$username,$email,$status,$role,$password1,$passwo
 				$stmt->execute();
 				return true;
 			} else {
-				logError("Error updating account ($staff_id): password mismatch");
+				logMessage("Error updating account ($staff_id): password mismatch");
 				return false;
 			}
 		} else {
@@ -361,7 +362,7 @@ function updateStaff($staff_id,$username,$email,$status,$role,$password1,$passwo
 			return true;
 		}
 	} catch (PDOException $e) {
-		logError("Error updating account ($staff_id): " . $e->getMessage());
+		logMessage("Error updating account ($staff_id): " . $e->getMessage());
 		return false; 
 	}
 }
@@ -379,7 +380,7 @@ function getStaffDetails($staff_id) {
 		$staff = $stmt->fetch(PDO::FETCH_ASSOC);
 		return $staff; 
 	} catch (PDOException $e) {
-		logError("Error fetching staff details: " . $e->getMessage());
+		logMessage("Error fetching staff details: " . $e->getMessage());
 		return false; 
 	}
 }
@@ -399,7 +400,7 @@ function getClusterName($cluster_id) {
 		return $friendlyname;
 
 	} catch (PDOException $e) {
-		logError("Error fetching node name: ". $e->getMessage());
+		logMessage("Error fetching node name: ". $e->getMessage());
 		return false; // Or handle the error differently
 	}
 }
@@ -419,7 +420,7 @@ function getNodeName($node_id) {
 		return $hostname;
 
 	} catch (PDOException $e) {
-		logError("Error fetching node name: ". $e->getMessage());
+		logMessage("Error fetching node name: ". $e->getMessage());
 		return false; // Or handle the error differently
 	}
 }
@@ -489,15 +490,15 @@ function deleteNode($node_id,$hostname,$confirm) {
 				$stmt->execute();
 				return true;
 			} catch (PDOException $e) {
-				logError("Error deleting node: ". $e->getMessage());
+				logMessage("Error deleting node: ". $e->getMessage());
 				return false;
 			}
 		} else {
-			logError("Node has VMs on it ($node_id)");
+			logMessage("Node has VMs on it ($node_id)");
 			return false;
 		}
 	} else {
-		logError("No confirmation ($node_id)");
+		logMessage("No confirmation ($node_id)");
 		return false;
 	}
 }
@@ -542,7 +543,7 @@ function getNetworks($node_id) {
 		$networks = $stmt->fetchAll(PDO::FETCH_ASSOC);
 		return $networks;
 	} catch (PDOException $e) {
-		logError("Error fetching cluster list: " . $e->getMessage());
+		logMessage("Error fetching cluster list: " . $e->getMessage());
 		return false;
 	}
 }
@@ -561,7 +562,7 @@ function addNetwork($node_id,$net_name) {
 		return true;
 	} catch (PDOException $e) {
 		$error = $e->getMessage();
-		logError("Error adding network ($node_id - $net_name): ".$error);
+		logMessage("Error adding network ($node_id - $net_name): ".$error);
 		return $error;
 	}
 }
@@ -577,7 +578,7 @@ function deleteNetwork($node_id, $net_id) {
 		return true;
 	} catch (PDOException $e) {
 		$error = $e->getMessage();
-		logError("Error deleting network ($node_id - $net_id): ".$error);
+		logMessage("Error deleting network ($node_id - $net_id): ".$error);
 		return $error;
 	}
 }
@@ -610,7 +611,7 @@ function getNodeDetails($node_id) {
 		$node = $stmt->fetch(PDO::FETCH_ASSOC);
 		return $node; 
 	} catch (PDOException $e) {
-		logError("Error fetching node details: " . $e->getMessage());
+		logMessage("Error fetching node details: " . $e->getMessage());
 		return false; 
 	}
 }
@@ -628,7 +629,7 @@ function getVMDetails($vm_id) {
 		$node = $stmt->fetch(PDO::FETCH_ASSOC);
 		return $node; 
 	} catch (PDOException $e) {
-		logError("Error fetching node details: " . $e->getMessage());
+		logMessage("Error fetching node details: " . $e->getMessage());
 		return false; 
 	}
 }
@@ -646,7 +647,7 @@ function getClusterDetails($cluster_id) {
 		$cluster = $stmt->fetch(PDO::FETCH_ASSOC);
 		return $cluster; 
 	} catch (PDOException $e) {
-		logError("Error fetching cluster details: " . $e->getMessage());
+		logMessage("Error fetching cluster details: " . $e->getMessage());
 		return false; 
 	}
 }
@@ -677,7 +678,7 @@ function getNodeStats($node_id) {
 		$stmt->bindValue(':last_updated', time(), SQLITE3_INTEGER);
 		$stmt->execute();
 	} catch (PDOException $e) {
-		logError("Error fetching node details: " . $e->getMessage());
+		logMessage("Error fetching node details: " . $e->getMessage());
 		return false; 
 	}
 }
@@ -737,7 +738,7 @@ function getNodeInfo($node_id) {
 		updateNode($node_id, $node_data);
 		return true;
 	} catch (Exception $e) {
-		logError("Error connecting to $node_id: " . $e->getMessage());
+		logMessage("Error connecting to $node_id: " . $e->getMessage());
 		return;
 	}
 }
@@ -758,7 +759,7 @@ function getServerList($status) {
 		$servers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 		return $servers;
 	} catch (PDOException $e) {
-		logError("Error fetching server list: " . $e->getMessage());
+		logMessage("Error fetching server list: " . $e->getMessage());
 		return false;
 	}
 }
@@ -778,7 +779,7 @@ function getClusters($status) {
 		$clusters = $stmt->fetchAll(PDO::FETCH_ASSOC);
 		return $clusters;
 	} catch (PDOException $e) {
-		logError("Error fetching cluster list: " . $e->getMessage());
+		logMessage("Error fetching cluster list: " . $e->getMessage());
 		return false;
 	}
 }
@@ -800,7 +801,7 @@ function getUserList($status) {
 		$users = $stmt->fetchAll(PDO::FETCH_ASSOC);
 		return $users;
 	} catch (PDOException $e) {
-		logError("Error fetching user list: " . $e->getMessage());
+		logMessage("Error fetching user list: " . $e->getMessage());
 		return false;
 	}
 }
@@ -814,7 +815,7 @@ function getVMState($vmname,$node_id) {
 		$ssh->disconnect();
 		return trim($status);
 	} catch (PDOException $e) {
-		logError("Error stopping VM ($vm_id): " . $e->getMessage());
+		logMessage("Error stopping VM ($vm_id): " . $e->getMessage());
 		return false; 
 	}
 }
@@ -836,7 +837,7 @@ function getVMList($status) {
 		$servers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 		return $servers;
 	} catch (PDOException $e) {
-		logError("Error fetching VM list: " . $e->getMessage());
+		logMessage("Error fetching VM list: " . $e->getMessage());
 		return false;
 	}
 }
@@ -851,7 +852,7 @@ function getISOs() {
 		$isos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 		return $isos;
 	} catch (PDOException $e) {
-		logError("Error fetching ISOs list: " . $e->getMessage());
+		logMessage("Error fetching ISOs list: " . $e->getMessage());
 		return false;
 	}
 }
@@ -901,7 +902,7 @@ function downloadISOs($download, $filename) {
 			$ssh->disconnect();
 			return true;
 		} catch (PDOException $e) {
-			logError("Error downloading ISO ($node_id): " . $e->getMessage());
+			logMessage("Error downloading ISO ($node_id): " . $e->getMessage());
 			return false; 
 		}
 	}
@@ -925,7 +926,7 @@ function getIPs($version) {
 		$ips = $stmt->fetchAll(PDO::FETCH_ASSOC);
 		return $ips;
 	} catch (PDOException $e) {
-		logError("Error fetching IPs: " . $e->getMessage());
+		logMessage("Error fetching IPs: " . $e->getMessage());
 		return false;
 	}
 }
@@ -946,7 +947,7 @@ function getAvailableIPs($cluster,$version) {
 		$ips = $stmt->fetchAll(PDO::FETCH_ASSOC);
 		return $ips;
 	} catch (PDOException $e) {
-		logError("Error fetching IP list: " . $e->getMessage());
+		logMessage("Error fetching IP list: " . $e->getMessage());
 		return false;
 	}
 }
@@ -967,7 +968,7 @@ function getVMIPs($vmid,$version) {
 		$ips = $stmt->fetchAll(PDO::FETCH_ASSOC);
 		return $ips;
 	} catch (PDOException $e) {
-		logError("Error fetching IPv$version list for VM ($vmid): " . $e->getMessage());
+		logMessage("Error fetching IPv$version list for VM ($vmid): " . $e->getMessage());
 		return false;
 	}
 }
@@ -1042,7 +1043,7 @@ function deleteIP($ip_id,$ipaddress) {
 		$stmt->execute();
 		return true;
 	} catch (PDOException $e) {
-		logError("Error deleting row: ". $e->getMessage());
+		logMessage("Error deleting row: ". $e->getMessage());
 		return false;
 	}
 }
@@ -1064,7 +1065,7 @@ function enableIP($ip_id,$ipaddress) {
 		$stmt->execute();
 		return true;
 	} catch (PDOException $e) {
-		logError("Error updating row: ". $e->getMessage());
+		logMessage("Error updating row: ". $e->getMessage());
 		return false;
 	}
 }
@@ -1086,7 +1087,7 @@ function disableIP($ip_id,$ipaddress) {
 		$stmt->execute();
 		return true;
 	} catch (PDOException $e) {
-		logError("Error updating row: ". $e->getMessage());
+		logMessage("Error updating row: ". $e->getMessage());
 		return false;
 	}
 }
@@ -1110,7 +1111,7 @@ function attachIP($vmid,$ip_id,$node,$version) {
 		$stmt->execute();
 		return true;
 	} catch (PDOException $e) {
-		logError("Error updating row: ". $e->getMessage());
+		logMessage("Error updating row: ". $e->getMessage());
 		return false;
 	}
 }
@@ -1133,7 +1134,7 @@ function detachIP($ip_id,$version) {
 		$stmt->execute();
 		return true;
 	} catch (PDOException $e) {
-		logError("Error updating row: ". $e->getMessage());
+		logMessage("Error updating row: ". $e->getMessage());
 		return false;
 	}
 }
@@ -1154,7 +1155,7 @@ function getTotalCPU() {
 			return "0";
 		}
 	} catch (PDOException $e) {
-		logError("Error calculating total CPU cores: " . $e->getMessage());
+		logMessage("Error calculating total CPU cores: " . $e->getMessage());
 		return "0";
 	}
 }
@@ -1175,7 +1176,7 @@ function getTotalDisk() {
 			return "0";
 		}
 	} catch (PDOException $e) {
-		logError("Error calculating total disk space: " . $e->getMessage());
+		logMessage("Error calculating total disk space: " . $e->getMessage());
 		return "0";
 	}
 }
@@ -1196,7 +1197,7 @@ function getTotalRAM() {
 			return "0";
 		}
 	} catch (PDOException $e) {
-		logError("Error calculating total RAM: " . $e->getMessage());
+		logMessage("Error calculating total RAM: " . $e->getMessage());
 		return "0";
 	}
 }
@@ -1217,7 +1218,7 @@ function getTotalVMs() {
 			return "0";
 		}
 	} catch (PDOException $e) {
-		logError("Error calculating total VMs: " . $e->getMessage());
+		logMessage("Error calculating total VMs: " . $e->getMessage());
 		return "0";
 	}
 }
@@ -1237,7 +1238,7 @@ function getTotalNodes() {
 			return "0";
 		}		
 	} catch (PDOException $e) {
-		logError("Error counting active nodes: " . $e->getMessage());
+		logMessage("Error counting active nodes: " . $e->getMessage());
 		return "0";
 	}
 }
@@ -1253,7 +1254,7 @@ function getLastRunTime($script_name) {
 		$stmt->execute();
 		return $stmt->fetchColumn();
 	} catch (PDOException $e) {
-		logError("Error getting last run time: " . $e->getMessage());
+		logMessage("Error getting last run time: " . $e->getMessage());
 		return false; 
 	}
 }
@@ -1281,7 +1282,7 @@ function updateLastRunTime($script_name) {
 			return true;
 		}
 	} catch (PDOException $e) {
-		logError("Error updating last run time: " . $e->getMessage());
+		logMessage("Error updating last run time: " . $e->getMessage());
 		return false; 
 	}
 }
@@ -1303,7 +1304,7 @@ function createVM($memory,$disk_space,$cpu_cores,$cluster) {
 			$wsport = $node["lastws"]+1;
 			$vmnum = $node["lastvm"]+1;
 		} else {
-			logError("Error finding an available node ($cluster).");
+			logMessage("Error finding an available node ($cluster).");
 			return false; 
 		}
 
@@ -1360,7 +1361,7 @@ function createVM($memory,$disk_space,$cpu_cores,$cluster) {
 
 		return true;
 	} catch (PDOException $e) {
-		logError("Error creating VM ($vmname): " . $e->getMessage());
+		logMessage("Error creating VM ($vmname): " . $e->getMessage());
 		return false; 
 	}
 }
@@ -1373,7 +1374,7 @@ function restartVM($vm_id,$vmname,$node_id) {
 		$ssh->disconnect();
 		return true;
 	} catch (PDOException $e) {
-		logError("Error restarting VM ($vm_id): " . $e->getMessage());
+		logMessage("Error restarting VM ($vm_id): " . $e->getMessage());
 		return false; 
 	}
 }
@@ -1386,7 +1387,7 @@ function startVM($vm_id,$vmname,$node_id) {
 		$ssh->disconnect();
 		return true;
 	} catch (PDOException $e) {
-		logError("Error starting VM ($vm_id): " . $e->getMessage());
+		logMessage("Error starting VM ($vm_id): " . $e->getMessage());
 		return false; 
 	}
 }
@@ -1399,7 +1400,7 @@ function stopVM($vm_id,$vmname,$node_id) {
 		$ssh->disconnect();
 		return true;
 	} catch (PDOException $e) {
-		logError("Error stopping VM ($vm_id): " . $e->getMessage());
+		logMessage("Error stopping VM ($vm_id): " . $e->getMessage());
 		return false; 
 	}
 }
@@ -1412,7 +1413,7 @@ function shutdownVM($vm_id,$vmname,$node_id) {
 		$ssh->disconnect();
 		return true;
 	} catch (PDOException $e) {
-		logError("Error stopping VM ($vm_id): " . $e->getMessage());
+		logMessage("Error stopping VM ($vm_id): " . $e->getMessage());
 		return false; 
 	}
 }
@@ -1454,11 +1455,11 @@ function destroyVM($vm_id,$vmname,$websockify,$vncport,$node_id,$confirm) {
 			$stmt->execute();
 			return true;
 		} catch (PDOException $e) {
-			logError("Error stopping VM ($vm_id): " . $e->getMessage());
+			logMessage("Error stopping VM ($vm_id): " . $e->getMessage());
 			return false; 
 		}
 	} else {
-		logError("No confirmation ($vm_id)");
+		logMessage("No confirmation ($vm_id)");
 		return false;
 	}
 }
@@ -1543,7 +1544,7 @@ function importVMs($node_id) {
 		}
 	} catch (Exception $e) {
 		$error = "Error updating VM list: ". $e->getMessage();
-		logError($error);
+		logMessage($error);
 		return false; 
 	}
 	$conn = null;
@@ -1568,7 +1569,7 @@ function setCPU($vm_id,$vmname,$cpu,$node_id) {
 		$stmt->execute();
 		return true;
 	} catch (PDOException $e) {
-		logError("Error updating VM IOW ($vm_id): " . $e->getMessage());
+		logMessage("Error updating VM IOW ($vm_id): " . $e->getMessage());
 		return false; 
 	}	
 }
@@ -1591,7 +1592,7 @@ function setRAM($vm_id,$vmname,$memory,$node_id) {
 		$stmt->execute();
 		return true;
 	} catch (PDOException $e) {
-		logError("Error updating VM IOW ($vm_id): " . $e->getMessage());
+		logMessage("Error updating VM IOW ($vm_id): " . $e->getMessage());
 		return false; 
 	}	
 }
@@ -1607,7 +1608,7 @@ function getDisks($vm_id) {
 		$disks = $stmt->fetchAll(PDO::FETCH_ASSOC);
 		return $disks;
 	} catch (PDOException $e) {
-		logError("Error fetching disk list ($vm_id): " . $e->getMessage());
+		logMessage("Error fetching disk list ($vm_id): " . $e->getMessage());
 		return false;
 	}
 }
@@ -1662,12 +1663,12 @@ function addDisk($vm_id,$vmname,$disk_size,$node_id) {
 			return true;
 		} catch (PDOException $e) {
 			$error = $e->getMessage();
-			logError("Error adding VM disk ($vm_id): ".$error);
+			logMessage("Error adding VM disk ($vm_id): ".$error);
 			return $error;
 		}
 	} else {
 		$error = "Disk size incorrect.";
-		logError("Error adding VM disk ($vm_id): ".$error);
+		logMessage("Error adding VM disk ($vm_id): ".$error);
 		return $error;
 	}
 }
@@ -1689,7 +1690,7 @@ function resizeDisk($vm_id,$vmname,$disk_id,$disk_name,$disk_size,$node_id) {
 		return true;
 	} catch (PDOException $e) {
 		$error = $e->getMessage();
-		logError("Error updating VM disk ($disk_id): ".$error);
+		logMessage("Error updating VM disk ($disk_id): ".$error);
 		return $error;
 	}	
 }
@@ -1711,7 +1712,7 @@ function deleteDisk($vm_id,$vmname,$disk_id,$disk_name,$node_id) {
 		return true;
 	} catch (PDOException $e) {
 		$error = $e->getMessage();
-		logError("Error deleting VM disk ($disk_id - $disk_name): ".$error);
+		logMessage("Error deleting VM disk ($disk_id - $disk_name): ".$error);
 		return $error;
 	}
 }
@@ -1727,7 +1728,7 @@ function getNICs($vm_id) {
 		$nics = $stmt->fetchAll(PDO::FETCH_ASSOC);
 		return $nics;
 	} catch (PDOException $e) {
-		logError("Error fetching NIC list ($vm_id): " . $e->getMessage());
+		logMessage("Error fetching NIC list ($vm_id): " . $e->getMessage());
 		return false;
 	}
 }
@@ -1759,7 +1760,7 @@ function addNIC($vm_id, $vmname, $network, $macaddr, $node_id) {
 		return true;
 	} catch (PDOException $e) {
 		$error = $e->getMessage();
-		logError("Error adding VM NIC ($vmname): ".$error);
+		logMessage("Error adding VM NIC ($vmname): ".$error);
 		return $error;
 	}
 }
@@ -1781,7 +1782,7 @@ function deleteNIC($node_id, $vmname, $nic_id, $macaddr) {
 		return true;
 	} catch (PDOException $e) {
 		$error = $e->getMessage();
-		logError("Error deleting VM NIC ($nic_id - $vmname): ".$error);
+		logMessage("Error deleting VM NIC ($nic_id - $vmname): ".$error);
 		return $error;
 	}
 }
@@ -1805,7 +1806,7 @@ function setIOW($vm_id,$vmname,$speed,$node_id) {
 		return true;
 	} catch (PDOException $e) {
 		$error = $e->getMessage();
-		logError("Error updating VM IOW ($vm_id): ".$error);
+		logMessage("Error updating VM IOW ($vm_id): ".$error);
 		return $error;
 	}	
 }
@@ -1847,7 +1848,7 @@ function setNIC($vm_id,$vmname,$nicToChange,$speed,$node_id) {
 		$stmt->execute();
 		return true;
 	} catch (PDOException $e) {
-		logError("Error updating VM NIC ($vm_id): " . $e->getMessage());
+		logMessage("Error updating VM NIC ($vm_id): " . $e->getMessage());
 		return false; 
 	}
 }
@@ -1872,7 +1873,7 @@ function disableVNC($vm_id,$vmname,$websockify,$vncport,$node_id) {
 		$stmt->execute();
 		return true;
 	} catch (PDOException $e) {
-		logError("Error disabling VM VNC ($vm_id): " . $e->getMessage());
+		logMessage("Error disabling VM VNC ($vm_id): " . $e->getMessage());
 		return false; 
 	}
 }
@@ -1898,7 +1899,7 @@ function enableVNC($vm_id,$vmname,$websockify,$vncport,$node_id) {
 		$stmt->execute();
 		return true;
 	} catch (PDOException $e) {
-		logError("Error disabling VM VNC ($vm_id): " . $e->getMessage());
+		logMessage("Error disabling VM VNC ($vm_id): " . $e->getMessage());
 		return false; 
 	}
 }
@@ -1922,7 +1923,7 @@ function consolePW($vm_id,$vmname,$vncport,$node_id) {
 		$stmt->execute();
 		return true;
 	} catch (PDOException $e) {
-		logError("Error disabling VM VNC ($vm_id): " . $e->getMessage());
+		logMessage("Error disabling VM VNC ($vm_id): " . $e->getMessage());
 		return false; 
 	}
 }
@@ -1948,7 +1949,7 @@ function mountISO($vm_id,$vmname,$ostemplate,$node_id) {
 		$stmt->execute();
 		return true;
 	} catch (PDOException $e) {
-		logError("Error mounting ISO ($vm_id): " . $e->getMessage());
+		logMessage("Error mounting ISO ($vm_id): " . $e->getMessage());
 		return false; 
 	}
 }
@@ -1980,7 +1981,7 @@ function unmountISO($vm_id,$vmname,$node_id) {
 		$stmt->execute();
 		return true;
 	} catch (PDOException $e) {
-		logError("Error unmounting ISO ($vm_id): " . $e->getMessage());
+		logMessage("Error unmounting ISO ($vm_id): " . $e->getMessage());
 		return false; 
 	}
 }
@@ -2006,7 +2007,7 @@ function unmountISO($vm_id,$vmname,$node_id) {
 #		$stmt->execute();
 #		return true;
 #	} catch (PDOException $e) {
-#		logError("Error updating VM disk driver ($vm_id): " . $e->getMessage());
+#		logMessage("Error updating VM disk driver ($vm_id): " . $e->getMessage());
 #		return false; 
 #	}
 #}
@@ -2032,7 +2033,7 @@ function unmountISO($vm_id,$vmname,$node_id) {
 #		$stmt->execute();
 #		return true;
 #	} catch (PDOException $e) {
-#		logError("Error updating VM network driver ($vm_id): " . $e->getMessage());
+#		logMessage("Error updating VM network driver ($vm_id): " . $e->getMessage());
 #		return false; 
 #	}
 #}
@@ -2058,7 +2059,7 @@ function bootOrder($vm_id,$vmname,$boot,$node_id) {
 		$stmt->execute();
 		return true;
 	} catch (PDOException $e) {
-		logError("Error updating VM boot order ($vm_id): " . $e->getMessage());
+		logMessage("Error updating VM boot order ($vm_id): " . $e->getMessage());
 		return false; 
 	}
 }
@@ -2078,7 +2079,7 @@ function addCluster($friendlyname) {
 		return true;
 	} else {
 		$error = "Error inserting cluster: " . $conn->lastErrorMsg();
-		logError($error);
+		logMessage($error);
 		return $error;
 	}
 }
@@ -2093,7 +2094,7 @@ function editCluster($cluster_id, $cluster_data) {
 		return true;
 	} else {
 		$error = "Error editing cluster: " . $conn->lastErrorMsg();
-		logError($error);
+		logMessage($error);
 		return $error;
 	}
 }
@@ -2110,15 +2111,15 @@ function deleteCluster($cluster_id,$confirm) {
 				$stmt->execute();
 				return true;
 			} catch (PDOException $e) {
-				logError("Error deleting cluster: ". $e->getMessage());
+				logMessage("Error deleting cluster: ". $e->getMessage());
 				return false;
 			}
 		} else {
-			logError("Cluster has nodes assigned to it ($cluster_id)");
+			logMessage("Cluster has nodes assigned to it ($cluster_id)");
 			return false;
 		}
 	} else {
-		logError("No confirmation ($cluster_id)");
+		logMessage("No confirmation ($cluster_id)");
 		return false;
 	}
 }
@@ -2134,7 +2135,7 @@ function enableCluster($cluster_id) {
 		$stmt->execute();
 		return true;
 	} catch (PDOException $e) {
-		logError("Error updating cluster: ". $e->getMessage());
+		logMessage("Error updating cluster: ". $e->getMessage());
 		return false;
 	}
 }
@@ -2150,7 +2151,7 @@ function disableCluster($cluster_id) {
 		$stmt->execute();
 		return true;
 	} catch (PDOException $e) {
-		logError("Error updating cluster: ". $e->getMessage());
+		logMessage("Error updating cluster: ". $e->getMessage());
 		return false;
 	}
 }
@@ -2169,15 +2170,15 @@ function enableMFA($staff_id,$mfasecret,$mfacode) {
 				$stmt->execute();
 				return true;
 			} catch (PDOException $e) {
-				logError("Error updating staff: ". $e->getMessage());
+				logMessage("Error updating staff: ". $e->getMessage());
 				return false;
 			}
 		} else {
-			logError("Error validating MFA code.");
+			logMessage("Error validating MFA code.");
 			return false;
 		}
 	} else {
-		logError("Error MFA missing secret and/or code.");
+		logMessage("Error MFA missing secret and/or code.");
 		return false;
 	}
 }
@@ -2193,7 +2194,7 @@ function disableMFA($staff_id) {
 		$stmt->execute();
 		return true;
 	} catch (PDOException $e) {
-		logError("Error updating staff: ". $e->getMessage());
+		logMessage("Error updating staff: ". $e->getMessage());
 		return false;
 	}
 }
@@ -2205,11 +2206,11 @@ function verifyMFA($staff_id,$mfacode) {
 		if ($google2fa->verifyKey($staff['staff_mfa'], $mfacode, '1')) {
 			return true;
 		} else {
-			logError("Error validating MFA code.");
+			logMessage("Error validating MFA code.");
 			return false;
 		}
 	} else {
-		logError("Error MFA missing code.");
+		logMessage("Error MFA missing code.");
 		return false;
 	}
 }
@@ -2248,7 +2249,7 @@ function sendPasswordResetEmail($email) {
 			return false;
 		}
 	} catch (PDOException $e) {
-		logError("Error finding staff: ". $e->getMessage());
+		logMessage("Error finding staff: ". $e->getMessage());
 		return false;
 	}
 }
@@ -2305,7 +2306,7 @@ function getLogs($perPage,$offset) {
 		$logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 		return $logs;
 	} catch (PDOException $e) {
-		logError("Error fetching logs: " . $e->getMessage());
+		logMessage("Error fetching logs: " . $e->getMessage());
 		return false;
 	}
 }
@@ -2318,7 +2319,7 @@ function getLogsTotal() {
 		$totalLogs = $conn->query("SELECT COUNT(*) FROM logs")->fetchColumn();
 		return $totalLogs;
 	} catch (PDOException $e) {
-		logError("Error fetching logs: " . $e->getMessage());
+		logMessage("Error fetching logs: " . $e->getMessage());
 		return false;
 	}
 }
@@ -2342,7 +2343,7 @@ function backupVM($vm_id,$vmname,$node_id) {
 		$stmt->execute();
 		return true;
 	} catch (PDOException $e) {
-		logError("Error backing up VM ($vm_id): " . $e->getMessage());
+		logMessage("Error backing up VM ($vm_id): " . $e->getMessage());
 		return false; 
 	}
 }
@@ -2363,7 +2364,7 @@ function deleteBackup($vm_id,$backup_name,$backup_id,$node_id) {
 		return true;
 	} catch (PDOException $e) {
 		$error = $e->getMessage();
-		logError("Error deleting VM backup ($backup_id - $backup_name): ".$error);
+		logMessage("Error deleting VM backup ($backup_id - $backup_name): ".$error);
 		return $error;
 	}	
 }
@@ -2380,7 +2381,7 @@ function getBackups($vm_id) {
 		$backups = $stmt->fetchAll(PDO::FETCH_ASSOC);
 		return $backups;
 	} catch (PDOException $e) {
-		logError("Error fetching backup list ($vm_id): " . $e->getMessage());
+		logMessage("Error fetching backup list ($vm_id): " . $e->getMessage());
 		return false;
 	}
 }
@@ -2402,7 +2403,7 @@ function getBackupInfo($backup_name,$node_id) {
 		$stmt->execute();
 		return true;
 	} catch (PDOException $e) {
-		logError("Error fetching node details: " . $e->getMessage());
+		logMessage("Error fetching node details: " . $e->getMessage());
 		return false; 
 	}
 }
@@ -2429,7 +2430,7 @@ function restoreVM($backup_name,$vm_name,$vnc_port,$vm_id,$node_id) {
 		$ssh->disconnect();
 		return true;
 	} catch (PDOException $e) {
-		logError("Error starting VM restore: " . $e->getMessage());
+		logMessage("Error starting VM restore: " . $e->getMessage());
 		return false; 
 	}
 }
