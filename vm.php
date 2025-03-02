@@ -67,6 +67,10 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 				$success = "VM NIC added successfully.";
 			} elseif ($_GET['s'] == '21') {
 				$success = "VM NIC deleted successfully.";
+			} elseif ($_GET['s'] == '22') {
+				$success = "VM IP added successfully.";
+			} elseif ($_GET['s'] == '23') {
+				$success = "VM IP removed successfully.";
 			}
 		}
 		$vm_id = $_GET['id'];
@@ -166,6 +170,42 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 				header("Location: vm.php?id=". (int)$vm_id. "&s=21");
 			} else {
 				$error = "VM NIC delete failed: ".$result;
+			}
+		}
+		if (isset($_POST['attach_ip4'])) {
+			$ip_id = $_POST["ip_id"];
+			$result = attachIP($vm_id,$ip_id,$vm['node_id'],"4");
+			if($result === true) {
+				header("Location: vm.php?id=". (int)$vm_id. "&s=22");
+			} else {
+				$error = "VM IP add failed: ".$result;
+			}
+		}
+		if (isset($_POST['detach_ip4'])) {
+			$ip_id = $_POST["ip_id"];
+			$result = detachIP($ip_id,"4");
+			if($result === true) {
+				header("Location: vm.php?id=". (int)$vm_id. "&s=23");
+			} else {
+				$error = "VM IP remove failed: ".$result;
+			}
+		}
+		if (isset($_POST['attach_ip6'])) {
+			$ip_id = $_POST["ip_id"];
+			$result = attachIP($vm_id,$ip_id,$vm['node_id'],"6");
+			if($result === true) {
+				header("Location: vm.php?id=". (int)$vm_id. "&s=22");
+			} else {
+				$error = "VM IP add failed: ".$result;
+			}
+		}
+		if (isset($_POST['detach_ip6'])) {
+			$ip_id = $_POST["ip_id"];
+			$result = detachIP($ip_id,"6");
+			if($result === true) {
+				header("Location: vm.php?id=". (int)$vm_id. "&s=23");
+			} else {
+				$error = "VM IP remove failed: ".$result;
 			}
 		}
 		if (isset($_POST['set_iow'])) {
@@ -357,6 +397,8 @@ if ($vm) {
 	$backups = getBackups($vm_id);
 	$nics = getNICs($vm_id);
 	$networks = getNetworks($vm['node_id']);
+	$ip4s = getAvailableIPs($vm['cluster'],'4');
+	$vmip4s = getVMIPs($vm_id,'4');
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -574,6 +616,37 @@ if ($vm) {
 						$macaddr = '<input type="hidden" name="mac_address" value="'.$mac.'">';
 						$nic_id = '<input type="hidden" name="nic_id" value="'.$nic_id.'">';
 						echo "<form id='delete_nic' action='vm.php?id=$vm_id' method='post'>$csrf $macaddr $nic_id $nic_name <button class='stylish-button' id='delete_nic' name='delete_nic'>Delete</button></form>";
+					endforeach;?>
+				</div>
+				<br />
+				<hr />
+				<br />
+				<h2>IP Management</h2>
+				<div class="disk-list">
+						<form id="attach_ip4" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post">
+						<h3>Add New IPv4</h3>
+						<input type="hidden" name="csrf_token" value="<?php echo $csrfToken; ?>">
+						<input type="hidden" name="id" value="<?php echo $vm_id; ?>">
+						<select id="ip_id" name="ip_id" style="text-align:center;width:150px;">
+						<?php foreach ($ip4s as $ip4):?>
+							<option value="<?php echo htmlspecialchars($ip4['ip_id']);?>">
+							<?php echo htmlspecialchars($ip4['ipaddress']);?> 
+							</option>
+						<?php endforeach;?>
+						</select>
+						<button class="stylish-button" id="attach_ip4" name="attach_ip4">Add IPv4</button>
+						</form>
+					<br />
+					<hr />
+					<br />
+					<h3>Attached IPs</h3>
+					<?php foreach ($vmip4s as $vmip4):
+						$ipaddr = $vmip4['ipaddress'];
+						$ip_id = $vmip4['ip_id'];
+						$gwip = $vmip4['gwip'];
+						$csrf = '<input type="hidden" name="csrf_token" value="'.$csrfToken.'">';
+						$ip_id = '<input type="hidden" name="ip_id" value="'.$ip_id.'">';
+						echo "<form id='detach_ip4' action='vm.php?id=$vm_id' method='post'>$csrf $ip_id $ipaddr (Gateway: $gwip) <button class='stylish-button' id='detach_ip4' name='detach_ip4'>Remove</button></form>";
 					endforeach;?>
 				</div>
 				<br />

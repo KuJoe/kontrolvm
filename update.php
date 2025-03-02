@@ -24,6 +24,8 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 				ALTER TABLE clusters DROP COLUMN loc;
 				ALTER TABLE ipv4 DROP COLUMN loc;
 				ALTER TABLE ipv6 DROP COLUMN loc;
+				ALTER TABLE ipv4 DROP COLUMN reserved;
+				ALTER TABLE ipv6 DROP COLUMN reserved;
 				ALTER TABLE clusters ADD COLUMN deployment INTEGER;
 				ALTER TABLE nodes ADD COLUMN cluster INTEGER;
 				ALTER TABLE vms ADD COLUMN cluster INTEGER;

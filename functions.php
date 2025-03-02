@@ -930,6 +930,48 @@ function getIPs($version) {
 	}
 }
 
+function getAvailableIPs($cluster,$version) {
+	include('config.php');
+	$conn = new PDO("sqlite:$db_file_path");
+	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+	try {
+		if($version == '4') {
+			$sql = "SELECT * FROM ipv4 WHERE cluster =:cluster AND status = '1' AND vmid = '0' ORDER BY ipaddress ASC";
+		} else {
+			$sql = "SELECT * FROM ipv6 WHERE cluster =:cluster AND status = '1' AND vmid = '0' ORDER BY ipaddress ASC";
+		}
+		$stmt = $conn->prepare($sql);
+		$stmt->bindValue(':cluster', $cluster, SQLITE3_INTEGER);
+		$stmt->execute();
+		$ips = $stmt->fetchAll(PDO::FETCH_ASSOC);
+		return $ips;
+	} catch (PDOException $e) {
+		logError("Error fetching IP list: " . $e->getMessage());
+		return false;
+	}
+}
+
+function getVMIPs($vmid,$version) {
+	include('config.php');
+	$conn = new PDO("sqlite:$db_file_path");
+	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+	try {
+		if($version == '4') {
+			$sql = "SELECT * FROM ipv4 WHERE vmid =:vmid ORDER BY ipaddress ASC";
+		} else {
+			$sql = "SELECT * FROM ipv6 WHERE vmid =:vmid ORDER BY ipaddress ASC";
+		}
+		$stmt = $conn->prepare($sql);
+		$stmt->bindValue(':vmid', $vmid, SQLITE3_INTEGER);
+		$stmt->execute();
+		$ips = $stmt->fetchAll(PDO::FETCH_ASSOC);
+		return $ips;
+	} catch (PDOException $e) {
+		logError("Error fetching IPv$version list for VM ($vmid): " . $e->getMessage());
+		return false;
+	}
+}
+
 function addIPs($ipaddress, $gwip, $cluster) {
 	$ipaddress = trim($ipaddress);
 	include('config.php');
@@ -944,7 +986,7 @@ function addIPs($ipaddress, $gwip, $cluster) {
 			$error = "IP address exists.";
 			return $error;
 		} else {
-			$stmt = $conn->prepare('INSERT INTO ipv4 (ipaddress, gwip, node, cluster, vmid, status, reserved, notes, last_updated) VALUES (:ipaddress, :gwip, :node, :cluster, :vmid, :status, :reserved, :notes, :last_updated)');
+			$stmt = $conn->prepare('INSERT INTO ipv4 (ipaddress, gwip, node, cluster, vmid, status, notes, last_updated) VALUES (:ipaddress, :gwip, :node, :cluster, :vmid, :status, :notes, :last_updated)');
 		}
 	} else {
 		$checkip = $ipaddress."::";
@@ -958,7 +1000,7 @@ function addIPs($ipaddress, $gwip, $cluster) {
 				$error = "IP address exists.";
 				return $error;
 			} else {
-				$stmt = $conn->prepare('INSERT INTO ipv6 (ipaddress, gwip, node, cluster, vmid, status, reserved, notes, last_updated) VALUES (:ipaddress, :gwip, :node, :cluster, :vmid, :status, :reserved, :notes, :last_updated)');
+				$stmt = $conn->prepare('INSERT INTO ipv6 (ipaddress, gwip, node, cluster, vmid, status, notes, last_updated) VALUES (:ipaddress, :gwip, :node, :cluster, :vmid, :status, :notes, :last_updated)');
 			}
 		} else {
 			$error = "Not a valid IP address.";
@@ -971,7 +1013,6 @@ function addIPs($ipaddress, $gwip, $cluster) {
 	$stmt->bindValue(':cluster', "$cluster", SQLITE3_INTEGER);
 	$stmt->bindValue(':vmid', '0', SQLITE3_INTEGER);
 	$stmt->bindValue(':status', '1', SQLITE3_INTEGER);
-	$stmt->bindValue(':reserved', '0', SQLITE3_INTEGER);
 	$stmt->bindValue(':notes', ' ', SQLITE3_TEXT);
 	$stmt->bindValue(':last_updated', time(), SQLITE3_TEXT);
 
@@ -1006,19 +1047,19 @@ function deleteIP($ip_id,$ipaddress) {
 	}
 }
 
-function reserveIP($ip_id,$ipaddress) {
+function enableIP($ip_id,$ipaddress) {
 	$ipaddress = trim($ipaddress);
 	include('config.php');
 	$conn = new PDO("sqlite:$db_file_path");
 	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 	try {
 		if(filter_var($ipaddress, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
-			$sql = "UPDATE ipv4 SET reserved =:reserved WHERE ip_id =:ip_id";
+			$sql = "UPDATE ipv4 SET status =:status WHERE ip_id =:ip_id";
 		} else {
-			$sql = "UPDATE ipv6 SET reserved =:reserved WHERE ip_id =:ip_id";
+			$sql = "UPDATE ipv6 SET status =:status WHERE ip_id =:ip_id";
 		}
 		$stmt = $conn->prepare($sql);
-		$stmt->bindValue(':reserved', '1', SQLITE3_INTEGER);
+		$stmt->bindValue(':status', '1', SQLITE3_INTEGER);
 		$stmt->bindValue(':ip_id', $ip_id, SQLITE3_INTEGER);
 		$stmt->execute();
 		return true;
@@ -1028,19 +1069,66 @@ function reserveIP($ip_id,$ipaddress) {
 	}
 }
 
-function unreserveIP($ip_id,$ipaddress) {
+function disableIP($ip_id,$ipaddress) {
 	$ipaddress = trim($ipaddress);
 	include('config.php');
 	$conn = new PDO("sqlite:$db_file_path");
 	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 	try {
 		if(filter_var($ipaddress, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
-			$sql = "UPDATE ipv4 SET reserved =:reserved WHERE ip_id =:ip_id";
+			$sql = "UPDATE ipv4 SET status =:status WHERE ip_id =:ip_id";
 		} else {
-			$sql = "UPDATE ipv6 SET reserved =:reserved WHERE ip_id =:ip_id";
+			$sql = "UPDATE ipv6 SET status =:status WHERE ip_id =:ip_id";
 		}
 		$stmt = $conn->prepare($sql);
-		$stmt->bindValue(':reserved', '0', SQLITE3_INTEGER);
+		$stmt->bindValue(':status', '0', SQLITE3_INTEGER);
+		$stmt->bindValue(':ip_id', $ip_id, SQLITE3_INTEGER);
+		$stmt->execute();
+		return true;
+	} catch (PDOException $e) {
+		logError("Error updating row: ". $e->getMessage());
+		return false;
+	}
+}
+
+function attachIP($vmid,$ip_id,$node,$version) {
+	include('config.php');
+	$conn = new PDO("sqlite:$db_file_path");
+	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+	try {
+		if($version == '4') {
+			$sql = "UPDATE ipv4 SET status =:status,vmid =:vmid,node =:node WHERE ip_id =:ip_id";
+		} else {
+			$sql = "UPDATE ipv6 SET status =:status,vmid =:vmid,node =:node WHERE ip_id =:ip_id";
+		}
+		#die("UPDATE ipv4 SET status ='0',vmid =$vmid,node =$node WHERE ip_id =$ip_id");
+		$stmt = $conn->prepare($sql);
+		$stmt->bindValue(':status', '0', SQLITE3_INTEGER);
+		$stmt->bindValue(':vmid', $vmid, SQLITE3_INTEGER);
+		$stmt->bindValue(':node', $node, SQLITE3_INTEGER);
+		$stmt->bindValue(':ip_id', $ip_id, SQLITE3_INTEGER);
+		$stmt->execute();
+		return true;
+	} catch (PDOException $e) {
+		logError("Error updating row: ". $e->getMessage());
+		return false;
+	}
+}
+
+function detachIP($ip_id,$version) {
+	include('config.php');
+	$conn = new PDO("sqlite:$db_file_path");
+	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+	try {
+		if($version == '4') {
+			$sql = "UPDATE ipv4 SET status =:status,vmid =:vmid,node =:node WHERE ip_id =:ip_id";
+		} else {
+			$sql = "UPDATE ipv6 SET status =:status,vmid =:vmid,node =:node WHERE ip_id =:ip_id";
+		}
+		$stmt = $conn->prepare($sql);
+		$stmt->bindValue(':status', '1', SQLITE3_INTEGER);
+		$stmt->bindValue(':vmid', '0', SQLITE3_INTEGER);
+		$stmt->bindValue(':node', '0', SQLITE3_INTEGER);
 		$stmt->bindValue(':ip_id', $ip_id, SQLITE3_INTEGER);
 		$stmt->execute();
 		return true;

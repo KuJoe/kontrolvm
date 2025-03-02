@@ -13,10 +13,10 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 		$success = "IP deleted successfully.";
 	}
 	if (isset($_GET['s']) AND $_GET['s'] == '3') {
-		$success = "IP reserved successfully.";
+		$success = "IP enabled successfully.";
 	}
 	if (isset($_GET['s']) AND $_GET['s'] == '4') {
-		$success = "IP unreserved successfully.";
+		$success = "IP disabled successfully.";
 	}
 	define('AmAllowed', TRUE);
 	require_once('config.php');
@@ -54,24 +54,24 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 				$error = "IP deletion failed: ".$result;
 			}
 		}	
-		if (isset($_POST['reserve_ip'])) {
+		if (isset($_POST['enable_ip'])) {
 			$idToChange = $_POST['ip_id'];
 			$ipToChange = $_POST['ipaddress'];
-			$result = reserveIP($idToChange,$ipToChange);
+			$result = enableIP($idToChange,$ipToChange);
 			if($result === true) {
 				header("Location: ipv4.php?s=3");
 			} else {
-				$error = "IP reservation failed: ".$result;
+				$error = "IP enable failed: ".$result;
 			}
 		}	
-		if (isset($_POST['unreserve_ip'])) {
+		if (isset($_POST['disable_ip'])) {
 			$idToChange = $_POST['ip_id'];
 			$ipToChange = $_POST['ipaddress'];
-			$result = unreserveIP($idToChange,$ipToChange);
+			$result = disableIP($idToChange,$ipToChange);
 			if($result === true) {
 				header("Location: ipv4.php?s=4");
 			} else {
-				$error = "IP unreserve failed: ".$result;
+				$error = "IP disable failed: ".$result;
 			}
 		}	
 	} else {
@@ -165,15 +165,19 @@ $clusters = getClusters('1');
 					$ip_id = $ip['ip_id'];
 					echo '<tr>';
 					echo "<td class='tname'>" . $ip['ipaddress'] . "</td>";
-					echo "<td style='font-size:small;'>" . $ip['vmid'] . "</td>";
+					if($ip['vmid'] == "0") {
+						echo "<td style='font-size:small;'>" . $ip['vmid'] . "</td>";
+					} else {
+						echo "<td style='font-size:small;'><a href='vm.php?id=" . $ip['vmid'] . "'>" . $ip['vmid'] . "</a></td>";
+					}
 					echo "<td style='font-size:small;'>" . $ip['gwip'] . "</td>";
 					echo "<td style='font-size:small;'>" . getClusterName($ip['cluster']) . "</td>";
 					echo "<td style='font-size:small;'>" . getNodeName($ip['node']) . "</td>";
 					echo "<td><span class='ticon' style='padding-right:4px;'>Available: </span>";
-					if ($ip['reserved'] == "0") {
-						echo "<img src='assets/1.png' alt='Available'>";
-					} else {
+					if($ip['status'] == "0") {
 						echo "<img src='assets/0.png' alt='Unavailable'>";
+					} else {
+						echo "<img src='assets/1.png' alt='Available'>";
 					}
 					echo "</td>";
 					echo "<td>";
@@ -187,10 +191,10 @@ $clusters = getClusters('1');
 							<input type="hidden" name="csrf_token" value="'.$csrfToken.'">
 							<input type="hidden" name="ip_id" value="'.$ip_id.'">
 							<input type="hidden" name="ipaddress" value="'.$ip['ipaddress'].'">';
-					if ($ip['reserved'] == "1") {
-						echo '<button type="submit" class="stylish-button" name="unreserve_ip">Enable</button>';
+					if($ip['status'] == "0") {
+						echo '<button type="submit" class="stylish-button" name="enable_ip">Enable</button>';
 					} else {
-						echo '<button type="submit" class="stylish-button" name="reserve_ip">Disable</button>';
+						echo '<button type="submit" class="stylish-button" name="disable_ip">Disable</button>';
 					}
 					echo '</form>';
 					echo '</td></tr>';
