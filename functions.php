@@ -2306,8 +2306,9 @@ function getLogs($perPage,$offset) {
 		$logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 		return $logs;
 	} catch (PDOException $e) {
-		logMessage("Error fetching logs: " . $e->getMessage());
-		return false;
+		$error = "Error fetching logs: " . $e->getMessage();
+		logMessage($error);
+		return $error; 
 	}
 }
 
@@ -2319,32 +2320,41 @@ function getLogsTotal() {
 		$totalLogs = $conn->query("SELECT COUNT(*) FROM logs")->fetchColumn();
 		return $totalLogs;
 	} catch (PDOException $e) {
-		logMessage("Error fetching logs: " . $e->getMessage());
-		return false;
+		$error = "Error fetching logs: " . $e->getMessage();
+		logMessage($error);
+		return $error; 
 	}
 }
 
-function backupVM($vm_id,$vmname,$node_id) {
+function backupVM($vm_id,$vm_name,$node_id) {
 	include('config.php');
-	$backup_name = $vmname.'_'.date('Ydmhis');
+	$backup_name = $vm_name.'_'.date('Ydmhis');
 	$conn = new PDO("sqlite:$db_file_path");
 	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 	try {
 		$ssh = connectNode($node_id);
-		$ssh->exec('sudo /home/kontrolvm/backup_vm.sh '.$vmname.' '.$backup_name.' > /dev/null 2>&1 &');
-		#echo $ssh->getLog();
-		$ssh->disconnect();
+		$backup_tmpdir = $ssh->exec("/usr/bin/test -d /home/kontrolvm/backups_tmp/$vm_name;echo $?");
+		if($backup_tmpdir == 1) {
+			$ssh->exec('sudo /home/kontrolvm/backup_vm.sh '.$vm_name.' '.$backup_name.' > /dev/null 2>&1 &');
+			#echo $ssh->getLog();
+			$ssh->disconnect();
 
-		$stmt = $conn->prepare('INSERT INTO backups (backup_name, vm_id, node_id, created_at) VALUES (:backup_name, :vm_id, :node_id, :created_at)');
-		$stmt->bindValue(':backup_name', "$backup_name.tar.gz", SQLITE3_TEXT);
-		$stmt->bindValue(':vm_id', $vm_id, SQLITE3_INTEGER);
-		$stmt->bindValue(':node_id', $node_id, SQLITE3_INTEGER);
-		$stmt->bindValue(':created_at', time(), SQLITE3_TEXT);
-		$stmt->execute();
-		return true;
+			$stmt = $conn->prepare('INSERT INTO backups (backup_name, vm_id, node_id, status, created_at) VALUES (:backup_name, :vm_id, :node_id, "0", :created_at)');
+			$stmt->bindValue(':backup_name', "$backup_name.tar.gz", SQLITE3_TEXT);
+			$stmt->bindValue(':vm_id', $vm_id, SQLITE3_INTEGER);
+			$stmt->bindValue(':node_id', $node_id, SQLITE3_INTEGER);
+			$stmt->bindValue(':created_at', time(), SQLITE3_TEXT);
+			$stmt->execute();
+			return true;
+		} else {
+			$error = "Error starting VM restore: Backup or restore is already running.";
+			logMessage($error);
+			return $error;
+		}
 	} catch (PDOException $e) {
-		logMessage("Error backing up VM ($vm_id): " . $e->getMessage());
-		return false; 
+		$error = "Error backing up VM ($vm_id): " . $e->getMessage();
+		logMessage($error);
+		return $error; 
 	}
 }
 
@@ -2363,9 +2373,9 @@ function deleteBackup($vm_id,$backup_name,$backup_id,$node_id) {
 		$stmt->execute();
 		return true;
 	} catch (PDOException $e) {
-		$error = $e->getMessage();
-		logMessage("Error deleting VM backup ($backup_id - $backup_name): ".$error);
-		return $error;
+		$error = "Error deleting VM backup ($backup_id - $backup_name): " . $e->getMessage();
+		logMessage($error);
+		return $error; 
 	}	
 }
 
@@ -2381,30 +2391,34 @@ function getBackups($vm_id) {
 		$backups = $stmt->fetchAll(PDO::FETCH_ASSOC);
 		return $backups;
 	} catch (PDOException $e) {
-		logMessage("Error fetching backup list ($vm_id): " . $e->getMessage());
-		return false;
+		$error = "Error fetching backup list ($vm_id): " . $e->getMessage();
+		logMessage($error);
+		return $error; 
 	}
 }
 
-function getBackupInfo($backup_name,$node_id) {
+function getBackupInfo($vm_name,$backup_name,$node_id) {
 	include('config.php');
 	$conn = new PDO("sqlite:$db_file_path");
 	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
 	try {
 		$ssh = connectNode($node_id);
-		$backup_size = $ssh->exec("/usr/bin/stat -c '%s' /home/kontrolvm/kvm_backups/$backup_name | awk '{printf \"%.2f MB\", \$1 / (1024 * 1024)}'");
-		#echo $ssh->getLog();
-		$ssh->disconnect();
-		
-		$stmt = $conn->prepare("UPDATE backups SET backup_size =:backup_size WHERE backup_name =:backup_name");
-		$stmt->bindValue(':backup_size', $backup_size, SQLITE3_INTEGER);
-		$stmt->bindValue(':backup_name', "$backup_name", SQLITE3_TEXT);
-		$stmt->execute();
+		$backup_tmpdir = $ssh->exec("/usr/bin/test -d /home/kontrolvm/backups_tmp/$vm_name;echo $?");
+		if($backup_tmpdir == 1) {
+			$backup_size = $ssh->exec("/usr/bin/stat -c '%s' /home/kontrolvm/kvm_backups/$backup_name | awk '{printf \"%.2f MB\", \$1 / (1024 * 1024)}'");
+			#echo $ssh->getLog();
+			$ssh->disconnect();
+			$stmt = $conn->prepare("UPDATE backups SET backup_size =:backup_size,status ='1' WHERE backup_name =:backup_name");
+			$stmt->bindValue(':backup_size', $backup_size, SQLITE3_INTEGER);
+			$stmt->bindValue(':backup_name', "$backup_name", SQLITE3_TEXT);
+			$stmt->execute();
+		}
 		return true;
 	} catch (PDOException $e) {
-		logMessage("Error fetching node details: " . $e->getMessage());
-		return false; 
+		$error = "Error fetching node details: " . $e->getMessage();
+		logMessage($error);
+		return $error; 
 	}
 }
 
@@ -2415,23 +2429,30 @@ function restoreVM($backup_name,$vm_name,$vnc_port,$vm_id,$node_id) {
 
 	try {
 		$ssh = connectNode($node_id);
-		$ssh = connectNode($node_id);
-		$ssh->exec('sudo /usr/bin/virsh destroy '.$vm_name.'');
-		$ssh->exec('sudo /usr/bin/virsh undefine '.$vm_name.'');
-		$ssh->exec('sudo /usr/bin/virsh undefine '.$vm_name.' --nvram');
-		$ssh->exec('sudo /usr/bin/virsh destroy '.$vm_name.'');
-		$disks = getDisks($vm_id);
-		foreach ($disks as $disk) {
-			$diskname = $disk['disk_name'];
-			$ssh->exec("sudo /bin/sh /home/kontrolvm/cleandata.sh $diskname");
+		$backup_tmpdir = $ssh->exec("/usr/bin/test -d /home/kontrolvm/backups_tmp/$vm_name;echo $?");
+		if($backup_tmpdir == 1) {
+			$ssh->exec('sudo /usr/bin/virsh destroy '.$vm_name.'');
+			$ssh->exec('sudo /usr/bin/virsh undefine '.$vm_name.'');
+			$ssh->exec('sudo /usr/bin/virsh undefine '.$vm_name.' --nvram');
+			$ssh->exec('sudo /usr/bin/virsh destroy '.$vm_name.'');
+			$disks = getDisks($vm_id);
+			foreach ($disks as $disk) {
+				$diskname = $disk['disk_name'];
+				$ssh->exec("sudo /bin/sh /home/kontrolvm/cleandata.sh $diskname");
+			}
+			$ssh->exec('sudo /home/kontrolvm/restore_vm.sh '.$backup_name.' '.$vm_name.' '.$vnc_port.' > /dev/null 2>&1 &');
+			#echo $ssh->getLog();
+			$ssh->disconnect();
+			return true;
+		} else {
+			$error = "Error starting VM restore: Backup or restore is already running.";
+			logMessage($error);
+			return $error; 
 		}
-		$ssh->exec('sudo /home/kontrolvm/restore_vm.sh '.$backup_name.' '.$vm_name.' '.$vnc_port.' > /dev/null 2>&1 &');
-		#echo $ssh->getLog();
-		$ssh->disconnect();
-		return true;
 	} catch (PDOException $e) {
-		logMessage("Error starting VM restore: " . $e->getMessage());
-		return false; 
+		$error = "Error starting VM restore: " . $e->getMessage();
+		logMessage($error);
+		return $error;  
 	}
 }
 

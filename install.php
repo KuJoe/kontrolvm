@@ -175,6 +175,7 @@ try {
 		backup_size INTEGER,
 		vm_id INTEGER,
 		node_id INTEGER,
+		status INTEGER,
 		created_at DATETIME
 	)",
 	'nics' => "CREATE TABLE IF NOT EXISTS nics (

@@ -295,7 +295,7 @@ if ($node) {
 						$csrf = '<input type="hidden" name="csrf_token" value="'.$csrfToken.'">';
 						$netname = '<input type="hidden" name="net_name" value="'.$name.'">';
 						$netid = '<input type="hidden" name="net_id" value="'.$net_id.'">';
-						echo "<form id='delete_network' action='vm.php?id=$vm_id' method='post'>$csrf $netname $netid $name <button class='stylish-button' id='delete_network' name='delete_network'>Delete</button></form>";
+						echo "<form id='delete_network' action='node.php?id=$node_id' method='post'>$csrf $netname $netid $name <button class='stylish-button' id='delete_network' name='delete_network'>Delete</button></form>";
 					endforeach;?>
 				</div>
 				<br />

@@ -666,11 +666,11 @@ if ($vm) {
 					<?php foreach ($backups as $backup):
 						$backup_name = $backup['backup_name'];
 						$size = $backup['backup_size'];
-						getBackupInfo($backup_name,$vm['node_id']);
-						if($size > 0) {
-							$size = $size."MB";
-						} else {
+						if($backup['status'] !== 1) {
+							getBackupInfo($vm['name'],$backup_name,$vm['node_id']);
 							$size = "<b>IN PROGRESS</b>";
+						} else {
+							$size = $size."MB";
 						}
 						$backup_id = $backup['backup_id'];
 						$created_at = $backup['created_at'];

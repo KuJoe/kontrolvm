@@ -66,6 +66,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 					backup_size INTEGER,
 					vm_id INTEGER,
 					node_id INTEGER,
+					status INTEGER,
 					created_at DATETIME
 				);
 				
