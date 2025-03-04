@@ -7,7 +7,7 @@ use BaconQrCode\Renderer\GDLibRenderer;
 use BaconQrCode\Writer;
 
 session_start();
-if (isset($_SESSION['mfa_required']) && $_SESSION['mfa_required']) {
+if(isset($_SESSION['mfa_required']) && $_SESSION['mfa_required']) {
 	header("Location: logout.php");
 	exit;
 }
@@ -39,18 +39,18 @@ if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 	}
 	if($staff_id != $loggedin_id) {
 		$allowedRoles = ['1', '9'];
-		if (!in_array($chkRole, $allowedRoles)) {
+		if(!in_array($chkRole, $allowedRoles)) {
 			header("Location: home.php?s=99");
 			exit;
 		}
 	}
 	$staff = getStaffDetails($staff_id);
 	if(isset($_GET['s'])) {
-		if ($_GET['s'] == '1') {
+		if($_GET['s'] == '1') {
 			$success = "Account updated successfully.";
-		} elseif ($_GET['s'] == '2') {
+		} elseif($_GET['s'] == '2') {
 			$success = "MFA enabled successfully.";
-		} elseif ($_GET['s'] == '3') {
+		} elseif($_GET['s'] == '3') {
 			$success = "MFA disabled successfully.";
 		} 
 	}
@@ -97,45 +97,45 @@ if($_SERVER["REQUEST_METHOD"] == "POST") {
 				$password1 = NULL;
 				$password2 = NULL;
 			}
-			$result = updateStaff($staff_id,$username,$email,$status,$role,$password1,$password2);
+			$result = updateStaff($loggedin_id,$staff_id,$username,$email,$status,$role,$password1,$password2);
 			if($result === true) {
-				if($_SESSION["staff_id"] == $_POST["id"]) {
+				if($loggedin_id == $_POST["id"]) {
 					$_SESSION["username"] = $username;
 				}
 				header("Location: account.php?id=". (int)$staff_id. "&s=1");
 			} else {
-				$error = "Account update failed: ".$result;
+				$error = $result;
 			}
 		}
 		if(isset($_POST["mfa-verify"]) AND isset($_POST["enable_mfa"])) {
 			$mfacode = $_POST["mfa-verify"];
 			$mfasecret = $_POST["mfa_secret"];
-			$result = enableMFA($staff_id,$mfasecret,$mfacode);
+			$result = enableMFA($loggedin_id,$staff_id,$mfasecret,$mfacode);
 			if($result === true) {
 				header("Location: account.php?id=". (int)$staff_id. "&s=2");
 			} else {
-				$error = "Account update failed: MFA failed to enable.";
+				$error = "MFA failed to enable.";
 			}
 		}
 		if(!isset($_POST["mfastate"]) AND isset($_POST["disable_mfa"])) {
-			$result = disableMFA($staff_id);
+			$result = disableMFA($loggedin_id,$staff_id);
 			if($result === true) {
 				header("Location: account.php?id=". (int)$staff_id. "&s=3");
 			} else {
-				$error = "Account update failed: MFA failed to disable.";
+				$error = "MFA failed to disable.";
 			}
 		}
 		if(isset($_POST['delete_account'])) {
 			if($_SESSION["staff_id"] == $_POST["id"]) {
 				$error = "User delete failed: You can't deleted yourself.";
 			} else {
-				if (isset($_POST['confirm'])) {
+				if(isset($_POST['confirm'])) {
 					$confirm = $_POST['confirm'];
-					$result = deleteUser($_POST["id"],$confirm);
+					$result = deleteUser($loggedin_id,$_POST["id"],$confirm);
 					if($result === true) {
 						header("Location: users.php?s=2");
 					} else {
-						$error = "User delete failed: ".$result;
+						$error = $result;
 					}
 				} else {
 					$error = "User delete failed: Please make sure you checked the confirmation box.";
@@ -147,7 +147,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST") {
 	}
 }
 
-if ($staff) {
+if($staff) {
 	if($staff_id == '1') {
 		$state = " checked disabled";
 	} else {
@@ -175,8 +175,8 @@ if ($staff) {
 		<label class="logo"><a href="index.php"><img src="assets/logo.png" alt="KontrolVM Logo"></a></label>
 		<ul>
 			<li><a href="index.php">Dashboard</a></li>
-			<?php if (in_array($myrole, ['2', '9'])) { ?> <li><a href="clusters.php">Infrastructure</a></li> <?php } ?>
-			<?php if (in_array($myrole, ['1', '9'])) { ?> <li><a class="active" href="users.php">Users</a></li> <?php } ?>
+			<?php if(in_array($myrole, ['2', '9'])) { ?> <li><a href="clusters.php">Infrastructure</a></li> <?php } ?>
+			<?php if(in_array($myrole, ['1', '9'])) { ?> <li><a class="active" href="users.php">Users</a></li> <?php } ?>
 			<li><a href="settings.php">Settings</a></li>
 			<li style="font-weight: bold;"><a href="account.php"><?php echo htmlspecialchars($_SESSION["username"]); ?></a></li>
 			<li><a href="logout.php"><i class="fa fa-sign-out" aria-hidden="true"></i></a></li>
@@ -184,10 +184,10 @@ if ($staff) {
 	</nav>
 	<div class="container">
 		<h1>Manage Account</h1>
-		<?php if (isset($success)) { ?>
+		<?php if(isset($success)) { ?>
 			<div class="success-message"><?php echo $success; ?></div> 
 		<?php } ?>
-		<?php if (isset($error)) { ?>
+		<?php if(isset($error)) { ?>
 			<div class="error-message"><?php echo $error; ?></div> 
 		<?php } ?>
 		<form id="save_account" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post">
@@ -275,7 +275,7 @@ if ($staff) {
 			<button type="submit" class="stylish-button" name="disable_mfa">Save Changes</button>
 		</form>
 		<?php } ?>
-		<?php if ($staff_id > "1") { ?>
+		<?php if($staff_id > "1") { ?>
 		<br />
 		<hr />
 		<br />
@@ -314,13 +314,13 @@ if ($staff) {
 
 		// Load the user's preferred theme from localStorage
 		const savedTheme = localStorage.getItem('theme');
-		if (savedTheme === 'dark') {
+		if(savedTheme === 'dark') {
 			body.classList.add('dark-mode');
 			themeToggle.checked = true;
 		}
 
 		themeToggle.addEventListener('change', () => {
-			if (themeToggle.checked) {
+			if(themeToggle.checked) {
 			body.classList.add('dark-mode');
 			localStorage.setItem('theme', 'dark');
 			} else {
@@ -335,7 +335,7 @@ if ($staff) {
 			const pwOptions = document.querySelectorAll('.password-options');
 
 			pwChange.addEventListener('change', function() {
-			if (this.checked) {
+			if(this.checked) {
 				pwOptions.forEach(option => option.style.display = 'block');
 			} else {
 				pwOptions.forEach(option => option.style.display = 'none');
@@ -351,7 +351,7 @@ if ($staff) {
 			const mfaOptions = document.querySelectorAll('.mfa-options');
 
 			mfaChange.addEventListener('change', function() {
-			if (this.checked) {
+			if(this.checked) {
 				mfaOptions.forEach(option => option.style.display = 'block');
 			} else {
 				mfaOptions.forEach(option => option.style.display = 'none');

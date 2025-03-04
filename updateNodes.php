@@ -7,7 +7,7 @@ if(!defined('AmAllowed')) {
 require_once('functions.php');
 $servers = getServerList('1');
 
-if (count($servers) > 0) {
+if(count($servers) > 0) {
 	foreach ($servers as $server) {
 		if(getNodeInfo($server['node_id'])) {
 			getNodeStats($server['node_id']);

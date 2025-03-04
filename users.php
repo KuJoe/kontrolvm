@@ -2,14 +2,14 @@
 /** KontrolVM By KuJoe (https://github.com/KuJoe/kontrolvm) **/
 
 session_start();
-if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
+if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 	header("Location: index.php"); 
 	exit; 
 } else {
-	if (isset($_GET['s'])) {
-		if ($_GET['s'] == '1') {
+	if(isset($_GET['s'])) {
+		if($_GET['s'] == '1') {
 			$success = "User created successfully.";
-		} elseif ($_GET['s'] == '2') {
+		} elseif($_GET['s'] == '2') {
 			$success = "User deleted successfully.";
 		}
 	}
@@ -26,22 +26,22 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 	}
 	$chkRole = getStaffRole($loggedin_id);
 	$allowedRoles = ['1', '9'];
-	if (!in_array($chkRole, $allowedRoles)) {
+	if(!in_array($chkRole, $allowedRoles)) {
 		header("Location: home.php?s=99");
 		exit;
 	}
 }
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
+if($_SERVER["REQUEST_METHOD"] == "POST") {
 	$token = $_POST["csrf_token"];
-	if (validateCSRFToken($token)) {
+	if(validateCSRFToken($token)) {
 		$username = $_POST["username"];
 		$email = $_POST["email"];
-		$result = createUser($username,$email);
-		if ($variable!== false) {
+		$result = createUser($loggedin_id,$username,$email);
+		if(!str_contains($result, "Error")) {
 			$success = "User created successfully with this temporary password: ".$result;
 			$_GET['state'] = "all";
 		} else {
-			$error = "User create failed: ".$result;
+			$error = $result;
 		}
 	} else {
 		$error = "Invalid CSRF token.";
@@ -70,8 +70,8 @@ if(isset($_GET['state']) AND $_GET['state'] == "all") {
 		<label class="logo"><a href="index.php"><img src="assets/logo.png" alt="KontrolVM Logo"></a></label>
 		<ul>
 			<li><a href="index.php">Dashboard</a></li>
-			<?php if (in_array($myrole, ['2', '9'])) { ?> <li><a href="clusters.php">Infrastructure</a></li> <?php } ?>
-			<?php if (in_array($myrole, ['1', '9'])) { ?> <li><a class="active" href="users.php">Users</a></li> <?php } ?>
+			<?php if(in_array($myrole, ['2', '9'])) { ?> <li><a href="clusters.php">Infrastructure</a></li> <?php } ?>
+			<?php if(in_array($myrole, ['1', '9'])) { ?> <li><a class="active" href="users.php">Users</a></li> <?php } ?>
 			<li><a href="settings.php">Settings</a></li>
 			<li style="font-weight: bold;"><a href="account.php"><?php echo htmlspecialchars($_SESSION["username"]); ?></a></li>
 			<li><a href="logout.php"><i class="fa fa-sign-out" aria-hidden="true"></i></a></li>
@@ -95,10 +95,10 @@ if(isset($_GET['state']) AND $_GET['state'] == "all") {
 			</div>
 		</div>
 		<h1>Users</h1>
-		<?php if (isset($success)) { ?>
+		<?php if(isset($success)) { ?>
 			<div class="success-message"><?php echo $success; ?></div> 
 		<?php } ?>
-		<?php if (isset($error)) { ?>
+		<?php if(isset($error)) { ?>
 			<div class="error-message"><?php echo $error; ?></div> 
 		<?php } ?>
 		<div class="table-container" style="max-width:1500px;">
@@ -119,7 +119,7 @@ if(isset($_GET['state']) AND $_GET['state'] == "all") {
 				<td class="tname"><a href="account.php?id=<?php echo $staff_id; ?>"><?php echo $username; ?></a></td>
 				<td>
 				<?php
-				if ($user['staff_active'] == "1") {
+				if($user['staff_active'] == "1") {
 					echo "<img src='assets/1.png' alt='Active'>";
 				} else {
 					echo "<img src='assets/0.png' alt='Disabled'>";
@@ -143,13 +143,13 @@ if(isset($_GET['state']) AND $_GET['state'] == "all") {
 
 		// Load the user's preferred theme from localStorage
 		const savedTheme = localStorage.getItem('theme');
-		if (savedTheme === 'dark') {
+		if(savedTheme === 'dark') {
 			body.classList.add('dark-mode');
 			themeToggle.checked = true; 
 		}
 
 		themeToggle.addEventListener('change', () => {
-			if (themeToggle.checked) {
+			if(themeToggle.checked) {
 				body.classList.add('dark-mode');
 				localStorage.setItem('theme', 'dark');
 			} else {
@@ -178,7 +178,7 @@ if(isset($_GET['state']) AND $_GET['state'] == "all") {
 
 		// When the user clicks anywhere outside of the modal, close it
 		window.onclick = function(event) {
-			if (event.target == modal) {
+			if(event.target == modal) {
 				modal.style.display = "none";
 			}
 		}

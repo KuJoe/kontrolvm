@@ -2,16 +2,16 @@
 /** KontrolVM By KuJoe (https://github.com/KuJoe/kontrolvm) **/
 
 session_start();
-if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
+if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 	header("Location: index.php"); 
 	exit; 
 } else {
-	if (isset($_GET['s'])) {
-		if ($_GET['s'] == '1') {
+	if(isset($_GET['s'])) {
+		if($_GET['s'] == '1') {
 			$success = "VM created successfully.";
-		} elseif ($_GET['s'] == '2') {
+		} elseif($_GET['s'] == '2') {
 			$success = "VM deleted successfully.";
-		} elseif ($_GET['s'] == '3') {
+		} elseif($_GET['s'] == '3') {
 			$error = "VM ID missing.";
 		}
 	}
@@ -28,19 +28,19 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 	}
 	$chkRole = getStaffRole($loggedin_id);
 	$allowedRoles = ['1', '2', '3', '9'];
-	if (!in_array($chkRole, $allowedRoles)) {
+	if(!in_array($chkRole, $allowedRoles)) {
 		header("Location: home.php?s=99");
 		exit;
 	}
 }
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
+if($_SERVER["REQUEST_METHOD"] == "POST") {
 	$token = $_POST["csrf_token"];
-	if (validateCSRFToken($token)) {
+	if(validateCSRFToken($token)) {
 		$memory = trim($_POST["memory"]);
 		$disk_space1 = trim($_POST["disk_space1"]);
 		$cpu_cores = trim($_POST["cpu_cores"]);
 		$cluster = $_POST["cluster"];
-		$result = createVM($memory,$disk_space1,$cpu_cores,$cluster);
+		$result = createVM($loggedin_id,$memory,$disk_space1,$cpu_cores,$cluster);
 		if($result === true) {
 			header("Location: vms.php?state=all&s=1");
 		} else {
@@ -74,8 +74,8 @@ $clusters = getClusters('1');
 		<label class="logo"><a href="index.php"><img src="assets/logo.png" alt="KontrolVM Logo"></a></label>
 		<ul>
 			<li><a href="index.php">Dashboard</a></li>
-			<?php if (in_array($myrole, ['2', '9'])) { ?> <li><a class="active" href="clusters.php">Infrastructure</a></li> <?php } ?>
-			<?php if (in_array($myrole, ['1', '9'])) { ?> <li><a href="users.php">Users</a></li> <?php } ?>
+			<?php if(in_array($myrole, ['2', '9'])) { ?> <li><a class="active" href="clusters.php">Infrastructure</a></li> <?php } ?>
+			<?php if(in_array($myrole, ['1', '9'])) { ?> <li><a href="users.php">Users</a></li> <?php } ?>
 			<li><a href="settings.php">Settings</a></li>
 			<li style="font-weight: bold;"><a href="account.php"><?php echo htmlspecialchars($_SESSION["username"]); ?></a></li>
 			<li><a href="logout.php"><i class="fa fa-sign-out" aria-hidden="true"></i></a></li>
@@ -114,10 +114,10 @@ $clusters = getClusters('1');
 			</div>
 		</div>
 		<h1>VMs</h1>
-		<?php if (isset($success)) { ?>
+		<?php if(isset($success)) { ?>
 			<div class="success-message"><?php echo $success; ?></div> 
 		<?php } ?>
-		<?php if (isset($error)) { ?>
+		<?php if(isset($error)) { ?>
 			<div class="error-message"><?php echo $error; ?></div> 
 		<?php } ?>
 		<div class="table-container" style="max-width:1500px;">
@@ -161,13 +161,13 @@ $clusters = getClusters('1');
 
 		// Load the user's preferred theme from localStorage
 		const savedTheme = localStorage.getItem('theme');
-		if (savedTheme === 'dark') {
+		if(savedTheme === 'dark') {
 			body.classList.add('dark-mode');
 			themeToggle.checked = true; 
 		}
 
 		themeToggle.addEventListener('change', () => {
-			if (themeToggle.checked) {
+			if(themeToggle.checked) {
 				body.classList.add('dark-mode');
 				localStorage.setItem('theme', 'dark');
 			} else {
@@ -196,7 +196,7 @@ $clusters = getClusters('1');
 
 		// When the user clicks anywhere outside of the modal, close it
 		window.onclick = function(event) {
-			if (event.target == modal) {
+			if(event.target == modal) {
 				modal.style.display = "none";
 			}
 		}
@@ -207,7 +207,7 @@ $clusters = getClusters('1');
 				vmname: vmname, 
 				node_id: node_id
 			}, function(data) {
-				if (data == "running") {
+				if(data == "running") {
 					statusDiv.innerHTML = "<img src='assets/online.png' height='16' width='16' alt='Running'>";
 				} else {
 					statusDiv.innerHTML = "<img src='assets/offline.png' height='16' width='16' alt='Stopped'>";

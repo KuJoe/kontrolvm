@@ -3,24 +3,24 @@
 
 session_start();
 define('AmAllowed', TRUE);
-if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
+if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 	header("Location: index.php");
 	exit; 
 } else {
-	if (isset($_GET['id'])) {
-		if (isset($_GET['s']) AND $_GET['s'] == '1') {
+	if(isset($_GET['id'])) {
+		if(isset($_GET['s']) AND $_GET['s'] == '1') {
 			$success = "Cluster updated successfully.";
 		}
-		if (isset($_GET['s']) AND $_GET['s'] == '2') {
+		if(isset($_GET['s']) AND $_GET['s'] == '2') {
 			$success = "Cluster enabled successfully.";
 		}
-		if (isset($_GET['s']) AND $_GET['s'] == '3') {
+		if(isset($_GET['s']) AND $_GET['s'] == '3') {
 			$success = "Cluster disabled successfully.";
 		}
 		$cluster_id = $_GET['id'];
 		require_once('functions.php');
 		$cluster = getClusterDetails($cluster_id);
-	} elseif (isset($_POST['id'])) {
+	} elseif(isset($_POST['id'])) {
 		$cluster_id = $_POST['id'];
 		require_once('functions.php');
 		$cluster = getClusterDetails($cluster_id);
@@ -39,7 +39,7 @@ if($chkLocked == true OR $chkActive == false) {
 }
 $chkRole = getStaffRole($loggedin_id);
 $allowedRoles = ['2', '9'];
-if (!in_array($chkRole, $allowedRoles)) {
+if(!in_array($chkRole, $allowedRoles)) {
 	header("Location: home.php?s=99");
 	exit;
 }
@@ -50,37 +50,37 @@ header('Cache-Control: post-check=0, pre-check=0', false);
 header('Pragma: no-cache');
 $csrfToken = getCSRFToken();
 
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
+if($_SERVER["REQUEST_METHOD"] == "POST") {
 	$token = $_POST["csrf_token"];
-	if (validateCSRFToken($token)) {
-		if (isset($_POST['editcluster'])) {
+	if(validateCSRFToken($token)) {
+		if(isset($_POST['editcluster'])) {
 			$cluster_data = [':friendlyname' => $_POST["friendlyname"],':deployment' => $_POST["deployment"]];
-			$result = editcluster($cluster_id, $cluster_data);
+			$result = editcluster($loggedin_id,$cluster_id, $cluster_data);
 			if($result === true) {
 				header("Location: cluster.php?id=". (int)$cluster_id. "&s=1");
 			} else {
 				$error = "Cluster update failed.";
 			}
 		}
-		if (isset($_POST['delete_cluster'])) {
+		if(isset($_POST['delete_cluster'])) {
 			$confirm = $_POST['confirm'];
-			$result = deleteCluster($cluster_id,$confirm);
+			$result = deleteCluster($loggedin_id,$cluster_id,$confirm);
 			if($result === true) {
 				header("Location: clusters.php?s=2");
 			} else {
 				$error = "Cluster deletion failed.";
 			}
 		}
-		if (isset($_POST['enable_cluster'])) {
-			$result = enableCluster($cluster_id);
+		if(isset($_POST['enable_cluster'])) {
+			$result = enableCluster($loggedin_id,$cluster_id);
 			if($result === true) {
 				header("Location: cluster.php?id=". (int)$cluster_id. "&s=2");
 			} else {
 				$error = "Enabling cluster failed.";
 			}
 		}
-		if (isset($_POST['disable_cluster'])) {
-			$result = disableCluster($cluster_id);
+		if(isset($_POST['disable_cluster'])) {
+			$result = disableCluster($loggedin_id,$cluster_id);
 			if($result === true) {
 				header("Location: cluster.php?id=". (int)$cluster_id. "&s=3");
 			} else {
@@ -92,8 +92,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 	}
 }
 
-if ($cluster) {
-	if ($cluster['status'] == "1") {
+if($cluster) {
+	if($cluster['status'] == "1") {
 		$state = " checked";
 	} else {
 		$state = "";
@@ -111,8 +111,8 @@ if ($cluster) {
 		<label class="logo"><a href="index.php"><img src="assets/logo.png" alt="KontrolVM Logo"></a></label>
 		<ul>
 			<li><a href="index.php">Dashboard</a></li>
-			<?php if (in_array($myrole, ['2', '9'])) { ?> <li><a class="active" href="clusters.php">Infrastructure</a></li> <?php } ?>
-			<?php if (in_array($myrole, ['1', '9'])) { ?> <li><a href="users.php">Users</a></li> <?php } ?>
+			<?php if(in_array($myrole, ['2', '9'])) { ?> <li><a class="active" href="clusters.php">Infrastructure</a></li> <?php } ?>
+			<?php if(in_array($myrole, ['1', '9'])) { ?> <li><a href="users.php">Users</a></li> <?php } ?>
 			<li><a href="settings.php">Settings</a></li>
 			<li style="font-weight: bold;"><a href="account.php"><?php echo htmlspecialchars($_SESSION["username"]); ?></a></li>
 			<li><a href="logout.php"><i class="fa fa-sign-out" aria-hidden="true"></i></a></li>
@@ -125,10 +125,10 @@ if ($cluster) {
 	</ul>
 	<div class="container">
 		<h1>Cluster Details</h1>
-		<?php if (isset($success)) { ?>
+		<?php if(isset($success)) { ?>
 			<div class="success-message"><?php echo $success; ?></div> 
 		<?php } ?>
-		<?php if (isset($error)) { ?>
+		<?php if(isset($error)) { ?>
 			<div class="error-message"><?php echo $error; ?></div> 
 		<?php } ?>
 		<div class="table-container" style="max-width:1500px;">
@@ -182,7 +182,7 @@ if ($cluster) {
 						<form id="togglecluster" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post">
 							<input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken); ?>">
 							<input type="hidden" name="id" value="<?php echo htmlspecialchars($cluster_id); ?>">
-						<?php if ($cluster['status'] == "1") { ?>
+						<?php if($cluster['status'] == "1") { ?>
 							<button type="submit" class="stylish-button" name="disable_cluster">DISABLE</button>
 						<?php } else { ?>
 							<button type="submit" class="stylish-button" name="enable_cluster">ENABLE</button>
@@ -191,7 +191,7 @@ if ($cluster) {
 						</td>
 					</tr>					
 				</table>
-				<?php if ($cluster['status'] == "0") { ?>
+				<?php if($cluster['status'] == "0") { ?>
 				<br />
 				<hr />
 				<br />
@@ -231,7 +231,7 @@ if ($cluster) {
 			const checkboxId = 'enable' + inputId;
 			const checkbox = document.getElementById(checkboxId);
 			const inputField = document.getElementById(inputId);
-			if (checkbox) { // Check if checkbox exists
+			if(checkbox) { // Check if checkbox exists
 				inputField.readOnly =!checkbox.checked;
 			} else {
 				console.error("Checkbox not found:", checkboxId);
@@ -244,13 +244,13 @@ if ($cluster) {
 
 		// Load the user's preferred theme from localStorage
 		const savedTheme = localStorage.getItem('theme');
-		if (savedTheme === 'dark') {
+		if(savedTheme === 'dark') {
 			body.classList.add('dark-mode');
 			themeToggle.checked = true; 
 		}
 
 		themeToggle.addEventListener('change', () => {
-			if (themeToggle.checked) {
+			if(themeToggle.checked) {
 				body.classList.add('dark-mode');
 				localStorage.setItem('theme', 'dark');
 			} else {
@@ -279,7 +279,7 @@ if ($cluster) {
 
 		// When the user clicks anywhere outside of the modal, close it
 		window.onclick = function(event) {
-			if (event.target == modal) {
+			if(event.target == modal) {
 				modal.style.display = "none";
 			}
 		}

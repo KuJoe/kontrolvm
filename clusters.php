@@ -2,17 +2,17 @@
 /** KontrolVM By KuJoe (https://github.com/KuJoe/kontrolvm) **/
 
 session_start();
-if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
+if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 	header("Location: index.php"); 
 	exit; 
 } else {
-	if (isset($_GET['s']) AND $_GET['s'] == '1') {
+	if(isset($_GET['s']) AND $_GET['s'] == '1') {
 		$success = "Cluster added successfully.";
 	}
-	if (isset($_GET['s']) AND $_GET['s'] == '2') {
+	if(isset($_GET['s']) AND $_GET['s'] == '2') {
 		$success = "Cluster deleted successfully.";
 	}
-	if (isset($_GET['s']) AND $_GET['s'] == '3') {
+	if(isset($_GET['s']) AND $_GET['s'] == '3') {
 		$success = "Cluster ID not found.";
 	}
 	define('AmAllowed', TRUE);
@@ -28,17 +28,17 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 	}
 	$chkRole = getStaffRole($loggedin_id);
 	$allowedRoles = ['2', '9'];
-	if (!in_array($chkRole, $allowedRoles)) {
+	if(!in_array($chkRole, $allowedRoles)) {
 		header("Location: home.php?s=99");
 		exit;
 	}
 }
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
+if($_SERVER["REQUEST_METHOD"] == "POST") {
 	$token = $_POST["csrf_token"];
-	if (validateCSRFToken($token)) {
-		if (isset($_POST['add_cluster'])) {
+	if(validateCSRFToken($token)) {
+		if(isset($_POST['add_cluster'])) {
 			$friendlyname = $_POST["friendlyname"];
-			$result = addCluster($friendlyname);
+			$result = addCluster($loggedin_id,$friendlyname);
 			if($result === true) {
 				header("Location: clusters.php?s=1");
 			} else {
@@ -68,8 +68,8 @@ $clusters = getClusters('all');
 		<label class="logo"><a href="index.php"><img src="assets/logo.png" alt="KontrolVM Logo"></a></label>
 		<ul>
 			<li><a href="index.php">Dashboard</a></li>
-			<?php if (in_array($myrole, ['2', '9'])) { ?> <li><a class="active" href="clusters.php">Infrastructure</a></li> <?php } ?>
-			<?php if (in_array($myrole, ['1', '9'])) { ?> <li><a href="users.php">Users</a></li> <?php } ?>
+			<?php if(in_array($myrole, ['2', '9'])) { ?> <li><a class="active" href="clusters.php">Infrastructure</a></li> <?php } ?>
+			<?php if(in_array($myrole, ['1', '9'])) { ?> <li><a href="users.php">Users</a></li> <?php } ?>
 			<li><a href="settings.php">Settings</a></li>
 			<li style="font-weight: bold;"><a href="account.php"><?php echo htmlspecialchars($_SESSION["username"]); ?></a></li>
 			<li><a href="logout.php"><i class="fa fa-sign-out" aria-hidden="true"></i></a></li>
@@ -96,10 +96,10 @@ $clusters = getClusters('all');
 			</div>
 		</div>
 		<h1>Clusters</h1>
-		<?php if (isset($success)) { ?>
+		<?php if(isset($success)) { ?>
 			<div class="success-message"><?php echo $success; ?></div> 
 		<?php } ?>
-		<?php if (isset($error)) { ?>
+		<?php if(isset($error)) { ?>
 			<div class="error-message"><?php echo $error; ?></div> 
 		<?php } ?>
 		<div class="table-container" style="max-width:1500px;">
@@ -118,7 +118,7 @@ $clusters = getClusters('all');
 					echo '<tr>';
 					echo "<td class='tname'><a href='cluster.php?id=$cluster_id' />" . $cluster['friendlyname'] . "</a></td>";
 					echo "<td><span class='ticon' style='padding-right:4px;'>Status: </span>";
-					if ($cluster['status'] == "1") {
+					if($cluster['status'] == "1") {
 						echo "<img src='assets/1.png' alt='Enabled'>";
 					} else {
 						echo "<img src='assets/0.png' alt='Disabled'>";
@@ -138,13 +138,13 @@ $clusters = getClusters('all');
 
 		// Load the user's preferred theme from localStorage
 		const savedTheme = localStorage.getItem('theme');
-		if (savedTheme === 'dark') {
+		if(savedTheme === 'dark') {
 			body.classList.add('dark-mode');
 			themeToggle.checked = true; 
 		}
 
 		themeToggle.addEventListener('change', () => {
-			if (themeToggle.checked) {
+			if(themeToggle.checked) {
 				body.classList.add('dark-mode');
 				localStorage.setItem('theme', 'dark');
 			} else {
@@ -173,7 +173,7 @@ $clusters = getClusters('all');
 
 		// When the user clicks anywhere outside of the modal, close it
 		window.onclick = function(event) {
-			if (event.target == modal) {
+			if(event.target == modal) {
 				modal.style.display = "none";
 			}
 		}

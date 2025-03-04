@@ -7,9 +7,9 @@ require_once('config.php');
 require_once('functions.php');
 $remote_addr = getRealUserIp();
 
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
+if($_SERVER["REQUEST_METHOD"] == "POST") {
 	$errorMessage = "";
-	if (isset($_POST['username']) && isset($_POST['password'])) {
+	if(isset($_POST['username']) && isset($_POST['password'])) {
 		if(isset($secretkey)) {
 			$cf_url = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
 			$token = $_POST['cf-turnstile-response'];
@@ -24,14 +24,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 			curl_setopt($curl, CURLOPT_POSTFIELDS, $data);
 			curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
 			$response = curl_exec($curl);
-			if (curl_errno($curl)) {
+			if(curl_errno($curl)) {
 				$error_message = curl_error($curl);
 				error_log("Error with CAPTCHA: " . $error_message);
 				curl_close($curl);
 				header("Location: index.php?e=1");
 			}else{
 				$response = json_decode($response,true);
-				if ($response['error-codes'] && count($response['error-codes']) > 0){
+				if($response['error-codes'] && count($response['error-codes']) > 0){
 					error_log("Cloudflare Turnstile check failed.");
 					curl_close($curl);
 					header("Location: index.php?e=1");

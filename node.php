@@ -3,29 +3,29 @@
 
 session_start();
 define('AmAllowed', TRUE);
-if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
+if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 	header("Location: index.php");
 	exit; 
 } else {
-	if (isset($_GET['id'])) {
-		if (isset($_GET['s']) AND $_GET['s'] == '1') {
+	if(isset($_GET['id'])) {
+		if(isset($_GET['s']) AND $_GET['s'] == '1') {
 			$success = "Node updated successfully.";
 		}
-		if (isset($_GET['s'])) {
-			if ($_GET['s'] == '1') {
+		if(isset($_GET['s'])) {
+			if($_GET['s'] == '1') {
 				$success = "Node updated successfully.";
-			} elseif ($_GET['s'] == '2') {
+			} elseif($_GET['s'] == '2') {
 				$success = "Node VMs imported successfully.";
-			} elseif ($_GET['s'] == '3') {
+			} elseif($_GET['s'] == '3') {
 				$success = "Network added successfully.";
-			} elseif ($_GET['s'] == '4') {
+			} elseif($_GET['s'] == '4') {
 				$success = "Network deleted successfully.";
 			}
 		}
 		$node_id = $_GET['id'];
 		require_once('functions.php');
 		$node = getNodeDetails($node_id);
-	} elseif (isset($_POST['id'])) {
+	} elseif(isset($_POST['id'])) {
 		$node_id = $_POST['id'];
 		require_once('functions.php');
 		$node = getNodeDetails($node_id);
@@ -44,7 +44,7 @@ if($chkLocked == true OR $chkActive == false) {
 }
 $chkRole = getStaffRole($loggedin_id);
 $allowedRoles = ['2', '9'];
-if (!in_array($chkRole, $allowedRoles)) {
+if(!in_array($chkRole, $allowedRoles)) {
 	header("Location: home.php?s=99");
 	exit;
 }
@@ -55,46 +55,46 @@ header('Cache-Control: post-check=0, pre-check=0', false);
 header('Pragma: no-cache');
 $csrfToken = getCSRFToken();
 
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
+if($_SERVER["REQUEST_METHOD"] == "POST") {
 	$token = $_POST["csrf_token"];
-	if (validateCSRFToken($token)) {
-		if (isset($_POST['editNode'])) {
+	if(validateCSRFToken($token)) {
+		if(isset($_POST['editNode'])) {
 			$node_data = [':hostname' => $_POST["hostname"],':ipaddr' => $_POST["ipaddr"],':sshport' => $_POST["sshport"],':lastvm' => $_POST["lastvm"],':lastvnc' => $_POST["lastvnc"],':lastws' => $_POST["lastws"],':cluster' => $_POST["cluster"],':status' => isset($_POST["status"])? 1: 0];
-			$result = editNode($node_id, $node_data);
+			$result = editNode($loggedin_id,$node_id,$node_data);
 			if($result === true) {
 				header("Location: node.php?id=". (int)$node_id. "&s=1");
 			} else {
 				$error = "Node update failed: ".$result;
 			}
 		}
-		if (isset($_POST['importVMs'])) {
-			$result = importVMs($node_id);
+		if(isset($_POST['importVMs'])) {
+			$result = importVMs($loggedin_id,$node_id);
 			if($result === true) {
 				header("Location: node.php?id=". (int)$node_id. "&s=2");
 			} else {
 				$error = "Node import failed: ".$result;
 			}
 		}
-		if (isset($_POST['add_network'])) {
-			$result = addNetwork($node_id,$_POST["net_name"]);
+		if(isset($_POST['add_network'])) {
+			$result = addNetwork($loggedin_id,$node_id,$_POST["net_name"]);
 			if($result === true) {
 				header("Location: node.php?id=". (int)$node_id. "&s=3");
 			} else {
 				$error = "Node network add failed: ".$result;
 			}
 		}
-		if (isset($_POST['delete_network'])) {
-			$result = deleteNetwork($node_id,$_POST["id"]);
+		if(isset($_POST['delete_network'])) {
+			$result = deleteNetwork($loggedin_id,$node_id,$_POST["id"]);
 			if($result === true) {
 				header("Location: node.php?id=". (int)$node_id. "&s=4");
 			} else {
 				$error = "Node network delete failed: ".$result;
 			}
 		}
-		if (isset($_POST['deleteNode'])) {
-			if (isset($_POST['confirm'])) {
+		if(isset($_POST['deleteNode'])) {
+			if(isset($_POST['confirm'])) {
 				$confirm = $_POST['confirm'];
-				$result = deleteNode($node_id, $node['hostname'], $confirm);
+				$result = deleteNode($loggedin_id,$node_id, $node['hostname'],$confirm);
 				if($result === true) {
 					header("Location: nodes.php?s=2");
 				} else {
@@ -109,14 +109,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 	}
 }
 
-if ($node) {
+if($node) {
 	$script_name = 'updateNodes.php';
 	$last_run_time = getLastRunTime($script_name); 
-	if (!$last_run_time || time() - $last_run_time >= 3600) {
+	if(!$last_run_time || time() - $last_run_time >= 3600) {
 		include($script_name);
 		updateLastRunTime($script_name); 
 	}
-	if ($node['status'] == "1") {
+	if($node['status'] == "1") {
 		$state = " checked";
 	} else {
 		$state = "";
@@ -136,8 +136,8 @@ if ($node) {
 		<label class="logo"><a href="index.php"><img src="assets/logo.png" alt="KontrolVM Logo"></a></label>
 		<ul>
 			<li><a href="index.php">Dashboard</a></li>
-			<?php if (in_array($myrole, ['2', '9'])) { ?> <li><a class="active" href="clusters.php">Infrastructure</a></li> <?php } ?>
-			<?php if (in_array($myrole, ['1', '9'])) { ?> <li><a href="users.php">Users</a></li> <?php } ?>
+			<?php if(in_array($myrole, ['2', '9'])) { ?> <li><a class="active" href="clusters.php">Infrastructure</a></li> <?php } ?>
+			<?php if(in_array($myrole, ['1', '9'])) { ?> <li><a href="users.php">Users</a></li> <?php } ?>
 			<li><a href="settings.php">Settings</a></li>
 			<li style="font-weight: bold;"><a href="account.php"><?php echo htmlspecialchars($_SESSION["username"]); ?></a></li>
 			<li><a href="logout.php"><i class="fa fa-sign-out" aria-hidden="true"></i></a></li>
@@ -150,10 +150,10 @@ if ($node) {
 	</ul>
 	<div class="container">
 		<h1>Node Details</h1>
-		<?php if (isset($success)) { ?>
+		<?php if(isset($success)) { ?>
 			<div class="success-message"><?php echo $success; ?></div> 
 		<?php } ?>
-		<?php if (isset($error)) { ?>
+		<?php if(isset($error)) { ?>
 			<div class="error-message"><?php echo $error; ?></div> 
 		<?php } ?>
 		<div class="table-container" style="max-width:1500px;">
@@ -312,7 +312,7 @@ if ($node) {
 				<br />
 				<hr />
 				<br />
-				<?php if ($node['status'] == "0") { ?>
+				<?php if($node['status'] == "0") { ?>
 				<br />
 				<hr />
 				<br />
@@ -352,7 +352,7 @@ if ($node) {
 			const checkboxId = 'enable' + inputId;
 			const checkbox = document.getElementById(checkboxId);
 			const inputField = document.getElementById(inputId);
-			if (checkbox) { // Check if checkbox exists
+			if(checkbox) { // Check if checkbox exists
 				inputField.readOnly =!checkbox.checked;
 			} else {
 				console.error("Checkbox not found:", checkboxId);
@@ -365,13 +365,13 @@ if ($node) {
 
 		// Load the user's preferred theme from localStorage
 		const savedTheme = localStorage.getItem('theme');
-		if (savedTheme === 'dark') {
+		if(savedTheme === 'dark') {
 			body.classList.add('dark-mode');
 			themeToggle.checked = true; 
 		}
 
 		themeToggle.addEventListener('change', () => {
-			if (themeToggle.checked) {
+			if(themeToggle.checked) {
 				body.classList.add('dark-mode');
 				localStorage.setItem('theme', 'dark');
 			} else {
@@ -400,7 +400,7 @@ if ($node) {
 
 		// When the user clicks anywhere outside of the modal, close it
 		window.onclick = function(event) {
-			if (event.target == modal) {
+			if(event.target == modal) {
 				modal.style.display = "none";
 			}
 		}

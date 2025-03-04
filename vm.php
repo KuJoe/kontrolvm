@@ -2,7 +2,7 @@
 /** KontrolVM By KuJoe (https://github.com/KuJoe/kontrolvm) **/
 
 session_start();
-if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
+if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 	header("Location: index.php");
 	exit; 
 } else {
@@ -19,64 +19,64 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 	}
 	$chkRole = getStaffRole($loggedin_id);
 	$allowedRoles = ['1', '2', '3', '9'];
-	if (!in_array($chkRole, $allowedRoles)) {
+	if(!in_array($chkRole, $allowedRoles)) {
 		header("Location: home.php?s=99");
 		exit;
 	}
-	if (isset($_GET['id'])) {
-		if (isset($_GET['s'])) {
-			if ($_GET['s'] == '1') {
+	if(isset($_GET['id'])) {
+		if(isset($_GET['s'])) {
+			if($_GET['s'] == '1') {
 				$success = "VM updated successfully.";
-			} elseif ($_GET['s'] == '2') {
+			} elseif($_GET['s'] == '2') {
 				$success = "VM start command sent.";
-			} elseif ($_GET['s'] == '3') {
+			} elseif($_GET['s'] == '3') {
 				$success = "VM restart command sent.";
-			} elseif ($_GET['s'] == '4') {
+			} elseif($_GET['s'] == '4') {
 				$success = "VM shutdown command sent.";
-			} elseif ($_GET['s'] == '5') {
+			} elseif($_GET['s'] == '5') {
 				$success = "VM stop command sent.";
-			} elseif ($_GET['s'] == '6') {
+			} elseif($_GET['s'] == '6') {
 				$success = "VNC disabled.";
-			} elseif ($_GET['s'] == '7') {
+			} elseif($_GET['s'] == '7') {
 				$success = "VNC enabled.";
-			} elseif ($_GET['s'] == '8') {
+			} elseif($_GET['s'] == '8') {
 				$success = "VM console password reset successfully.";
-			} elseif ($_GET['s'] == '9') {
+			} elseif($_GET['s'] == '9') {
 				$success = "ISO mounted successfully.";
-			} elseif ($_GET['s'] == '10') {
+			} elseif($_GET['s'] == '10') {
 				$success = "ISO unmounted successfully.";
-			} elseif ($_GET['s'] == '11') {
+			} elseif($_GET['s'] == '11') {
 				$success = "VM disk driver updated successfully.";
-			} elseif ($_GET['s'] == '12') {
+			} elseif($_GET['s'] == '12') {
 				$success = "VM network driver updated successfully.";
-			} elseif ($_GET['s'] == '13') {
+			} elseif($_GET['s'] == '13') {
 				$success = "VM boot order updated successfully.<br />Power cycle VM to take effect.";
-			} elseif ($_GET['s'] == '14') {
+			} elseif($_GET['s'] == '14') {
 				$success = "VM disk resized, please login to resize inside the OS.<br />May need to power cycle VM to take effect.";
-			} elseif ($_GET['s'] == '15') {
+			} elseif($_GET['s'] == '15') {
 				$success = "VM disk added successfully.";
-			} elseif ($_GET['s'] == '16') {
+			} elseif($_GET['s'] == '16') {
 				$success = "VM disk deleted successfully.";
-			} elseif ($_GET['s'] == '17') {
+			} elseif($_GET['s'] == '17') {
 				$success = "VM backup started successfully.";
-			} elseif ($_GET['s'] == '18') {
+			} elseif($_GET['s'] == '18') {
 				$success = "VM backup deleted successfully.";
-			} elseif ($_GET['s'] == '19') {
+			} elseif($_GET['s'] == '19') {
 				$success = "VM restore started successfully, this might take a while.";
-			} elseif ($_GET['s'] == '20') {
+			} elseif($_GET['s'] == '20') {
 				$success = "VM NIC added successfully.";
-			} elseif ($_GET['s'] == '21') {
+			} elseif($_GET['s'] == '21') {
 				$success = "VM NIC deleted successfully.";
-			} elseif ($_GET['s'] == '22') {
+			} elseif($_GET['s'] == '22') {
 				$success = "VM IP added successfully.";
-			} elseif ($_GET['s'] == '23') {
+			} elseif($_GET['s'] == '23') {
 				$success = "VM IP removed successfully.";
 			}
 		}
 		$vm_id = $_GET['id'];
 		$vm = getVMDetails($vm_id);
 		$node = getNodeDetails($vm['node_id']);
-	} elseif (isset($_POST['id'])) {
+	} elseif(isset($_POST['id'])) {
 		$vm_id = $_POST['id'];
 		$vm = getVMDetails($vm_id);
 		$node = getNodeDetails($vm['node_id']);
@@ -92,284 +92,284 @@ header('Cache-Control: post-check=0, pre-check=0', false);
 header('Pragma: no-cache');
 $csrfToken = getCSRFToken();
 
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
+if($_SERVER["REQUEST_METHOD"] == "POST") {
 	$token = $_POST["csrf_token"];
-	if (validateCSRFToken($token)) {
-		if (isset($_POST['update_vm'])) {
+	if(validateCSRFToken($token)) {
+		if(isset($_POST['update_vm'])) {
 			$encpw = encrypt($_POST["vncpw"]);
 			$vm_data = [':name' => $_POST["name"],':hostname' => $_POST["hostname"],':notes' => isset($_POST["notes"])? $_POST["notes"]: ' ',':vncpw' => $encpw,':vncport' => $_POST["vncport"],':websockify' => $_POST["websockify"],':mac_address' => $_POST["mac_address"],':cluster' => $_POST["cluster"],':status' => isset($_POST["status"])? 1: 0,':protected' => isset($_POST["protected"])? 1: 0];
-			$result = editVM($vm_id,$vm_data);
+			$result = editVM($loggedin_id,$vm_id,$vm_data);
 			if($result === true) {
 				header("Location: vm.php?id=". (int)$vm_id. "&s=1");
 			} else {
-				$error = "VM update failed: ".$result;
+				$error = $result;
 			}
 		}
-		if (isset($_POST['set_CPU'])) {
+		if(isset($_POST['set_CPU'])) {
 			$cpu_cores = $_POST["cpu_cores"];
-			$result = setCPU($vm_id,$vm['name'],$cpu_cores,$node['node_id']);
+			$result = setCPU($loggedin_id,$vm_id,$vm['name'],$cpu_cores,$node['node_id']);
 			if($result === true) {
 				header("Location: vm.php?id=". (int)$vm_id. "&s=1");
 			} else {
-				$error = "VM update failed: ".$result;
+				$error = $result;
 			}
 		}
-		if (isset($_POST['set_RAM'])) {
+		if(isset($_POST['set_RAM'])) {
 			$memory = $_POST["memory"];
-			$result = setRAM($vm_id,$vm['name'],$memory,$vm['node_id']);
+			$result = setRAM($loggedin_id,$vm_id,$vm['name'],$memory,$vm['node_id']);
 			if($result === true) {
 				header("Location: vm.php?id=". (int)$vm_id. "&s=1");
 			} else {
-				$error = "VM update failed: ".$result;
+				$error = $result;
 			}
 		}
-		if (isset($_POST['resize_disk'])) {
+		if(isset($_POST['resize_disk'])) {
 			$disk_id= $_POST["disk_id"];
 			$disk_name = $_POST["disk_name"];
 			$disk_size = $_POST["disk_size"];
-			$result = resizeDisk($vm_id,$vm['name'],$disk_id,$disk_name,$disk_size,$vm['node_id']);
+			$result = resizeDisk($loggedin_id,$vm_id,$vm['name'],$disk_id,$disk_name,$disk_size,$vm['node_id']);
 			if($result === true) {
 				header("Location: vm.php?id=". (int)$vm_id. "&s=14");
 			} else {
-				$error = "VM disk resize failed: ".$result;
+				$error = $result;
 			}
 		}
-		if (isset($_POST['add_disk'])) {
+		if(isset($_POST['add_disk'])) {
 			$disk_size = $_POST["disk_size"];
-			$result = addDisk($vm_id,$vm['name'],$disk_size,$vm['node_id']);
+			$result = addDisk($loggedin_id,$vm_id,$vm['name'],$disk_size,$vm['node_id']);
 			if($result === true) {
 				header("Location: vm.php?id=". (int)$vm_id. "&s=15");
 			} else {
-				$error = "VM disk add failed: ".$result;
+				$error = $result;
 			}
 		}
-		if (isset($_POST['delete_disk'])) {
+		if(isset($_POST['delete_disk'])) {
 			$disk_id= $_POST["disk_id"];
 			$disk_name = $_POST["disk_name"];
-			$result = deleteDisk($vm_id,$vm['name'],$disk_id,$disk_name,$vm['node_id']);
+			$result = deleteDisk($loggedin_id,$vm_id,$vm['name'],$disk_id,$disk_name,$vm['node_id']);
 			if($result === true) {
 				header("Location: vm.php?id=". (int)$vm_id. "&s=16");
 			} else {
-				$error = "VM disk delete failed: ".$result;
+				$error = $result;
 			}
 		}
-		if (isset($_POST['add_nic'])) {
+		if(isset($_POST['add_nic'])) {
 			$network = $_POST["network"];
-			$result = addNIC($vm_id,$vm['name'],$network,$vm['mac_address'],$vm['node_id']);
+			$result = addNIC($loggedin_id,$vm_id,$vm['name'],$network,$vm['mac_address'],$vm['node_id']);
 			if($result === true) {
 				header("Location: vm.php?id=". (int)$vm_id. "&s=20");
 			} else {
-				$error = "VM NIC add failed: ".$result;
+				$error = $result;
 			}
 		}
-		if (isset($_POST['delete_nic'])) {
+		if(isset($_POST['delete_nic'])) {
 			$nic_id= $_POST["nic_id"];
 			$mac_address = $_POST["mac_address"];
-			$result = deleteNIC($vm['node_id'],$vm['name'],$nic_id,$mac_address);
+			$result = deleteNIC($loggedin_id,$vm['node_id'],$vm['name'],$nic_id,$mac_address);
 			if($result === true) {
 				header("Location: vm.php?id=". (int)$vm_id. "&s=21");
 			} else {
-				$error = "VM NIC delete failed: ".$result;
+				$error = $result;
 			}
 		}
-		if (isset($_POST['attach_ip4'])) {
+		if(isset($_POST['attach_ip4'])) {
 			$ip_id = $_POST["ip_id"];
-			$result = attachIP($vm_id,$ip_id,$vm['node_id'],"4");
+			$result = attachIP($loggedin_id,$vm_id,$ip_id,$vm['node_id'],"4");
 			if($result === true) {
 				header("Location: vm.php?id=". (int)$vm_id. "&s=22");
 			} else {
-				$error = "VM IP add failed: ".$result;
+				$error = $result;
 			}
 		}
-		if (isset($_POST['detach_ip4'])) {
+		if(isset($_POST['detach_ip4'])) {
 			$ip_id = $_POST["ip_id"];
-			$result = detachIP($ip_id,"4");
+			$result = detachIP($loggedin_id,$ip_id,"4");
+			if($result === true) {
+				header("Location: vm.php?id=". (int)$vm_id. "&s=23");
+			} else {
+				$error = $result;
+			}
+		}
+		if(isset($_POST['attach_ip6'])) {
+			$ip_id = $_POST["ip_id"];
+			$result = attachIP($loggedin_id,$vm_id,$ip_id,$vm['node_id'],"6");
+			if($result === true) {
+				header("Location: vm.php?id=". (int)$vm_id. "&s=22");
+			} else {
+				$error = $result;
+			}
+		}
+		if(isset($_POST['detach_ip6'])) {
+			$ip_id = $_POST["ip_id"];
+			$result = detachIP($loggedin_id,$ip_id,"6");
 			if($result === true) {
 				header("Location: vm.php?id=". (int)$vm_id. "&s=23");
 			} else {
 				$error = "VM IP remove failed: ".$result;
 			}
 		}
-		if (isset($_POST['attach_ip6'])) {
-			$ip_id = $_POST["ip_id"];
-			$result = attachIP($vm_id,$ip_id,$vm['node_id'],"6");
-			if($result === true) {
-				header("Location: vm.php?id=". (int)$vm_id. "&s=22");
-			} else {
-				$error = "VM IP add failed: ".$result;
-			}
-		}
-		if (isset($_POST['detach_ip6'])) {
-			$ip_id = $_POST["ip_id"];
-			$result = detachIP($ip_id,"6");
-			if($result === true) {
-				header("Location: vm.php?id=". (int)$vm_id. "&s=23");
-			} else {
-				$error = "VM IP remove failed: ".$result;
-			}
-		}
-		if (isset($_POST['set_iow'])) {
+		if(isset($_POST['set_iow'])) {
 			$speed = $_POST['iow'];
-			$result = setIOW($vm_id,$vm['name'],$speed,$vm['node_id']);
+			$result = setIOW($loggedin_id,$vm_id,$vm['name'],$speed,$vm['node_id']);
 			if($result === true) {
 				header("Location: vm.php?id=". (int)$vm_id. "&s=1");
 			} else {
-				$error = "VM update failed: ".$result;
+				$error = $result;
 			}
 		}
-		if (isset($_POST['set_iow'])) {
+		if(isset($_POST['set_iow'])) {
 			$speed = $_POST['iow'];
-			$result = setIOW($vm_id,$vm['name'],$speed,$vm['node_id']);
+			$result = setIOW($loggedin_id,$vm_id,$vm['name'],$speed,$vm['node_id']);
 			if($result === true) {
 				header("Location: vm.php?id=". (int)$vm_id. "&s=1");
 			} else {
-				$error = "VM update failed: ".$result;
+				$error = $result;
 			}
 		}
-		if (isset($_POST['set_nic'])) {
+		if(isset($_POST['set_nic'])) {
 			$speed = $_POST['nic'];
-			$result = setNIC($vm_id,$vm['name'],$vm['network'],$speed,$vm['node_id']);
+			$result = setNIC($loggedin_id,$vm_id,$vm['name'],$vm['network'],$speed,$vm['node_id']);
 			if($result === true) {
 				header("Location: vm.php?id=". (int)$vm_id. "&s=1");
 			} else {
-				$error = "VM update failed: ".$result;
+				$error = $result;
 			}
 		}
-		if (isset($_POST['startvm'])) {
-			$result = startVM($vm_id,$vm['name'],$vm['node_id']);
+		if(isset($_POST['startvm'])) {
+			$result = startVM($loggedin_id,$vm_id,$vm['name'],$vm['node_id']);
 			if($result === true) {
 				header("Location: vm.php?id=". (int)$vm_id. "&s=2");
 			} else {
-				$error = "VM start failed: ".$result;
+				$error = $result;
 			}
 		}
-		if (isset($_POST['restartvm'])) {
-			$result = restartVM($vm_id,$vm['name'],$vm['node_id']);
+		if(isset($_POST['restartvm'])) {
+			$result = restartVM($loggedin_id,$vm_id,$vm['name'],$vm['node_id']);
 			if($result === true) {
 				header("Location: vm.php?id=". (int)$vm_id. "&s=3");
 			} else {
-				$error = "VM restart failed: ".$result;
+				$error = $result;
 			}
 		}
-		if (isset($_POST['shutdownvm'])) {
-			$result = shutdownVM($vm_id,$vm['name'],$vm['node_id']);
+		if(isset($_POST['shutdownvm'])) {
+			$result = shutdownVM($loggedin_id,$vm_id,$vm['name'],$vm['node_id']);
 			if($result === true) {
 				header("Location: vm.php?id=". (int)$vm_id. "&s=4");
 			} else {
-				$error = "VM shutdown failed: ".$result;
+				$error = $result;
 			}
 		}
-		if (isset($_POST['stopvm'])) {
-			$result = stopVM($vm_id,$vm['name'],$vm['node_id']);
+		if(isset($_POST['stopvm'])) {
+			$result = stopVM($loggedin_id,$vm_id,$vm['name'],$vm['node_id']);
 			if($result === true) {
 				header("Location: vm.php?id=". (int)$vm_id. "&s=5");
 			} else {
-				$error = "VM stop failed: ".$result;
+				$error = $result;
 			}
 		}
-		if (isset($_POST['disableVNC'])) {
-			$result = disableVNC($vm_id,$vm['name'],$vm['websockify'],$vm['vncport'],$vm['node_id']);
+		if(isset($_POST['disableVNC'])) {
+			$result = disableVNC($loggedin_id,$vm_id,$vm['name'],$vm['websockify'],$vm['vncport'],$vm['node_id']);
 			if($result === true) {
 				header("Location: vm.php?id=". (int)$vm_id. "&s=6");
 			} else {
-				$error = "VM disable VNC failed: ".$result;
+				$error = $result;
 			}
 		}
-		if (isset($_POST['enableVNC'])) {
-			$result = enableVNC($vm_id,$vm['name'],$vm['websockify'],$vm['vncport'],$vm['node_id']);
+		if(isset($_POST['enableVNC'])) {
+			$result = enableVNC($loggedin_id,$vm_id,$vm['name'],$vm['websockify'],$vm['vncport'],$vm['node_id']);
 			if($result === true) {
 				header("Location: vm.php?id=". (int)$vm_id. "&s=7");
 			} else {
-				$error = "VM enable VNC failed: ".$result;
+				$error = $result;
 			}
 		}
-		if (isset($_POST['consolePW'])) {
-			$result = consolePW($vm_id,$vm['name'],$vm['vncport'],$vm['node_id']);
+		if(isset($_POST['consolePW'])) {
+			$result = consolePW($loggedin_id,$vm_id,$vm['name'],$vm['vncport'],$vm['node_id']);
 			if($result === true) {
 				header("Location: vm.php?id=". (int)$vm_id. "&s=8");
 			} else {
-				$error = "VM console password reset failed: ".$result;
+				$error = $result;
 			}
 		}
-		if (isset($_POST['mountISO'])) {
+		if(isset($_POST['mountISO'])) {
 			$ostemplate = $_POST['ostemplate'];
-			$result = mountISO($vm_id,$vm['name'],$ostemplate,$vm['node_id']);
+			$result = mountISO($loggedin_id,$vm_id,$vm['name'],$ostemplate,$vm['node_id']);
 			if($result === true) {
 				header("Location: vm.php?id=". (int)$vm_id. "&s=9");
 			} else {
-				$error = "VM ISO mount failed: ".$result;
+				$error = $result;
 			}
 		}
-		if (isset($_POST['unmountISO'])) {
-			$result = unmountISO($vm_id,$vm['name'],$vm['node_id']);
+		if(isset($_POST['unmountISO'])) {
+			$result = unmountISO($loggedin_id,$vm_id,$vm['name'],$vm['node_id']);
 			if($result === true) {
 				header("Location: vm.php?id=". (int)$vm_id. "&s=10");
 			} else {
-				$error = "VM ISO unmount failed: ".$result;
+				$error = $result;
 			}
 		}
-		#if (isset($_POST['diskDriver'])) {
+		#if(isset($_POST['diskDriver'])) {
 		#	$bus = $_POST['bus'];
-		#	$result = diskDriver($vm_id,$vm['name'],$bus,$vm['node_id']);
+		#	$result = diskDriver($loggedin_id,$vm_id,$vm['name'],$bus,$vm['node_id']);
 		#	if($result === true) {
 		#		header("Location: vm.php?id=". (int)$vm_id. "&s=11");
 		#	} else {
-		#		$error = "VM update disk driver failed: ".$result;
+		#		$error = $result;
 		#	}
 		#}
-		#if (isset($_POST['netDriver'])) {
+		#if(isset($_POST['netDriver'])) {
 		#	$bus = $_POST['bus'];
-		#	$result = netDriver($vm_id,$vm['name'],$bus,$vm['node_id']);
+		#	$result = netDriver($loggedin_id,$vm_id,$vm['name'],$bus,$vm['node_id']);
 		#	if($result === true) {
 		#		header("Location: vm.php?id=". (int)$vm_id. "&s=12");
 		#	} else {
-		#		$error = "VM update network driver failed: ".$result;
+		#		$error = $result;
 		#	}
 		#}
-		if (isset($_POST['bootOrder'])) {
+		if(isset($_POST['bootOrder'])) {
 			$boot = $_POST['boot'];
-			$result = bootOrder($vm_id,$vm['name'],$boot,$vm['node_id']);
+			$result = bootOrder($loggedin_id,$vm_id,$vm['name'],$boot,$vm['node_id']);
 			if($result === true) {
 				header("Location: vm.php?id=". (int)$vm_id. "&s=13");
 			} else {
-				$error = "VM update boot order failed: ".$result;
+				$error = $result;
 			}
 		}
-		if (isset($_POST['backupvm'])) {
-			$result = backupVM($vm_id,$vm['name'],$vm['node_id']);
+		if(isset($_POST['backupvm'])) {
+			$result = backupVM($loggedin_id,$vm_id,$vm['name'],$vm['node_id']);
 			if($result === true) {
 				header("Location: vm.php?id=". (int)$vm_id. "&s=17");
 			} else {
-				$error = "VM backup failed: ".$result;
+				$error = $result;
 			}
 		}
-		if (isset($_POST['deleteBackup'])) {
+		if(isset($_POST['deleteBackup'])) {
 			$backup_id = $_POST['backup_id'];
 			$backup_name = $_POST['backup_name'];
-			$result = deleteBackup($vm_id,$backup_name,$backup_id,$vm['node_id']);
+			$result = deleteBackup($loggedin_id,$vm_id,$backup_name,$backup_id,$vm['node_id']);
 			if($result === true) {
 				header("Location: vm.php?id=". (int)$vm_id. "&s=18");
 			} else {
-				$error = "VM backup delete failed: ".$result;
+				$error = $result;
 			}
 		}
-		if (isset($_POST['restoreVM'])) {
+		if(isset($_POST['restoreVM'])) {
 			$backup_name = $_POST['backup_name'];
-			$result = restoreVM($backup_name,$vm['name'],$vm['vncport'],$vm_id,$vm['node_id']);
+			$result = restoreVM($loggedin_id,$backup_name,$vm['name'],$vm['vncport'],$vm_id,$vm['node_id']);
 			if($result === true) {
 				header("Location: vm.php?id=". (int)$vm_id. "&s=19");
 			} else {
-				$error = "VM restore failed: ".$result;
+				$error = $result;
 			}
 		}
-		if (isset($_POST['destroyVM'])) {
-			if (isset($_POST['confirm'])) {
+		if(isset($_POST['destroyVM'])) {
+			if(isset($_POST['confirm'])) {
 				$confirm = $_POST['confirm'];
-				$result = destroyVM($vm_id,$vm['name'],$vm['websockify'],$vm['vncport'],$vm['node_id'],$confirm);
+				$result = destroyVM($loggedin_id,$vm_id,$vm['name'],$vm['websockify'],$vm['vncport'],$vm['node_id'],$confirm);
 				if($result === true) {
 					header("Location: vms.php?s=2");
 				} else {
-					$error = "VM delete failed: ".$result;
+					$error = $result;
 				}
 			} else {
 				$error = "VM delete failed: Please make sure you checked the confirmation box.";
@@ -380,14 +380,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 	}
 }
 
-if ($vm) {
+if($vm) {
 	$clusters = getClusters('all');
-	if ($vm['status'] == "1") {
+	if($vm['status'] == "1") {
 		$state = " checked";
 	} else {
 		$state = "";
 	}
-	if ($vm['protected'] == "1") {
+	if($vm['protected'] == "1") {
 		$protect = " checked";
 	} else {
 		$protect = "";
@@ -412,8 +412,8 @@ if ($vm) {
 		<label class="logo"><a href="index.php"><img src="assets/logo.png" alt="KontrolVM Logo"></a></label>
 		<ul>
 			<li><a href="index.php">Dashboard</a></li>
-			<?php if (in_array($myrole, ['2', '9'])) { ?> <li><a class="active" href="clusters.php">Infrastructure</a></li> <?php } ?>
-			<?php if (in_array($myrole, ['1', '9'])) { ?> <li><a href="users.php">Users</a></li> <?php } ?>
+			<?php if(in_array($myrole, ['2', '9'])) { ?> <li><a class="active" href="clusters.php">Infrastructure</a></li> <?php } ?>
+			<?php if(in_array($myrole, ['1', '9'])) { ?> <li><a href="users.php">Users</a></li> <?php } ?>
 			<li><a href="settings.php">Settings</a></li>
 			<li style="font-weight: bold;"><a href="account.php"><?php echo htmlspecialchars($_SESSION["username"]); ?></a></li>
 			<li><a href="logout.php"><i class="fa fa-sign-out" aria-hidden="true"></i></a></li>
@@ -429,10 +429,10 @@ if ($vm) {
 			<img src="assets/loading.gif" alt="Loading..."> 
 		</div>
 		<h1>VM Details</h1>
-		<?php if (isset($success)) { ?>
+		<?php if(isset($success)) { ?>
 			<div class="success-message"><?php echo $success; ?></div> 
 		<?php } ?>
-		<?php if (isset($error)) { ?>
+		<?php if(isset($error)) { ?>
 			<div class="error-message"><?php echo $error; ?></div> 
 		<?php } ?>
 		<div class="actionButtons">
@@ -456,7 +456,7 @@ if ($vm) {
 				<input type="hidden" name="csrf_token" value="<?php echo $csrfToken; ?>">
 				<input type="hidden" name="id" value="<?php echo $vm_id; ?>">
 			<button type="submit" name="consolePW" id="consolePW" class="btnaction"><i class="fa-solid fa-key tooltip"><span class="tooltiptext">Reset VNC Password</span></i></button></form>
-			<?php if ($vm['vncexpire'] == '1') { ?>
+			<?php if($vm['vncexpire'] == '1') { ?>
 				<form id="enableVNC" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post">
 					<input type="hidden" name="csrf_token" value="<?php echo $csrfToken; ?>">
 					<input type="hidden" name="id" value="<?php echo $vm_id; ?>">
@@ -778,7 +778,7 @@ if ($vm) {
 						<button type="submit" name="diskDriver" id="diskDriver" class="stylish-button">SET</button></form>
 						</td>
 					</tr>-->
-					<?php if ($vm['os_template'] == "kvm") { ?>
+					<?php if($vm['os_template'] == "kvm") { ?>
 					<tr>
 						<td style="background-color:#999;">Mount ISO:</td>
 						<td>
@@ -811,7 +811,7 @@ if ($vm) {
 						<td>
 						<form id="bootorder" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post">
 						<select name="boot" style="text-align:center;width:60%;">
-						<?php if ($vm['bootorder'] == "cdrom") { ?>
+						<?php if($vm['bootorder'] == "cdrom") { ?>
 							<option value="cdrom" selected>CDROM</option>
 							<option value="hd">Disk</option>
 						<?php } else { ?>
@@ -825,7 +825,7 @@ if ($vm) {
 						</td>
 					</tr>
 				</table>
-				<?php if ($vm['protected'] == "0" AND $vm['status'] == "0") { ?>
+				<?php if($vm['protected'] == "0" AND $vm['status'] == "0") { ?>
 				<br />
 				<hr />
 				<br />
@@ -867,7 +867,7 @@ if ($vm) {
 			const checkboxId = 'enable' + inputId;
 			const checkbox = document.getElementById(checkboxId);
 			const inputField = document.getElementById(inputId);
-			if (checkbox) { // Check if checkbox exists
+			if(checkbox) { // Check if checkbox exists
 				inputField.readOnly =!checkbox.checked;
 			} else {
 				console.error("Checkbox not found:", checkboxId);
@@ -880,13 +880,13 @@ if ($vm) {
 
 		// Load the user's preferred theme from localStorage
 		const savedTheme = localStorage.getItem('theme');
-		if (savedTheme === 'dark') {
+		if(savedTheme === 'dark') {
 			body.classList.add('dark-mode');
 			themeToggle.checked = true; 
 		}
 
 		themeToggle.addEventListener('change', () => {
-			if (themeToggle.checked) {
+			if(themeToggle.checked) {
 				body.classList.add('dark-mode');
 				localStorage.setItem('theme', 'dark');
 			} else {
@@ -900,7 +900,7 @@ if ($vm) {
 				vmname: vmname, 
 				node_id: node_id
 			}, function(data) {
-				if (data == "running") {
+				if(data == "running") {
 					statusDiv.innerHTML = "<img src='assets/online.png' height='24' width='24' alt='Running'>";
 				} else {
 					statusDiv.innerHTML = "<img src='assets/offline.png' height='24' width='24' alt='Stopped'>";

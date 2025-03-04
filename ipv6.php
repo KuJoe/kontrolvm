@@ -2,20 +2,20 @@
 /** KontrolVM By KuJoe (https://github.com/KuJoe/kontrolvm) **/
 
 session_start();
-if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
+if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 	header("Location: index.php"); 
 	exit; 
 } else {
-	if (isset($_GET['s']) AND $_GET['s'] == '1') {
+	if(isset($_GET['s']) AND $_GET['s'] == '1') {
 		$success = "IP added successfully.";
 	}
-	if (isset($_GET['s']) AND $_GET['s'] == '2') {
+	if(isset($_GET['s']) AND $_GET['s'] == '2') {
 		$success = "IP deleted successfully.";
 	}
-	if (isset($_GET['s']) AND $_GET['s'] == '3') {
+	if(isset($_GET['s']) AND $_GET['s'] == '3') {
 		$success = "IP enabled successfully.";
 	}
-	if (isset($_GET['s']) AND $_GET['s'] == '4') {
+	if(isset($_GET['s']) AND $_GET['s'] == '4') {
 		$success = "IP disabled successfully.";
 	}
 	define('AmAllowed', TRUE);
@@ -30,15 +30,15 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 		exit;
 	}
 }
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
+if($_SERVER["REQUEST_METHOD"] == "POST") {
 	$token = $_POST["csrf_token"];
-	if (validateCSRFToken($token)) {
-		if (isset($_POST['add_ip'])) {
+	if(validateCSRFToken($token)) {
+		if(isset($_POST['add_ip'])) {
 			$ipaddress = $_POST["ipaddress"];
-			if (strlen($ipaddress) === 19) {
+			if(strlen($ipaddress) === 19) {
 				$gwip = $_POST["gwip"];
 				$cluster = $_POST["cluster"];
-				$result = addIPs($ipaddress, $gwip, $cluster);
+				$result = addIPs($loggedin_id,$ipaddress,$gwip,$cluster);
 				if($result === true) {
 					header("Location: ipv6.php?s=1");
 				} else {
@@ -48,30 +48,30 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 				$error = "IPv6 subnet needs to be 19 characters in this format: <b>XXXX:XXXX:XXXX:XXXX</b>";
 			}
 		}
-		if (isset($_POST['delete_ip'])) {
+		if(isset($_POST['delete_ip'])) {
 			$idToChange = $_POST['ip_id'];
 			$ipToChange = $_POST['ipaddress'];
-			$result = deleteIP($idToChange,$ipToChange);
+			$result = deleteIP($loggedin_id,$idToChange,$ipToChange);
 			if($result === true) {
 				header("Location: ipv6.php?s=2");
 			} else {
 				$error = "IP deletion failed: ".$result;
 			}
 		}
-		if (isset($_POST['enable_ip'])) {
+		if(isset($_POST['enable_ip'])) {
 			$idToChange = $_POST['ip_id'];
 			$ipToChange = $_POST['ipaddress'];
-			$result = enableIP($idToChange,$ipToChange);
+			$result = enableIP($loggedin_id,$idToChange,$ipToChange);
 			if($result === true) {
 				header("Location: ipv6.php?s=3");
 			} else {
 				$error = "IP enable failed: ".$result;
 			}
 		}
-		if (isset($_POST['disable_ip'])) {
+		if(isset($_POST['disable_ip'])) {
 			$idToChange = $_POST['ip_id'];
 			$ipToChange = $_POST['ipaddress'];
-			$result = disableIP($idToChange,$ipToChange);
+			$result = disableIP($loggedin_id,$idToChange,$ipToChange);
 			if($result === true) {
 				header("Location: ipv6.php?s=4");
 			} else {
@@ -102,8 +102,8 @@ $clusters = getClusters('1');
 		<label class="logo"><a href="index.php"><img src="assets/logo.png" alt="KontrolVM Logo"></a></label>
 		<ul>
 			<li><a href="index.php">Dashboard</a></li>
-			<?php if (in_array($myrole, ['2', '9'])) { ?> <li><a href="clusters.php">Infrastructure</a></li> <?php } ?>
-			<?php if (in_array($myrole, ['1', '9'])) { ?> <li><a href="users.php">Users</a></li> <?php } ?>
+			<?php if(in_array($myrole, ['2', '9'])) { ?> <li><a href="clusters.php">Infrastructure</a></li> <?php } ?>
+			<?php if(in_array($myrole, ['1', '9'])) { ?> <li><a href="users.php">Users</a></li> <?php } ?>
 			<li><a class="active" href="settings.php">Settings</a></li>
 			<li style="font-weight: bold;"><a href="account.php"><?php echo htmlspecialchars($_SESSION["username"]); ?></a></li>
 			<li><a href="logout.php"><i class="fa fa-sign-out" aria-hidden="true"></i></a></li>
@@ -142,10 +142,10 @@ $clusters = getClusters('1');
 			</div>
 		</div>
 		<h1>IPv6 Addresses</h1>
-		<?php if (isset($success)) { ?>
+		<?php if(isset($success)) { ?>
 			<div class="success-message"><?php echo $success; ?></div> 
 		<?php } ?>
-		<?php if (isset($error)) { ?>
+		<?php if(isset($error)) { ?>
 			<div class="error-message"><?php echo $error; ?></div> 
 		<?php } ?>
 		<div class="table-container" style="max-width:1500px;">
@@ -215,13 +215,13 @@ $clusters = getClusters('1');
 
 		// Load the user's preferred theme from localStorage
 		const savedTheme = localStorage.getItem('theme');
-		if (savedTheme === 'dark') {
+		if(savedTheme === 'dark') {
 			body.classList.add('dark-mode');
 			themeToggle.checked = true; 
 		}
 
 		themeToggle.addEventListener('change', () => {
-			if (themeToggle.checked) {
+			if(themeToggle.checked) {
 				body.classList.add('dark-mode');
 				localStorage.setItem('theme', 'dark');
 			} else {
@@ -250,7 +250,7 @@ $clusters = getClusters('1');
 
 		// When the user clicks anywhere outside of the modal, close it
 		window.onclick = function(event) {
-			if (event.target == modal) {
+			if(event.target == modal) {
 				modal.style.display = "none";
 			}
 		}

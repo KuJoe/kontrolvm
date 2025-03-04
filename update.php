@@ -2,7 +2,7 @@
 /** KontrolVM By KuJoe (https://github.com/KuJoe/kontrolvm) **/
 
 session_start();
-if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
+if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 	header("Location: index.php"); 
 	exit; 
 } else {
@@ -149,7 +149,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 			<br />
 			<div class="error-message"><?php echo $error; ?></div> 
 		<?php } ?>
-		<?php if (isset($success)) { ?>
+		<?php if(isset($success)) { ?>
 			<h2 style="color:green;">Update Success</h2>
 			<br />
 			<div><?php echo $success; ?></div> 

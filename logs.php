@@ -2,7 +2,7 @@
 /** KontrolVM By KuJoe (https://github.com/KuJoe/kontrolvm) **/
 
 session_start();
-if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
+if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 	header("Location: index.php"); 
 	exit; 
 } else {
@@ -43,8 +43,8 @@ $logs = getLogs($perPage,$offset);
 		<label class="logo"><a href="index.php"><img src="assets/logo.png" alt="KontrolVM Logo"></a></label>
 		<ul>
 			<li><a href="index.php">Dashboard</a></li>
-			<?php if (in_array($myrole, ['2', '9'])) { ?> <li><a href="clusters.php">Infrastructure</a></li> <?php } ?>
-			<?php if (in_array($myrole, ['1', '9'])) { ?> <li><a href="users.php">Users</a></li> <?php } ?>
+			<?php if(in_array($myrole, ['2', '9'])) { ?> <li><a href="clusters.php">Infrastructure</a></li> <?php } ?>
+			<?php if(in_array($myrole, ['1', '9'])) { ?> <li><a href="users.php">Users</a></li> <?php } ?>
 			<li><a class="active" href="settings.php">Settings</a></li>
 			<li style="font-weight: bold;"><a href="account.php"><?php echo htmlspecialchars($_SESSION["username"]); ?></a></li>
 			<li><a href="logout.php"><i class="fa fa-sign-out" aria-hidden="true"></i></a></li>
@@ -59,10 +59,10 @@ $logs = getLogs($perPage,$offset);
 	</ul>
 	<div class="container">
 		<h1>Logs</h1>
-		<?php if (isset($success)) { ?>
+		<?php if(isset($success)) { ?>
 			<div class="success-message"><?php echo $success; ?></div> 
 		<?php } ?>
-		<?php if (isset($error)) { ?>
+		<?php if(isset($error)) { ?>
 			<div class="error-message"><?php echo $error; ?></div> 
 		<?php } ?>
 		<div class="table-container" style="max-width:1500px;">
@@ -74,7 +74,7 @@ $logs = getLogs($perPage,$offset);
 					</tr>
 				</thead>
 				<tbody>
-				<?php if (count($logs) > 0) {
+				<?php if(count($logs) > 0) {
 					foreach ($logs as $log) {
 						echo '<tr>';
 						echo "<td class='tname'>" . htmlspecialchars($log['log_message']) . "</td>";
@@ -87,7 +87,7 @@ $logs = getLogs($perPage,$offset);
 				</tbody>
 			</table>
 			<div class="pagination">
-				<?php if ($page > 5): ?>
+				<?php if($page > 5): ?>
 					<a href="?p=<?php echo $page - 1; ?>">&laquo; Previous</a>
 				<?php endif; ?>
 
@@ -96,20 +96,20 @@ $logs = getLogs($perPage,$offset);
 					$startPage = max(1, $page - floor($maxPagesToShow / 2));
 					$endPage = min($totalPages, $startPage + $maxPagesToShow - 1);
 
-					if ($page > floor($maxPagesToShow/2) && $totalPages > $maxPagesToShow) {
+					if($page > floor($maxPagesToShow/2) && $totalPages > $maxPagesToShow) {
 						echo "<a href='?p=1'>1</a> ... ";
 					}
 
 					for ($i = $startPage; $i <= $endPage; $i++): ?>
-						<a href="?p=<?php echo $i; ?>" <?php if ($i == $page) echo 'class="active"'; ?>><?php echo $i; ?></a>
+						<a href="?p=<?php echo $i; ?>" <?php if($i == $page) echo 'class="active"'; ?>><?php echo $i; ?></a>
 					<?php endfor;
 
-					if ($endPage < $totalPages) {
+					if($endPage < $totalPages) {
 						echo "... <a href='?p=$totalPages'>$totalPages</a>";
 					}
 				?>
 
-				<?php if ($page < $totalPages): ?>
+				<?php if($page < $totalPages): ?>
 					<a href="?p=<?php echo $page + 1; ?>">Next &raquo;</a>
 				<?php endif; ?>
 			</div>
@@ -123,13 +123,13 @@ $logs = getLogs($perPage,$offset);
 
 		// Load the user's preferred theme from localStorage
 		const savedTheme = localStorage.getItem('theme');
-		if (savedTheme === 'dark') {
+		if(savedTheme === 'dark') {
 			body.classList.add('dark-mode');
 			themeToggle.checked = true; 
 		}
 
 		themeToggle.addEventListener('change', () => {
-			if (themeToggle.checked) {
+			if(themeToggle.checked) {
 				body.classList.add('dark-mode');
 				localStorage.setItem('theme', 'dark');
 			} else {

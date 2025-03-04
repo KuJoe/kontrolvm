@@ -2,7 +2,7 @@
 /** KontrolVM By KuJoe (https://github.com/KuJoe/kontrolvm) **/
 
 session_start();
-if (isset($_SESSION["loggedin"]) AND $_SESSION["loggedin"] == true) {
+if(isset($_SESSION["loggedin"]) AND $_SESSION["loggedin"] == true) {
 	define('AmAllowed', TRUE);
 	header("Location: home.php"); 
 }
@@ -107,10 +107,10 @@ if(isset($_GET['e'])) {
 		<img src="assets/logo.png" alt="KontrolVM Logo" style="display:block;margin:0 auto;" />
 		<br />
 		<br />
-		<?php if (isset($success)) { ?>
+		<?php if(isset($success)) { ?>
 			<div class="success-message"><?php echo $success; ?></div> 
 		<?php } ?>
-		<?php if (isset($error)) { ?>
+		<?php if(isset($error)) { ?>
 			<div class="error-message"><?php echo $error; ?></div> 
 		<?php } ?>
 		<form action="auth.php" method="post"> 

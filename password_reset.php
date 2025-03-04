@@ -5,7 +5,7 @@ session_start();
 define('AmAllowed', TRUE);
 require_once('config.php');
 require_once('functions.php');
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
+if($_SERVER["REQUEST_METHOD"] == "POST") {
 	if(isset($secretkey)) {
 		$cf_url = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
 		$token = $_POST['cf-turnstile-response'];
@@ -20,13 +20,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 		curl_setopt($curl, CURLOPT_POSTFIELDS, $data);
 		curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
 		$response = curl_exec($curl);
-		if (curl_errno($curl)) {
+		if(curl_errno($curl)) {
 			$error_message = curl_error($curl);
 			$error = "Error with CAPTCHA: " . $error_message;
 			curl_close($curl);
 		} else {
 			$response = json_decode($response,true);
-			if ($response['error-codes'] && count($response['error-codes']) > 0){
+			if($response['error-codes'] && count($response['error-codes']) > 0){
 				error_log("Cloudflare Turnstile check failed.");
 				$error = "Error with CAPTCHA.";
 				curl_close($curl);
@@ -134,9 +134,9 @@ if(isset($_GET['id']) AND isset($_GET['token'])) {
 		<br />
 		<br />
 		<h1>Password Reset</h1>
-		<?php if (isset($success)) { ?>
+		<?php if(isset($success)) { ?>
 			<div class="success-message"><?php echo $success; ?></div> 
-		<?php } elseif (isset($error)) { ?>
+		<?php } elseif(isset($error)) { ?>
 			<div class="error-message"><?php echo $error; ?></div> 
 		<?php } else { ?>
 		<form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post">

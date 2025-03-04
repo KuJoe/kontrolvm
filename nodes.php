@@ -2,16 +2,16 @@
 /** KontrolVM By KuJoe (https://github.com/KuJoe/kontrolvm) **/
 
 session_start();
-if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
+if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 	header("Location: index.php"); 
 	exit; 
 } else {
 	if(isset($_GET['s']) ) {
 		if($_GET['s'] == '1') {
 			$success = "Node added successfully.";
-		} elseif ($_GET['s'] == '2') {
+		} elseif($_GET['s'] == '2') {
 			$success = "Nodes updated.";
-		} elseif ($_GET['s'] == '3') {
+		} elseif($_GET['s'] == '3') {
 			$error = "Node ID missing.";
 		}
 	}
@@ -28,24 +28,24 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 	}
 	$chkRole = getStaffRole($loggedin_id);
 	$allowedRoles = ['2', '9'];
-	if (!in_array($chkRole, $allowedRoles)) {
+	if(!in_array($chkRole, $allowedRoles)) {
 		header("Location: home.php?s=99");
 		exit;
 	}
-	if (isset($_GET['update']) AND $_GET['update'] == '1') {
+	if(isset($_GET['update']) AND $_GET['update'] == '1') {
 		include('updateNodes.php');
 		header("Location: nodes.php?state=all&s=2");
 	}
 }
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
+if($_SERVER["REQUEST_METHOD"] == "POST") {
 	$token = $_POST["csrf_token"];
-	if (validateCSRFToken($token)) {
+	if(validateCSRFToken($token)) {
 		$hostname = $_POST["hostname"];
 		$ipaddr = $_POST["ipaddr"];
 		$sshport = $_POST["sshport"];
 		$cluster = $_POST["cluster"];
 		$rootpw = $_POST["rootpw"];
-		$result = addNode($hostname, $ipaddr, $sshport, $rootpw, $cluster);
+		$result = addNode($loggedin_id,$hostname,$ipaddr,$sshport,$rootpw,$cluster);
 		if($result === true) {
 			include('updateNodes.php');
 			header("Location: nodes.php?state=all&s=1");
@@ -69,7 +69,7 @@ if(isset($_GET['state']) AND $_GET['state'] == "all") {
 $clusters = getClusters('1');
 $script_name = 'updateNodes.php';
 $last_run_time = getLastRunTime($script_name); 
-if ((!$last_run_time || time() - $last_run_time >= 3600) AND isset($bgupdate)) {
+if((!$last_run_time || time() - $last_run_time >= 3600) AND isset($bgupdate)) {
 	include($script_name);
 	$last_run_time = time();
 }
@@ -86,8 +86,8 @@ if ((!$last_run_time || time() - $last_run_time >= 3600) AND isset($bgupdate)) {
 		<label class="logo"><a href="index.php"><img src="assets/logo.png" alt="KontrolVM Logo"></a></label>
 		<ul>
 			<li><a href="index.php">Dashboard</a></li>
-			<?php if (in_array($myrole, ['2', '9'])) { ?> <li><a class="active" href="clusters.php">Infrastructure</a></li> <?php } ?>
-			<?php if (in_array($myrole, ['1', '9'])) { ?> <li><a href="users.php">Users</a></li> <?php } ?>
+			<?php if(in_array($myrole, ['2', '9'])) { ?> <li><a class="active" href="clusters.php">Infrastructure</a></li> <?php } ?>
+			<?php if(in_array($myrole, ['1', '9'])) { ?> <li><a href="users.php">Users</a></li> <?php } ?>
 			<li><a href="settings.php">Settings</a></li>
 			<li style="font-weight: bold;"><a href="account.php"><?php echo htmlspecialchars($_SESSION["username"]); ?></a></li>
 			<li><a href="logout.php"><i class="fa fa-sign-out" aria-hidden="true"></i></a></li>
@@ -128,10 +128,10 @@ if ((!$last_run_time || time() - $last_run_time >= 3600) AND isset($bgupdate)) {
 			</div>
 		</div>
 		<h1>Nodes</h1>
-		<?php if (isset($success)) { ?>
+		<?php if(isset($success)) { ?>
 			<div class="success-message"><?php echo $success; ?></div> 
 		<?php } ?>
-		<?php if (isset($error)) { ?>
+		<?php if(isset($error)) { ?>
 			<div class="error-message"><?php echo $error; ?></div> 
 		<?php } ?>
 		<div class="table-container" style="max-width:1500px;">
@@ -151,7 +151,7 @@ if ((!$last_run_time || time() - $last_run_time >= 3600) AND isset($bgupdate)) {
 				foreach ($servers as $server) {
 					$node_id = $server['node_id'];
 					$connection = @fsockopen($server['ipaddr'], $server['sshport'], $errno, $errstr, 2);
-					if (is_resource($connection)) {
+					if(is_resource($connection)) {
 						$online = "<img src='assets/1.png' alt='Online' />";
 						fclose($connection);
 					} else {
@@ -179,13 +179,13 @@ if ((!$last_run_time || time() - $last_run_time >= 3600) AND isset($bgupdate)) {
 
 		// Load the user's preferred theme from localStorage
 		const savedTheme = localStorage.getItem('theme');
-		if (savedTheme === 'dark') {
+		if(savedTheme === 'dark') {
 			body.classList.add('dark-mode');
 			themeToggle.checked = true; 
 		}
 
 		themeToggle.addEventListener('change', () => {
-			if (themeToggle.checked) {
+			if(themeToggle.checked) {
 				body.classList.add('dark-mode');
 				localStorage.setItem('theme', 'dark');
 			} else {
@@ -214,7 +214,7 @@ if ((!$last_run_time || time() - $last_run_time >= 3600) AND isset($bgupdate)) {
 
 		// When the user clicks anywhere outside of the modal, close it
 		window.onclick = function(event) {
-			if (event.target == modal) {
+			if(event.target == modal) {
 				modal.style.display = "none";
 			}
 		}

@@ -7,7 +7,7 @@ try {
 	$conn = new SQLite3($db_file_path, SQLITE3_OPEN_READONLY);
 	$backup_db = new SQLite3($backup_file_path);
 	$result = $conn->backup($backup_db);
-	if ($result) {
+	if($result) {
 		updateLastRunTime('dbBackup.php');
 		return;
 	} else {

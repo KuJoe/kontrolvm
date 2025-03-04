@@ -5,11 +5,11 @@ use phpseclib3\Crypt\EC;
 require __DIR__ . '/vendor/autoload.php';
 
 $filename = 'LOCKED';
-if (file_exists($filename)) {
+if(file_exists($filename)) {
 	die("The directory is locked. Please delete the LOCKED file if you are sure you need to run the install.php file (this might overwrite existing data in the database if it exists).");
 }
 
-if (file_exists('config.php')) {
+if(file_exists('config.php')) {
 	require_once('config.php');
 } else {
 	die("The config.php file does not exist. Please upload it to the same folder as this file.");
@@ -229,7 +229,7 @@ try {
 	$error = $e->getMessage();
 }
 $file = fopen('LOCKED', 'w');
-if ($file == false) {
+if($file == false) {
 	$lock = "Unable to lock the directory to prevent the install.php script from being run again. Either manually create a file named <strong>LOCKED</strong> in this directory or delete the install.php to be safe.";
 } else {
 	$lock = "Lock file created to prevent the install.php file from being run again. You can delete the install.php file just to safe.";
@@ -287,7 +287,7 @@ if ($file == false) {
 			<br />
 			<div class="error-message"><?php echo $error; ?></div> 
 		<?php } ?>
-		<?php if (isset($success)) { ?>
+		<?php if(isset($success)) { ?>
 			<h2 style="color:green;">Install Success</h2>
 			<br />
 			<div><?php echo $success; ?></div> 
