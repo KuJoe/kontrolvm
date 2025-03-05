@@ -9,10 +9,20 @@ if(file_exists($filename)) {
 	die("The directory is locked. Please delete the LOCKED file if you are sure you need to run the install.php file (this might overwrite existing data in the database if it exists).");
 }
 
-if(file_exists('config.php')) {
-	require_once('config.php');
+$exampleFile = __DIR__ . '/config.php.example';
+$configFile = __DIR__ . '/config.php';
+if (file_exists($configFile)) {
+    require_once('config.php');
 } else {
-	die("The config.php file does not exist. Please upload it to the same folder as this file.");
+    if (file_exists($exampleFile)) {
+        if (rename($exampleFile, $configFile)) {
+            require_once('config.php');
+        } else {
+            die("Failed to rename config.php.example to config.php.");
+        }
+    } else {
+        die("config.php does not exist and config.php.example does not exist.");
+    }
 }
 
 function addSetting($name,$value) {
