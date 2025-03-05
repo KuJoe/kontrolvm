@@ -110,7 +110,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST") {
 }
 
 if($node) {
-	$script_name = 'updateNodes.php';
+	$script_name = 'refreshNodes.php';
 	$last_run_time = getLastRunTime($script_name); 
 	if(!$last_run_time || time() - $last_run_time >= 3600) {
 		include($script_name);

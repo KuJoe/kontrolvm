@@ -9,93 +9,72 @@ if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 	define('AmAllowed', TRUE);
 	require_once('config.php');
 	require_once('functions.php');
-	if("0.2" !== KONTROLVM_VERSION) {
-		$error = "KontrolVM incorrect version.";
+}
+function updateFiles() {
+	$apiUrl = "https://api.github.com/repos/KuJoe/kontrolvm/releases/latest";
+    $options = [
+        'http' => [
+            'method' => 'GET',
+            'header' => 'User-Agent: PHP Script'
+        ]
+    ];
+	$context = stream_context_create($options);
+    $response = @file_get_contents($apiUrl, false, $context);
+    if (!$response) {
+        return "Failed to fetch release information from GitHub.";
+    }
+    $releaseData = json_decode($response, true);
+    if(!isset($releaseData['zipball_url'])) {
+        return "Failed to parse release information.";
+    }
+	$releaseVersion = preg_replace('/[a-zA-Z-]/', '', $releaseData['tag_name']);
+	if(checkVersion($releaseVersion) === true) {
+		return "The latest release version is the same as the current version.";
 	} else {
-		try {
-			$db = new PDO("sqlite:$db_file_path");
-			$db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
-			// SQL statement to alter the table
-			$sql = "
-				ALTER TABLE staff DROP COLUMN staff_salt;
-				ALTER TABLE nodes DROP COLUMN loc;
-				ALTER TABLE vms DROP COLUMN loc;
-				ALTER TABLE clusters DROP COLUMN loc;
-				ALTER TABLE ipv4 DROP COLUMN loc;
-				ALTER TABLE ipv6 DROP COLUMN loc;
-				ALTER TABLE ipv4 DROP COLUMN reserved;
-				ALTER TABLE ipv6 DROP COLUMN reserved;
-				ALTER TABLE clusters ADD COLUMN deployment INTEGER;
-				ALTER TABLE nodes ADD COLUMN cluster INTEGER;
-				ALTER TABLE vms ADD COLUMN cluster INTEGER;
-				ALTER TABLE ipv4 ADD COLUMN cluster INTEGER;
-				ALTER TABLE ipv6 ADD COLUMN cluster INTEGER;
-				ALTER TABLE clusters RENAME COLUMN clusterid TO cluster_id;
-				ALTER TABLE last_run RENAME COLUMN id TO run_id;
-				ALTER TABLE ostemplates  RENAME COLUMN templateid  TO template_id;
-				ALTER TABLE ipv4 RENAME COLUMN ipid TO ip_id;
-				ALTER TABLE ipv6 RENAME COLUMN ipid TO ip_id;
-				ALTER TABLE staff ADD COLUMN staff_role INTEGER;
-				
-				CREATE TABLE IF NOT EXISTS settings (
-					setting_id INTEGER PRIMARY KEY AUTOINCREMENT,
-					setting_name TEXT NOT NULL,
-					setting_value TEXT NOT NULL
-				);
-				
-				CREATE TABLE IF NOT EXISTS disks (
-					disk_id INTEGER PRIMARY KEY AUTOINCREMENT,
-					disk_name TEXT NOT NULL,
-					disk_size INTEGER,
-					vm_id INTEGER,
-					node_id INTEGER,
-					last_updated DATETIME
-				);
-				
-				CREATE TABLE IF NOT EXISTS logs (
-					log_id INTEGER PRIMARY KEY AUTOINCREMENT,
-					log_message TEXT NOT NULL,
-					straff_id INTEGER,
-					created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-				);
-				
-				CREATE TABLE IF NOT EXISTS backups (
-					backup_id INTEGER PRIMARY KEY AUTOINCREMENT,
-					backup_name TEXT NOT NULL,
-					backup_size INTEGER,
-					vm_id INTEGER,
-					node_id INTEGER,
-					status INTEGER,
-					created_at DATETIME
-				);
-				
-				CREATE TABLE IF NOT EXISTS nics (
-					nic_id INTEGER PRIMARY KEY AUTOINCREMENT,
-					nic_name TEXT NOT NULL,
-					mac_address TEXT,
-					vm_id INTEGER,
-					node_id INTEGER,
-					last_updated DATETIME
-				);
-				
-				CREATE TABLE IF NOT EXISTS networks (
-					net_id INTEGER PRIMARY KEY AUTOINCREMENT,
-					net_name TEXT NOT NULL,
-					node_id INTEGER,
-					last_updated DATETIME
-				);
-				";
-
-			$db->exec($sql);
-
-			$success = "Database updates have been applied.";
-		} catch (PDOException $e) {
-			$error = "Error updating tables: ". $e->getMessage();
+		$zipUrl = $releaseData['zipball_url'];
+		$zipFilePath = tempnam(sys_get_temp_dir(), 'github_update_');
+		$zipData = @file_get_contents($zipUrl);
+		if(!$zipData) {
+			return "Failed to download the zip archive.";
 		}
-
-		$db = null;
+		file_put_contents($zipFilePath, $zipData);
+		$zip = new ZipArchive;
+		if($zip->open($zipFilePath) !== true) {
+			return "Failed to open the zip archive.";
+		}
+		$rootDirectory = $zip->getNameIndex(0);
+		if(substr($rootDirectory, -1) !== '/') {
+		  $rootDirectory = dirname($rootDirectory) . '/';
+		}
+		for ($i = 0; $i < $zip->numFiles; $i++) {
+			$entryName = $zip->getNameIndex($i);
+			$localName = str_replace($rootDirectory, '', $entryName);
+			if(empty($localName)) {
+				continue;
+			}
+			$targetPath = __DIR__ . '/' . $localName; // Use __DIR__ for the current directory
+			if(substr($entryName, -1) === '/') {
+				if(!file_exists($targetPath)) {
+					mkdir($targetPath, 0755, true);
+				}
+			} else {
+				$fileContent = $zip->getFromIndex($i);
+				if($fileContent !== false) {
+					file_put_contents($targetPath, $fileContent);
+				}
+			}
+		}
+		$zip->close();
+		unlink($zipFilePath);
+		return true;
 	}
+}
+$resultFiles = updateFiles();
+if($resultFiles === true) {
+	header("Location: update_db.php");
+	exit;
+} else {
+	$error = $resultFiles;
 }
 ?>
 <!DOCTYPE html>
@@ -145,16 +124,9 @@ if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 		<br />
 		<br />
 		<?php if(isset($error)) { ?>
-			<h2 style="color:red;">Update Fail</h2>
+			<h2 style="color:red;">Update Failed</h2>
 			<br />
 			<div class="error-message"><?php echo $error; ?></div> 
-		<?php } ?>
-		<?php if(isset($success)) { ?>
-			<h2 style="color:green;">Update Success</h2>
-			<br />
-			<div><?php echo $success; ?></div> 
-			<p>
-			</p>
 		<?php } ?>
 		<br /><br />
 		<p style="text-align:center;font-size:0.9em;">Powered by <a href="https://github.com/KuJoe/kontrolvm" target="_blank">KontrolVM</a></p>

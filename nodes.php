@@ -33,7 +33,7 @@ if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 		exit;
 	}
 	if(isset($_GET['update']) AND $_GET['update'] == '1') {
-		include('updateNodes.php');
+		include('refreshNodes.php');
 		header("Location: nodes.php?state=all&s=2");
 	}
 }
@@ -47,7 +47,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST") {
 		$rootpw = $_POST["rootpw"];
 		$result = addNode($loggedin_id,$hostname,$ipaddr,$sshport,$rootpw,$cluster);
 		if($result === true) {
-			include('updateNodes.php');
+			include('refreshNodes.php');
 			header("Location: nodes.php?state=all&s=1");
 		} else {
 			$error = "Node add failed: ".$result;
@@ -67,7 +67,7 @@ if(isset($_GET['state']) AND $_GET['state'] == "all") {
 	$servers = getServerList('1');
 }
 $clusters = getClusters('1');
-$script_name = 'updateNodes.php';
+$script_name = 'refreshNodes.php';
 $last_run_time = getLastRunTime($script_name); 
 if((!$last_run_time || time() - $last_run_time >= 3600) AND isset($bgupdate)) {
 	include($script_name);

@@ -623,6 +623,39 @@ button.btnaction:active{
 	background-color: #007bff;
 	color: white;
 }
+.admin-update-banner {
+  background-color: #ffeb3b; /* Yellow background for attention */
+  color: #333; /* Dark text for readability */
+  padding: 15px;
+  text-align: center;
+  font-weight: bold;
+  position: fixed; /* Fixed position to stay at the top */
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 1000; /* Ensure it's on top of other elements */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); /* Subtle shadow */
+  display: flex; /* Use flexbox for layout */
+  justify-content: center; /* Center content horizontally */
+  align-items: center; /* Center content vertically */
+}
+.admin-update-banner a {
+  color: #007bff; /* Link color */
+  text-decoration: none;
+  margin-left: 10px; /* Space between text and link */
+}
+.admin-update-banner a:hover {
+  text-decoration: underline; /* Underline on hover */
+}
+.admin-update-banner .close-button {
+    margin-left: 20px;
+    cursor: pointer;
+    font-size: 1.2em;
+    color: #555;
+}
+.admin-update-banner .close-button:hover {
+    color: #333;
+}
 
 /* Dark Mode Styles */
 body.dark-mode {
@@ -714,6 +747,44 @@ body.dark-mode .submenu a {
 
 body.dark-mode .submenu a:hover {
 	background-color: #0e0e0e;
+}
+
+body.dark-mode .admin-update-banner {
+  background-color: #333; /* Dark background */
+  color: #ddd; /* Light text */
+  padding: 15px;
+  text-align: center;
+  font-weight: bold;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 1000;
+  box-shadow: 0 2px 4px rgba(255, 255, 255, 0.1); /* Subtle white shadow */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+body.dark-mode .admin-update-banner a {
+  color: #89cff0; /* Light blue link color */
+  text-decoration: none;
+  margin-left: 10px;
+}
+
+body.dark-mode .admin-update-banner a:hover {
+  text-decoration: underline;
+}
+
+body.dark-mode .admin-update-banner .close-button {
+    margin-left: 20px;
+    cursor: pointer;
+    font-size: 1.2em;
+    color: #bbb;
+}
+
+body.dark-mode .admin-update-banner .close-button:hover {
+    color: #ddd;
 }
 
 /* Responsive Styles */

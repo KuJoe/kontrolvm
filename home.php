@@ -32,11 +32,16 @@ if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 	}
 }
 $token = getCSRFToken();
-$last_run_time = getLastRunTime('updateNodes.php');
+$last_run_time = getLastRunTime('refreshNodes.php');
 $script_name = 'dbBackup.php';
 $last_backup = getLastRunTime($script_name); 
 if(!$last_backup || time() - $last_backup >= 86400) {
 	include($script_name);
+}
+if(checkVersion() === false) {
+	$newVersion = '<div class="admin-update-banner" id="updateBanner">A new version is available! <a href="update.php">Update Now</a><span class="close-button" onclick="closeBanner()">&#x2715;</span></div>';
+} else {
+	$newVersion = NULL;
 }
 ?>
 <!DOCTYPE html>
@@ -59,6 +64,7 @@ if(!$last_backup || time() - $last_backup >= 86400) {
 		</ul>
 	</nav>
 	<div class="container">
+		<?php echo $newVersion; ?>
 		<h1>Cluster Overview</h1>
 		<?php if(isset($success)) { ?>
 			<div class="success-message"><?php echo $success; ?></div> 
@@ -113,6 +119,16 @@ if(!$last_backup || time() - $last_backup >= 86400) {
 				localStorage.setItem('theme', 'light');
 			}
 		});
+
+		// Update banner code
+		if (sessionStorage.getItem('updateBannerDismissed')) {
+			document.getElementById('updateBanner').style.display = 'none';
+		}
+
+		function closeBanner() {
+			document.getElementById('updateBanner').style.display = 'none';
+			sessionStorage.setItem('updateBannerDismissed', 'true');
+		}
 	</script>
 	<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </body>

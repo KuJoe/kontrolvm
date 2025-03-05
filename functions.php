@@ -2541,4 +2541,28 @@ function restoreVM($myid,$backup_name,$vm_name,$vnc_port,$vm_id,$node_id) {
 	}
 }
 
+function checkVersion($ver = 0) {
+	if($ver === 0) {
+		$latestVersion = @file_get_contents('https://kontrolvm.com/version');
+	}
+	$localVersion = KONTROLVM_VERSION;
+
+    if($latestVersion === false) {
+        $error = "ERROR: Failed to fetch remote file.";
+		logMessage($error);
+		return $error;  
+    }
+	if(!is_numeric($latestVersion) || !is_numeric($localVersion)) {
+        $error = "ERROR: Both remote and local content must be numeric.";
+		logMessage($error);
+		return $error; 
+    }
+
+	if((float)$latestVersion === (float)$localVersion) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
 ?>
