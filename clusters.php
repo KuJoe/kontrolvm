@@ -91,7 +91,7 @@ $clusters = getClusters('all');
 					<input type="hidden" name="csrf_token" value="<?php echo $csrfToken; ?>">
 					<label for="friendlyname">Friendly Name:</label>
 					<input type="text" id="friendlyname" name="friendlyname" maxlength="20" required><br><br>
-					<center><button type="submit" class="stylish-button" name="add_cluster"><i class="fa-solid fa-square-plus"></i> ADD IP</button></center>
+					<center><button type="submit" class="stylish-button" name="add_cluster"><i class="fa-solid fa-square-plus"></i> ADD CLUSTER</button></center>
 				</form>
 			</div>
 		</div>

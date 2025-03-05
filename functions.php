@@ -893,7 +893,7 @@ function getISOs() {
 	}
 }
 
-function addISOs($myid,$download, $friendlyname) {
+function addISOs($myid,$download,$friendlyname) {
 	include('config.php');
 	$conn = new PDO("sqlite:$db_file_path");
 	$path_parts = parse_url($download);
@@ -903,7 +903,7 @@ function addISOs($myid,$download, $friendlyname) {
 			$filename = $part;
 		}
 	}
-	$rundl = downloadISOs($download, $filename);
+	$rundl = downloadISOs($download,$filename);
 	if($rundl === true) {
 		$stmt = $conn->prepare('INSERT INTO ostemplates (filename, friendlyname, status, added) VALUES (:filename, :friendlyname, :status, :added)');
 		$stmt->bindValue(':filename', "$filename", SQLITE3_TEXT);
@@ -921,6 +921,21 @@ function addISOs($myid,$download, $friendlyname) {
 		}
 	} else {
 		$error = "Error downloading ISO";
+		logMessage($error,$myid);
+		return $error;
+	}
+}
+
+function deleteISO($myid,$template_id) {
+	include('config.php');
+	$conn = new PDO("sqlite:$db_file_path");
+	$stmt = $conn->prepare('DELETE FROM ostemplates WHERE template_id =:template_id');
+	$stmt->bindValue(':template_id', $template_id, SQLITE3_INTEGER);
+	$result = $stmt->execute();
+	if($result) {
+		return true;
+	} else {
+		$error = "Error deleting ISO ($template_id): " . $conn->lastErrorMsg();
 		logMessage($error,$myid);
 		return $error;
 	}
@@ -1144,11 +1159,23 @@ function attachIP($myid,$vmid,$ip_id,$node,$version) {
 	$conn = new PDO("sqlite:$db_file_path");
 	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 	try {
-		if($version == '4') {
-			$sql = "UPDATE ipv4 SET status =:status,vmid =:vmid,node =:node WHERE ip_id =:ip_id";
-		} else {
-			$sql = "UPDATE ipv6 SET status =:status,vmid =:vmid,node =:node WHERE ip_id =:ip_id";
-		}
+		# For future configurations (Issues #11 and #13) 
+		#$ssh = connectNode($node_id);
+		#$ssh->exec('echo "'.$ip.'" >> /home/kontrol/addrs/kvm'.$vpsid.'');
+		#$ssh->exec('sh /home/kontrol/buildnet.sh');
+		#$ssh->exec('echo "0" > /home/kontrol/traffic/'.$ip.'');
+		#if($version == '4') {
+		#	$sql = "UPDATE ipv4 SET status =:status,vmid =:vmid,node =:node WHERE ip_id =:ip_id";
+		#	$ssh->exec('sudo /sbin/iptables -D FORWARD -s '.$ip.'; sudo /sbin/iptables -D FORWARD -d '.$ip.'');
+		#	$ssh->exec('echo "'.$ip.'" >> /home/kontrol/ip4');
+		#} else {
+		#	$ip2 = inet_ntop(inet_pton($ip));
+		#	$sql = "UPDATE ipv6 SET status =:status,vmid =:vmid,node =:node WHERE ip_id =:ip_id";
+		#	$ssh->exec('sudo /sbin/ip6tables -D FORWARD -s '.$ip2.'; sudo /sbin/ip6tables -D FORWARD -d '.$ip2.'');
+		#	$ssh->exec('echo "'.$ip2.'" >> /home/kontrol/ip6');
+		#}
+		##echo $ssh->getLog();
+		#$ssh->disconnect();
 		$stmt = $conn->prepare($sql);
 		$stmt->bindValue(':status', '0', SQLITE3_INTEGER);
 		$stmt->bindValue(':vmid', $vmid, SQLITE3_INTEGER);

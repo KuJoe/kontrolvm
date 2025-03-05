@@ -9,6 +9,9 @@ if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 	if(isset($_GET['s']) AND $_GET['s'] == '1') {
 		$success = "ISO added successfully.";
 	}
+	if(isset($_GET['s']) AND $_GET['s'] == '2') {
+		$success = "ISO deleted successfully.";
+	}
 	define('AmAllowed', TRUE);
 	require_once('config.php');
 	require_once('functions.php');
@@ -24,13 +27,24 @@ if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 if($_SERVER["REQUEST_METHOD"] == "POST") {
 	$token = $_POST["csrf_token"];
 	if(validateCSRFToken($token)) {
-		$friendlyname = $_POST["friendlyname"];
-		$download = $_POST["download"];
-		$result = addISOs($loggedin_id,$download,$friendlyname);
-		if($result === true) {
-			header("Location: isos.php?s=1");
-		} else {
-			$error = "ISO add failed: ".$result;
+		if(isset($_POST['add_iso'])) {
+			$friendlyname = $_POST["friendlyname"];
+			$download = $_POST["download"];
+			$result = addISOs($loggedin_id,$download,$friendlyname);
+			if($result === true) {
+				header("Location: isos.php?s=1");
+			} else {
+				$error = $result;
+			}
+		}
+		if(isset($_POST['delete_iso'])) {
+			$idToChange = $_POST['template_id'];
+			$result = deleteISO($loggedin_id,$idToChange);
+			if($result === true) {
+				header("Location: isos.php?s=2");
+			} else {
+				$error = $result;
+			}
 		}
 	} else {
 		$error = "Invalid CSRF token.";
@@ -82,7 +96,7 @@ $isos = getISOs();
 					<input type="text" id="friendlyname" name="friendlyname" required><br><br>
 					<label for="download">Download URL:</label>
 					<input type="text" id="download" name="download" required><br><br>
-					<center><button type="submit" class="stylish-button"><i class="fa-solid fa-square-plus"></i> ADD ISO</button></center>
+					<center><button type="submit" class="stylish-button" name="add_iso"><i class="fa-solid fa-square-plus"></i> ADD ISO</button></center>
 				</form>
 			</div>
 		</div>
@@ -100,7 +114,6 @@ $isos = getISOs();
 				<tr>
 					<th>OS</th>
 					<th>File</th>
-					<th>Status</th>
 					<th>Actions</th>
 				</tr>
 			</thead>
@@ -110,16 +123,13 @@ $isos = getISOs();
 					$template_id = $iso['template_id'];
 					echo '<tr>';
 					echo "<td class='tname'>" . $iso['friendlyname'] . "</td>";
-					echo "<td style='font-size:small;'>" . $iso['filename'] . "</td>";
-					echo "<td><span class='ticon' style='padding-right:4px;'>Status: </span>";
-					if($iso['status'] == "1") {
-						echo "<img src='assets/1.png' alt='Enabled'>";
-					} else {
-						echo "<img src='assets/0.png' alt='Disabled'>";
-					}
-					echo "</td>";
-					echo "<td>N/A</td>";
-					echo '</tr>';
+					echo "<td style='font-size:small;'>" . $iso['filename'] . "</td><td>";
+					echo '<form action="'.htmlspecialchars($_SERVER["PHP_SELF"]).'" method="post"> 
+							<input type="hidden" name="csrf_token" value="'.$csrfToken.'">
+							<input type="hidden" name="template_id" value="'.$template_id.'">
+							<button type="submit" class="stylish-button" name="delete_iso">Delete</button>
+						  </form>';
+					echo '</td></tr>';
 				}
 			?>
 			</tbody>
