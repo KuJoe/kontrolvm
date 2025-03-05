@@ -32,97 +32,44 @@ function updateDB() {
 		$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
 		// SQL statement to alter the table
-		$alterQuery = "ALTER TABLE staff DROP COLUMN staff_salt";
-		alterTableIfExists($conn, $alterQuery);
-		$alterQuery = "ALTER TABLE nodes DROP COLUMN loc";
-		alterTableIfExists($conn, $alterQuery);
-		$alterQuery = "ALTER TABLE vms DROP COLUMN loc";
-		alterTableIfExists($conn, $alterQuery);
-		$alterQuery = "ALTER TABLE clusters DROP COLUMN loc";
-		alterTableIfExists($conn, $alterQuery);
-		$alterQuery = "ALTER TABLE ipv4 DROP COLUMN loc";
-		alterTableIfExists($conn, $alterQuery);
-		$alterQuery = "ALTER TABLE ipv6 DROP COLUMN loc";
-		alterTableIfExists($conn, $alterQuery);
-		$alterQuery = "ALTER TABLE ipv4 DROP COLUMN reserved";
-		alterTableIfExists($conn, $alterQuery);
-		$alterQuery = "ALTER TABLE ipv6 DROP COLUMN reserved";
-		alterTableIfExists($conn, $alterQuery);
-		$alterQuery = "ALTER TABLE clusters ADD COLUMN deployment INTEGER";
-		alterTableIfExists($conn, $alterQuery);
-		$alterQuery = "ALTER TABLE nodes ADD COLUMN cluster INTEGER";
-		alterTableIfExists($conn, $alterQuery);
-		$alterQuery = "ALTER TABLE vms ADD COLUMN cluster INTEGER";
-		alterTableIfExists($conn, $alterQuery);
-		$alterQuery = "ALTER TABLE ipv4 ADD COLUMN cluster INTEGER";
-		alterTableIfExists($conn, $alterQuery);
-		$alterQuery = "ALTER TABLE ipv6 ADD COLUMN cluster INTEGER";
-		alterTableIfExists($conn, $alterQuery);
-		$alterQuery = "ALTER TABLE clusters RENAME COLUMN clusterid TO cluster_id";
-		alterTableIfExists($conn, $alterQuery);
-		$alterQuery = "ALTER TABLE last_run RENAME COLUMN id TO run_id";
-		alterTableIfExists($conn, $alterQuery);
-		$alterQuery = "ALTER TABLE ostemplates  RENAME COLUMN templateid  TO template_id";
-		alterTableIfExists($conn, $alterQuery);
-		$alterQuery = "ALTER TABLE ipv4 RENAME COLUMN ipid TO ip_id";
-		alterTableIfExists($conn, $alterQuery);
-		$alterQuery = "ALTER TABLE ipv6 RENAME COLUMN ipid TO ip_id";
-		alterTableIfExists($conn, $alterQuery);
-		$alterQuery = "ALTER TABLE staff ADD COLUMN staff_role INTEGER";
-		alterTableIfExists($conn, $alterQuery);
+		$dropColumns = [
+			'staff' => 'staff_salt', 'nodes' => 'loc', 'vms' => 'loc', 'clusters' => 'loc', 'ipv4' => 'loc', 'ipv6' => 'loc', 'ipv4' => 'reserved', 'ipv6' => 'reserved' ];
+
+		$addColumns = [
+			'clusters' => 'deployment INTEGER', 'nodes' => 'cluster INTEGER', 'vms' => 'cluster INTEGER', 'ipv4' => 'cluster INTEGER', 'ipv6' => 'cluster INTEGER', 'staff' => 'staff_role INTEGER' ];
+
+		$renameColumns = [
+			'clusters' => ['clusterid', 'cluster_id'], 'last_run' => ['id', 'run_id'], 'ostemplates' => ['templateid', 'template_id'], 'ipv4' => ['ipid', 'ip_id'], 'ipv6' => ['ipid', 'ip_id'] ];
+
+		// Drop Columns
+		foreach ($dropColumns as $table => $column) {
+			$alterQuery = "ALTER TABLE {$table} DROP COLUMN {$column}";
+			alterTableIfExists($conn, $alterQuery);
+		}
+
+		// Add Columns
+		foreach ($addColumns as $table => $columnDefinition) {
+			$alterQuery = "ALTER TABLE {$table} ADD COLUMN {$columnDefinition}";
+			alterTableIfExists($conn, $alterQuery);
+		}
+
+		// Rename Columns
+		foreach ($renameColumns as $table => $columns) {
+			$oldColumn = $columns[0];
+			$newColumn = $columns[1];
+			$alterQuery = "ALTER TABLE {$table} RENAME COLUMN {$oldColumn} TO {$newColumn}";
+			alterTableIfExists($conn, $alterQuery);
+		}
 		
 		// Create new tables if they don't exist.
-		$sql = "CREATE TABLE IF NOT EXISTS settings (
-				setting_id INTEGER PRIMARY KEY AUTOINCREMENT,
-				setting_name TEXT NOT NULL,
-				setting_value TEXT NOT NULL
-			);
-			
-			CREATE TABLE IF NOT EXISTS disks (
-				disk_id INTEGER PRIMARY KEY AUTOINCREMENT,
-				disk_name TEXT NOT NULL,
-				disk_size INTEGER,
-				vm_id INTEGER,
-				node_id INTEGER,
-				last_updated DATETIME
-			);
-			
-			CREATE TABLE IF NOT EXISTS logs (
-				log_id INTEGER PRIMARY KEY AUTOINCREMENT,
-				log_message TEXT NOT NULL,
-				straff_id INTEGER,
-				created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-			);
-			
-			CREATE TABLE IF NOT EXISTS backups (
-				backup_id INTEGER PRIMARY KEY AUTOINCREMENT,
-				backup_name TEXT NOT NULL,
-				backup_size INTEGER,
-				vm_id INTEGER,
-				node_id INTEGER,
-				status INTEGER,
-				created_at DATETIME
-			);
-			
-			CREATE TABLE IF NOT EXISTS nics (
-				nic_id INTEGER PRIMARY KEY AUTOINCREMENT,
-				nic_name TEXT NOT NULL,
-				mac_address TEXT,
-				vm_id INTEGER,
-				node_id INTEGER,
-				last_updated DATETIME
-			);
-			
-			CREATE TABLE IF NOT EXISTS networks (
-				net_id INTEGER PRIMARY KEY AUTOINCREMENT,
-				net_name TEXT NOT NULL,
-				node_id INTEGER,
-				last_updated DATETIME
-			);
-			";
-
+		$sql = "CREATE TABLE IF NOT EXISTS settings (setting_id INTEGER PRIMARY KEY AUTOINCREMENT, setting_name TEXT NOT NULL, setting_value TEXT NOT NULL);
+				CREATE TABLE IF NOT EXISTS disks (disk_id INTEGER PRIMARY KEY AUTOINCREMENT, disk_name TEXT NOT NULL, disk_size INTEGER, vm_id INTEGER, node_id INTEGER, last_updated DATETIME);
+				CREATE TABLE IF NOT EXISTS logs (log_id INTEGER PRIMARY KEY AUTOINCREMENT, log_message TEXT NOT NULL, straff_id INTEGER, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);			
+				CREATE TABLE IF NOT EXISTS backups (backup_id INTEGER PRIMARY KEY AUTOINCREMENT, backup_name TEXT NOT NULL, backup_size INTEGER, vm_id INTEGER, node_id INTEGER, status INTEGER, created_at DATETIME);
+				CREATE TABLE IF NOT EXISTS nics (nic_id INTEGER PRIMARY KEY AUTOINCREMENT, nic_name TEXT NOT NULL, mac_address TEXT, vm_id INTEGER, node_id INTEGER, last_updated DATETIME);
+				CREATE TABLE IF NOT EXISTS networks (net_id INTEGER PRIMARY KEY AUTOINCREMENT, net_name TEXT NOT NULL, node_id INTEGER, last_updated DATETIME);
+				";
 		$conn->exec($sql);
-
 		return true;
 	} catch (PDOException $e) {
 		return "Error updating tables: ". $e->getMessage();
