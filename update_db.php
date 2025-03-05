@@ -36,7 +36,7 @@ function updateDB() {
 			'staff' => 'staff_salt', 'nodes' => 'loc', 'vms' => 'loc', 'clusters' => 'loc', 'ipv4' => 'loc', 'ipv6' => 'loc', 'ipv4' => 'reserved', 'ipv6' => 'reserved' ];
 
 		$addColumns = [
-			'clusters' => 'deployment INTEGER', 'nodes' => 'cluster INTEGER', 'vms' => 'cluster INTEGER', 'ipv4' => 'cluster INTEGER', 'ipv6' => 'cluster INTEGER', 'staff' => 'staff_role INTEGER' ];
+			'clusters' => 'deployment INTEGER', 'nodes' => 'cluster INTEGER', 'vms' => 'cluster INTEGER', 'ipv4' => 'cluster INTEGER', 'ipv6' => 'cluster INTEGER', 'staff' => 'staff_role INTEGER', 'ipv4' => 'bw INTEGER', 'ipv6' => 'bw INTEGER' ];
 
 		$renameColumns = [
 			'clusters' => ['clusterid', 'cluster_id'], 'last_run' => ['id', 'run_id'], 'ostemplates' => ['templateid', 'template_id'], 'ipv4' => ['ipid', 'ip_id'], 'ipv6' => ['ipid', 'ip_id'] ];
