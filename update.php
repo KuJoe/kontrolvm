@@ -10,64 +10,94 @@ if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 	require_once('config.php');
 	require_once('functions.php');
 }
-function updateFiles() {
-	$apiUrl = "https://api.github.com/repos/KuJoe/kontrolvm/releases/latest";
-    $options = [
-        'http' => [
-            'method' => 'GET',
-            'header' => 'User-Agent: PHP Script'
-        ]
-    ];
+
+function fetchReleaseData($repoOwner, $repoName) {
+	$apiUrl = "https://api.github.com/repos/{$repoOwner}/{$repoName}/releases/latest";
+	$options = [
+		'http' => [
+			'method' => 'GET',
+			'header' => 'User-Agent: PHP Script'
+		]
+	];
 	$context = stream_context_create($options);
-    $response = @file_get_contents($apiUrl, false, $context);
-    if (!$response) {
-        return "Failed to fetch release information from GitHub.";
-    }
-    $releaseData = json_decode($response, true);
-    if(!isset($releaseData['zipball_url'])) {
-        return "Failed to parse release information.";
-    }
-	$releaseVersion = preg_replace('/[a-zA-Z-]/', '', $releaseData['tag_name']);
-	if(checkVersion($releaseVersion) === true) {
-		return "The latest release version is the same as the current version.";
-	} else {
-		$zipUrl = $releaseData['zipball_url'];
-		$zipFilePath = tempnam(sys_get_temp_dir(), 'github_update_');
-		$zipData = @file_get_contents($zipUrl);
-		if(!$zipData) {
-			return "Failed to download the zip archive.";
-		}
-		file_put_contents($zipFilePath, $zipData);
-		$zip = new ZipArchive;
-		if($zip->open($zipFilePath) !== true) {
-			return "Failed to open the zip archive.";
-		}
-		$rootDirectory = $zip->getNameIndex(0);
-		if(substr($rootDirectory, -1) !== '/') {
-		  $rootDirectory = dirname($rootDirectory) . '/';
-		}
-		for ($i = 0; $i < $zip->numFiles; $i++) {
-			$entryName = $zip->getNameIndex($i);
-			$localName = str_replace($rootDirectory, '', $entryName);
-			if(empty($localName)) {
-				continue;
-			}
-			$targetPath = __DIR__ . '/' . $localName; // Use __DIR__ for the current directory
-			if(substr($entryName, -1) === '/') {
-				if(!file_exists($targetPath)) {
-					mkdir($targetPath, 0755, true);
-				}
-			} else {
-				$fileContent = $zip->getFromIndex($i);
-				if($fileContent !== false) {
-					file_put_contents($targetPath, $fileContent);
-				}
-			}
-		}
-		$zip->close();
-		unlink($zipFilePath);
-		return true;
+	$response = @file_get_contents($apiUrl, false, $context);
+
+	if (!$response) {
+		return false;
 	}
+
+	$releaseData = json_decode($response, true);
+	if (!isset($releaseData['zipball_url']) || !isset($releaseData['tag_name'])) {
+		return false;
+	}
+	return $releaseData;
+}
+
+function downloadAndExtractZip($zipUrl, $installPath) {
+	$zipFilePath = tempnam(sys_get_temp_dir(), 'github_update_');
+	$zipData = @file_get_contents($zipUrl);
+
+	if (!$zipData) {
+		return false;
+	}
+
+	file_put_contents($zipFilePath, $zipData);
+	$zip = new ZipArchive;
+
+	if ($zip->open($zipFilePath) !== true) {
+		unlink($zipFilePath);
+		return false;
+	}
+
+	$rootDirectory = $zip->getNameIndex(0);
+	if (substr($rootDirectory, -1) !== '/') {
+		$rootDirectory = dirname($rootDirectory) . '/';
+	}
+
+	for ($i = 0; $i < $zip->numFiles; $i++) {
+		$entryName = $zip->getNameIndex($i);
+		$localName = str_replace($rootDirectory, '', $entryName);
+
+		if (empty($localName)) {
+			continue;
+		}
+
+		$targetPath = $installPath . '/' . $localName;
+		if (substr($entryName, -1) === '/') {
+			if (!file_exists($targetPath)) {
+				mkdir($targetPath, 0755, true);
+			}
+		} else {
+			$fileContent = $zip->getFromIndex($i);
+			if ($fileContent !== false) {
+				file_put_contents($targetPath, $fileContent);
+			}
+		}
+	}
+
+	$zip->close();
+	unlink($zipFilePath);
+	return true;
+}
+
+function updateFiles($repoOwner = "KuJoe", $repoName = "kontrolvm") {
+	$releaseData = fetchReleaseData($repoOwner, $repoName);
+
+	if (!$releaseData) {
+		return "Failed to fetch release information from GitHub.";
+	}
+
+	$releaseVersion = preg_replace('/[a-zA-Z-]/', '', $releaseData['tag_name']);
+
+	if (checkVersion($releaseVersion)) {
+		return "The latest release version is the same as the current version.";
+	}
+
+	if (!downloadAndExtractZip($releaseData['zipball_url'], __DIR__)) {
+		return "Failed to download or extract the zip archive.";
+	}
+
+	return true;
 }
 $resultFiles = updateFiles();
 if($resultFiles === true) {
