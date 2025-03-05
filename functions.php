@@ -664,6 +664,22 @@ function getClusterDetails($cluster_id) {
 	}
 }
 
+function updateKontrolVMNode($node_id) {
+	include('config.php');
+	
+	try {
+		$ssh = connectNode($node_id);
+		$ssh->exec("/usr/bin/curl -fsSL https://n3rd.info/controlp/scripts/update.sh | bash");
+		#echo $ssh->getLog();
+		$ssh->disconnect();
+		return true;
+	} catch (Exception $e) {
+		$error = "Error updating KontrolVM on node $node_id: " . $e->getMessage();
+		logMessage($error);
+		return $error;
+	}
+}
+
 function getNodeStats($node_id) {
 	include('config.php');
 	$conn = new PDO("sqlite:$db_file_path");

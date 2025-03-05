@@ -101,6 +101,12 @@ function updateFiles($repoOwner = "KuJoe", $repoName = "kontrolvm") {
 }
 $resultFiles = updateFiles();
 if($resultFiles === true) {
+	$servers = getServerList('1');
+	if(count($servers) > 0) {
+		foreach ($servers as $server) {
+			updateKontrolVMNode($server['node_id']);
+		}
+	}
 	header("Location: update_db.php");
 	exit;
 } else {
