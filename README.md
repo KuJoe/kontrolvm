@@ -79,10 +79,10 @@ All of the current assets and UI are placeholders, I'll find somebody to design 
 
  - ✅Add ISOs
  - ✅Get total resources (CPU, disk, RAM, VMs, nodes)
- - 🚧Manage IP addresses (add, delete, reserve, unreserve)
- - 🚧Logging and alerting
+ - ✅Manage IP addresses (add, delete, reserve, unreserve)
+ - ✅Logging and alerting
  - ✅Automated backups of SQLite3 database
- - 🚧Automatic updates of KontrolVM + Nodes
+ - ✅Automatic updates of KontrolVM + Nodes
 
 # Requirements
 
