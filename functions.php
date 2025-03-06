@@ -493,18 +493,15 @@ function addNode($myid,$hostname,$ipaddr,$sshport,$rootpw,$cluster) {
 	
 }
 
-function deleteNode($myid,$node_id,$hostname,$confirm) {
+function deleteNode($myid,$node_id,$confirm) {
 	if($confirm) {
 		if(checkNodeCleaned($node_id)) {
-			$hostname = trim($hostname);
 			include('config.php');
 			$conn = new PDO("sqlite:$db_file_path");
 			$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 			try {
-				$sql = "DELETE FROM nodes WHERE node_id =:node_id AND hostname =:hostname";
-				$stmt = $conn->prepare($sql);
+				$stmt = $conn->prepare("DELETE FROM nodes WHERE node_id =:node_id");
 				$stmt->bindValue(':node_id', $node_id, SQLITE3_INTEGER);
-				$stmt->bindValue(':hostname', "$hostname", SQLITE3_TEXT);
 				$stmt->execute();
 				return true;
 			} catch (PDOException $e) {
@@ -577,7 +574,6 @@ function addNetwork($myid,$node_id,$net_name) {
 	$conn = new PDO("sqlite:$db_file_path");
 	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 	try {
-
 		$stmt = $conn->prepare('INSERT INTO networks (net_name, node_id, last_updated) VALUES (:net_name, :node_id, :last_updated)');
 		$stmt->bindValue(':net_name', "$net_name", SQLITE3_TEXT);
 		$stmt->bindValue(':node_id', $node_id, SQLITE3_INTEGER);
@@ -1565,7 +1561,7 @@ function destroyVM($myid,$vm_id,$vmname,$websockify,$vncport,$node_id,$confirm) 
 	}
 }
 
-function importVMs($node_id) {
+function importVMs($myid,$node_id) {
 	$node = getNodeDetails($node_id);
 	include('config.php');
 	$conn = new PDO("sqlite:$db_file_path");

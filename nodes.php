@@ -13,6 +13,8 @@ if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 			$success = "Nodes updated.";
 		} elseif($_GET['s'] == '3') {
 			$error = "Node ID missing.";
+		} elseif($_GET['s'] == '4') {
+			$error = "Node deleted successfully.";
 		}
 	}
 	define('AmAllowed', TRUE);
