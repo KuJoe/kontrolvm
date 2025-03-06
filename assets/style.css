@@ -108,6 +108,11 @@ label.logo {
 	font-weight: bold;
 }
 
+label.logo img {
+	height: 64px;
+	margin-top: 10px;
+}
+
 nav ul {
 	float: right;
 	margin-right: 20px;
