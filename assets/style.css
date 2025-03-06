@@ -438,35 +438,35 @@ input[type="text"]:disabled {
 }
 
 .submenu {
-	list-style: none;
-	margin: 20px auto;
-	padding: 0;
-	background-color: #f0f0f5;
-	border-radius: 5px;
-	padding: 10px;
-	border: 1px solid #e0e0e5;
+    list-style: none;
+    padding: 10px 0; /* Adjust or remove top padding */
+    background-color: #f0f0f5;
+    border-bottom: 1px solid #e0e0e5; /* Add a bottom border for separation */
+    width: 100%;
+    position: relative; /* Or static */
+    text-align: center; /* Center the submenu items */
 }
 
 .submenu li {
-	display: inline-block;
-	margin-right: 15px;
+    display: inline-block;
+    margin: 0 10px; /* Adjust spacing between items */
 }
 
 .submenu a {
-	text-decoration: none;
-	color: #333; /* Dark gray text */
-	font-weight: 500;
-	padding: 8px 12px; /* Add some padding */
-	border-radius: 3px; /* Slightly rounded links */
-	transition: background-color 0.3s ease; /* Smooth transition for hover effect */
+    text-decoration: none;
+    color: #333;
+    font-weight: 500;
+    padding: 8px 12px;
+    border-radius: 3px;
+    transition: background-color 0.3s ease;
 }
 
 .submenu a.active {
-	font-weight: bold;
+    font-weight: bold;
 }
 
 .submenu a:hover {
-	background-color: #e0e0e5;
+    background-color: #e0e0e5;
 }
 
 .actionButtons {

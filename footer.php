@@ -2,9 +2,9 @@
 		<div class="container">
 			<p>Powered by <a href="https://github.com/KuJoe/kontrolvm" target="_blank">KontrolVM v<?php echo KONTROLVM_VERSION; ?></a></p>
 			<ul class="social-links">
-				<li><a href="#" target="_blank"><i class="fab fa-github"></i> GitHub</a></li>
+				<!--<li><a href="#" target="_blank"><i class="fab fa-github"></i> GitHub</a></li>
 				<li><a href="#" target="_blank"><i class="fab fa-mastodon"></i> Mastodon</a></li>
-				<li><a href="#" target="_blank"><i class="fab fa-linkedin"></i> LinkedIn</a></li>
+				<li><a href="#" target="_blank"><i class="fab fa-linkedin"></i> LinkedIn</a></li>-->
 				<li>
 					<i class="fa-solid fa-sun"></i>
 					<div class="theme-switch">
