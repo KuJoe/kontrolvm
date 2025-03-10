@@ -208,7 +208,7 @@ if($staff) {
 			</div>
 			<div class="form-group">
 				<label for="status">User Role: </label>
-				<?php if($chkRole == '2') { ?>
+				<?php if($chkRole == '2' OR $staff_id == '1') { ?>
 					<select id="role" name="role" style="text-align:center;" disabled>
 				<?php } else { ?>
 					<select id="role" name="role" style="text-align:center;">
