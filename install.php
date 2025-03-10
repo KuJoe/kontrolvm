@@ -25,12 +25,29 @@ if (file_exists($configFile)) {
     }
 }
 
+function generateRandomString($length = 16) {
+	$characters = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+	$charactersLength = strlen($characters);
+	$randomString = '';
+	for ($i = 0; $i < $length; $i++) {
+		$randomString .= $characters[rand(0, $charactersLength - 1)];
+	}
+	return $randomString;
+}
+
 function addSetting($name,$value) {
 	$stmt = $conn->prepare("INSERT INTO settings (setting_name, setting_value) VALUES (:setting_name, :setting_value)");
 	$stmt->bindValue(':setting_name', "$name", SQLITE3_TEXT);
 	$stmt->bindValue(':setting_value', "$value", SQLITE3_TEXT);
 	$stmt->execute();
 	return true;
+}
+
+$newEncrypt = generateRandomString('32');
+$fileContent = file_get_contents($configFile);
+$updatedContent = str_replace($cryptkey, $newEncrypt, $fileContent);
+if (file_put_contents($configFile, $updatedContent) === false) {
+	die("Error: Could not write to file: $configFile");
 }
 
 //Generate the super user for later.

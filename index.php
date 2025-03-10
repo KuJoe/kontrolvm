@@ -6,7 +6,12 @@ if(isset($_SESSION["loggedin"]) AND $_SESSION["loggedin"] == true) {
 	define('AmAllowed', TRUE);
 	header("Location: home.php"); 
 }
-require_once('config.php');
+$configFile = __DIR__ . '/config.php';
+if (file_exists($configFile)) {
+    require_once('config.php');
+} else {
+	header("Location: install.php");
+}
 if(isset($_GET['e'])) {
 	if($_GET['e'] == '0') {
 		$error = 'Incorrect username or password.';
