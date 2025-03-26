@@ -4,7 +4,7 @@
 			<ul class="social-links">
 				<!--<li><a href="#" target="_blank"><i class="fab fa-github"></i> GitHub</a></li>
 				<li><a href="#" target="_blank"><i class="fab fa-mastodon"></i> Mastodon</a></li>
-				<li><a href="#" target="_blank"><i class="fab fa-linkedin"></i> LinkedIn</a></li>-->
+				<li><a href="#" target="_blank"><i class="fab fa-linkedin"></i> LinkedIn</a></li>
 				<li>
 					<i class="fa-solid fa-sun"></i>
 					<div class="theme-switch">
@@ -14,7 +14,7 @@
 					</label>
 					</div>
 				</li>
-				<i class="fa-solid fa-moon darkmode"></i>
+				<i class="fa-solid fa-moon darkmode"></i>-->
 			</ul>
 		</div>
 	</footer>
