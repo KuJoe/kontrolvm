@@ -83,6 +83,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST") {
 			}
 			if($staff_id == '1') {
 				$status = '1';
+				$role = '9';
 			} else {
 				if(isset($_POST["status"])) {
 					$status = '1';

@@ -41,69 +41,64 @@ if($_SERVER["REQUEST_METHOD"] == "POST") {
 		}
 		$username = $_POST["username"];
 		$password = $_POST['password'];
-		try {
-			$conn = new PDO("sqlite:$db_file_path");
-			$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-			$sql = "SELECT * FROM staff WHERE staff_username = :username";
-			$stmt = $conn->prepare($sql);
-			$stmt->bindValue(':username', "$username", SQLITE3_TEXT);
-			$stmt->execute();
-			$user = $stmt->fetch(PDO::FETCH_ASSOC);
-			if($user) {
-				$staff_id = $user['staff_id'];
-				$staff_role = $user['staff_role'];
-				$chkActive = checkActive($staff_id);
-				$chkLocked = checkLockedOut($staff_id);
-				if($chkLocked == false AND $chkActive == true) {
-					if(password_verify($password, $user['staff_password'])) {
-						$_SESSION["username"] = $username;
-						$_SESSION['staff_id'] = $staff_id;
-						$_SESSION['staff_role'] = $staff_role;
-						$staff_lastlogin = time();
-						$stmt = $conn->prepare("UPDATE staff SET staff_ip =:staff_ip, staff_lastlogin =:staff_lastlogin, staff_failed_logins =:staff_failed_logins WHERE staff_id =:staff_id");
-						$stmt->bindValue(':staff_ip', "$remote_addr", SQLITE3_TEXT);
-						$stmt->bindValue(':staff_lastlogin', "$staff_lastlogin", SQLITE3_TEXT);
+		$conn = new PDO("sqlite:$db_file_path");
+		$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+		$stmt = $conn->prepare("SELECT * FROM staff WHERE staff_username = :username");
+		$stmt->bindValue(':username', "$username", SQLITE3_TEXT);
+		$stmt->execute();
+		$user = $stmt->fetch(PDO::FETCH_ASSOC);
+		if($user) {
+			$staff_id = $user['staff_id'];
+			$staff_role = $user['staff_role'];
+			$chkActive = checkActive($staff_id);
+			$chkLocked = checkLockedOut($staff_id);
+			if($chkLocked == false AND $chkActive == true) {
+				if(password_verify($password, $user['staff_password'])) {
+					$_SESSION["username"] = $username;
+					$_SESSION['staff_id'] = $staff_id;
+					$_SESSION['staff_role'] = $staff_role;
+					$staff_lastlogin = time();
+					$stmt = $conn->prepare("UPDATE staff SET staff_ip =:staff_ip, staff_lastlogin =:staff_lastlogin, staff_failed_logins =:staff_failed_logins WHERE staff_id =:staff_id");
+					$stmt->bindValue(':staff_ip', "$remote_addr", SQLITE3_TEXT);
+					$stmt->bindValue(':staff_lastlogin', "$staff_lastlogin", SQLITE3_TEXT);
+					$stmt->bindValue(':staff_failed_logins', '0', SQLITE3_INTEGER);
+					$stmt->bindValue(':staff_id', $staff_id, SQLITE3_INTEGER);
+					$stmt->execute();
+					if(isset($user['staff_mfa'])) {
+						$_SESSION['mfa_required'] = true;
+						header("Location: ". $_SERVER["PHP_SELF"]);
+						exit;
+					} else {
+						$_SESSION["loggedin"] = true;
+						header("Location: home.php");
+					}
+				} else {
+					$sql = "UPDATE staff SET staff_failed_logins = staff_failed_logins + 1 WHERE staff_id =:staff_id";
+					$stmt = $conn->prepare($sql);
+					$stmt->bindValue(':staff_id', $staff_id, SQLITE3_INTEGER);
+					$stmt->execute();
+					$stmt = $conn->prepare("SELECT staff_failed_logins FROM staff WHERE staff_id = $staff_id");
+					$stmt->execute();
+					$chkFailed = $stmt->fetchColumn();
+					if($chkFailed > "3") {
+						$rightNow = date('Y-m-d H:i:s');
+						$locked_datetime = DateTime::createFromFormat('Y-m-d H:i:s', $rightNow);
+						$locked_datetime->modify('+15 minutes');
+						$lockedTime = $locked_datetime->format('Y-m-d H:i:s');
+						$sql = "UPDATE staff SET staff_locked =:staff_locked, staff_failed_logins =:staff_failed_logins WHERE staff_id =:staff_id";
+						$stmt = $conn->prepare($sql);
+						$stmt->bindValue(':staff_locked', "$lockedTime", SQLITE3_TEXT);
 						$stmt->bindValue(':staff_failed_logins', '0', SQLITE3_INTEGER);
 						$stmt->bindValue(':staff_id', $staff_id, SQLITE3_INTEGER);
 						$stmt->execute();
-						if(isset($user['staff_mfa'])) {
-							$_SESSION['mfa_required'] = true;
-							header("Location: ". $_SERVER["PHP_SELF"]);
-							exit;
-						} else {
-							$_SESSION["loggedin"] = true;
-							header("Location: home.php");
-						}
-					} else {
-						$sql = "UPDATE staff SET staff_failed_logins = staff_failed_logins + 1 WHERE staff_id =:staff_id";
-						$stmt = $conn->prepare($sql);
-						$stmt->bindValue(':staff_id', $staff_id, SQLITE3_INTEGER);
-						$stmt->execute();
-						$stmt = $conn->prepare("SELECT staff_failed_logins FROM staff WHERE staff_id = $staff_id");
-						$stmt->execute();
-						$chkFailed = $stmt->fetchColumn();
-						if($chkFailed > "3") {
-							$rightNow = date('Y-m-d H:i:s');
-							$locked_datetime = DateTime::createFromFormat('Y-m-d H:i:s', $rightNow);
-							$locked_datetime->modify('+15 minutes');
-							$lockedTime = $locked_datetime->format('Y-m-d H:i:s');
-							$sql = "UPDATE staff SET staff_locked =:staff_locked, staff_failed_logins =:staff_failed_logins WHERE staff_id =:staff_id";
-							$stmt = $conn->prepare($sql);
-							$stmt->bindValue(':staff_locked', "$lockedTime", SQLITE3_TEXT);
-							$stmt->bindValue(':staff_failed_logins', '0', SQLITE3_INTEGER);
-							$stmt->bindValue(':staff_id', $staff_id, SQLITE3_INTEGER);
-							$stmt->execute();
-						}
-						header("Location: index.php?e=0");
 					}
-				} else {
-					header("Location: index.php?e=2");
+					header("Location: index.php?e=0");
 				}
 			} else {
-				header("Location: index.php?e=0");
+				header("Location: index.php?e=2");
 			}
-		} catch (PDOException $e) {
-			echo "Error: " . $e->getMessage();
+		} else {
+			header("Location: index.php?e=0");
 		}
 		$stmt = null;
 	} elseif(isset($_POST["otp"])) {
