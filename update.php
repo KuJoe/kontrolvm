@@ -87,13 +87,12 @@ function updateFiles($repoOwner = "KuJoe", $repoName = "kontrolvm") {
 		return "Failed to fetch release information from GitHub.";
 	}
 
-	$releaseVersion = preg_replace('/[a-zA-Z-]/', '', $releaseData['tag_name']);
-
-	if (checkVersion($releaseVersion)) {
+	if(checkVersion() === true) {
 		return "The latest release version is the same as the current version.";
 	}
 
-	if (!downloadAndExtractZip($releaseData['zipball_url'], __DIR__)) {
+	$zipURL = $releaseData['assets']['0']['browser_download_url'];
+	if (!downloadAndExtractZip($zipURL, __DIR__)) {
 		return "Failed to download or extract the zip archive.";
 	}
 
@@ -104,11 +103,13 @@ if($resultFiles === true) {
 	$servers = getServerList('1');
 	if(count($servers) > 0) {
 		foreach ($servers as $server) {
-			updateKontrolVMNode($server['node_id'],$releaseVersion);
+			updateKontrolVMNode($server['node_id']);
 		}
 	}
-	header("Location: update_db.php");
-	exit;
+	if(!$error) {
+		header("Location: update_db.php");
+		exit;
+	}
 } else {
 	$error = $resultFiles;
 }

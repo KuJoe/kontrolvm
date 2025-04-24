@@ -6,6 +6,7 @@ unset($_SESSION['username']);
 unset($_SESSION['password']);
 unset($_SESSION['loggedin']);
 unset($_SESSION['mfa_required']);
+unset($_SESSION['updateBannerDismissed']);
 session_destroy();
 header("refresh:3;url=index.php");
 

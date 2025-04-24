@@ -4,7 +4,7 @@
 if(!defined('AmAllowed')) {
 	die('Error 001A');
 }
-define('KONTROLVM_VERSION', '1.1');
+define('KONTROLVM_VERSION', '1.0');
 require_once('config.php');
 require __DIR__ . '/vendor/autoload.php';
 use phpseclib3\Net\SSH2;
@@ -457,8 +457,8 @@ function addNode($myid,$hostname,$ipaddr,$sshport,$rootpw,$cluster) {
 			$kontrolvmip = $_SERVER['SERVER_ADDR'];
 			$sshkeypublic = 'from="'.$kontrolvmip.'" '.$sshkeypublic;
 			$ssh->exec("echo '$sshkeypublic' >> /home/kontrolvm/.ssh/authorized_keys");
-			$kontrolvm_url = dirname((empty($_SERVER['HTTPS']) ? 'http' : 'https') . "://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]");
-			$ssh->exec("echo 'kontrolvm_url=$kontrolvm_url' >> /home/kontrolvm/conf/kontrolvm.conf");
+			#$kontrolvm_url = dirname((empty($_SERVER['HTTPS']) ? 'http' : 'https') . "://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]");
+			#$ssh->exec("echo 'kontrolvm_url=$kontrolvm_url' >> /home/kontrolvm/conf/kontrolvm.conf");
 			$ssh->disconnect();
 		} else {
 			throw new Exception("SSH connection with password failed.");
@@ -660,22 +660,18 @@ function getClusterDetails($cluster_id) {
 	}
 }
 
-function updateKontrolVMNode($node_id,$releaseVersion) {
+function updateKontrolVMNode($node_id) {
 	include('config.php');
-	
-	try {
-		$ssh = connectNode($node_id);
-		$escapedVersion = escapeshellarg("kontrolvm_version={$releaseVersion}");
-		$ssh->exec("sed -i 's/^kontrolvm_version=*/{$escapedVersion}/' /home/kontrolvm/conf/kontrolvm.conf");
-		#$ssh->exec("/usr/bin/curl -fsSL https://kontrolvm.com//update.sh | bash");
-		#echo $ssh->getLog();
-		$ssh->disconnect();
-		return true;
-	} catch (Exception $e) {
-		$error = "Error updating KontrolVM on node $node_id: " . $e->getMessage();
-		logMessage($error);
-		return $error;
-	}
+	$latestVersion = @file_get_contents('https://kontrolvm.com/version');
+
+	$ssh = connectNode($node_id);
+	$version = "kontrolvm_version=".trim($latestVersion);
+	$file = "/home/kontrolvm/conf/kontrolvm.conf";
+	$kversion = $ssh->exec("echo '$version' > $file");
+	#$ssh->exec("/usr/bin/curl -fsSL https://kontrolvm.com//update.sh | bash");
+	#echo $ssh->getLog();
+	$ssh->disconnect();
+	return;
 }
 
 function getNodeStats($node_id) {
@@ -759,6 +755,7 @@ function getNodeInfo($node_id) {
 		$os_version = trim(mb_substr($os_version, 12));
 		$kernel_version = $ssh->exec('uname -r');
 		$libvirt_version = $ssh->exec('virsh --version');
+		$kontrolvm_version = $ssh->exec('cat /home/kontrolvm/conf/kontrolvm.conf | tail -c +19');
 		
 		$ssh->disconnect();
 		$node_data = [':cpu_cores' => $cpu,':total_memory' => $ram,':disk_space' => $total_disk,':make' => $make,':model' => $model,':cpu' => $cpumodel,':vms' => $vms,':os_version' => $os_version,':kernel_version' => $kernel_version,':libvirt_version' => $libvirt_version];
@@ -2599,6 +2596,7 @@ function checkVersion($ver = 0) {
 		logMessage($error);
 		return $error;  
     }
+	
 	if(!is_numeric($latestVersion) || !is_numeric($localVersion)) {
         $error = "ERROR: Both remote and local content must be numeric.";
 		logMessage($error);
