@@ -4,7 +4,7 @@
 if(!defined('AmAllowed')) {
 	die('Error 001A');
 }
-define('KONTROLVM_VERSION', '1.0');
+define('KONTROLVM_VERSION', '1.1');
 require_once('config.php');
 require __DIR__ . '/vendor/autoload.php';
 use phpseclib3\Net\SSH2;
@@ -660,12 +660,14 @@ function getClusterDetails($cluster_id) {
 	}
 }
 
-function updateKontrolVMNode($node_id) {
+function updateKontrolVMNode($node_id,$releaseVersion) {
 	include('config.php');
 	
 	try {
 		$ssh = connectNode($node_id);
-		$ssh->exec("/usr/bin/curl -fsSL https://n3rd.info/controlp/scripts/update.sh | bash");
+		$escapedVersion = escapeshellarg("kontrolvm_version={$releaseVersion}");
+		$ssh->exec("sed -i 's/^kontrolvm_version=*/{$escapedVersion}/' /home/kontrolvm/conf/kontrolvm.conf");
+		#$ssh->exec("/usr/bin/curl -fsSL https://kontrolvm.com//update.sh | bash");
 		#echo $ssh->getLog();
 		$ssh->disconnect();
 		return true;

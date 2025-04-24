@@ -104,7 +104,7 @@ if($resultFiles === true) {
 	$servers = getServerList('1');
 	if(count($servers) > 0) {
 		foreach ($servers as $server) {
-			updateKontrolVMNode($server['node_id']);
+			updateKontrolVMNode($server['node_id'],$releaseVersion);
 		}
 	}
 	header("Location: update_db.php");
