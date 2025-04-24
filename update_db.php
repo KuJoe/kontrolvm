@@ -6,6 +6,9 @@ if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 	header("Location: index.php"); 
 	exit; 
 }
+
+header("refresh:3;url=home.php");
+
 function alterTableIfExists($conn, $alterQuery) {
     try {
         $conn->exec($alterQuery);
@@ -127,7 +130,7 @@ if($resultDB === true) {
 </head>
 <body>
 	<div class="container">
-		<img src="assets/logo.png" alt="KontrolVM Logo" style="display:block;margin:0 auto;" />
+		<a href="home.php"><img src="assets/logo.png" alt="KontrolVM Logo" style="display:block;margin:0 auto;" /></a>
 		<br />
 		<br />
 		<?php if(isset($error)) { ?>
@@ -138,7 +141,7 @@ if($resultDB === true) {
 		<?php if(isset($success)) { ?>
 			<h2 style="color:green;">Update Success</h2>
 			<br />
-			<div style="text-align:center;"><?php echo $success; ?></div> 
+			<div style="text-align:center;"><?php echo $success; ?><br /><br /><a href="home.php"><strong>Return</strong></a></div> 
 			<p>
 			</p>
 		<?php } ?>

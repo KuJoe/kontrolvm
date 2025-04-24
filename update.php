@@ -157,13 +157,13 @@ if($resultFiles === true) {
 </head>
 <body>
 	<div class="container">
-		<img src="assets/logo.png" alt="KontrolVM Logo" style="display:block;margin:0 auto;" />
+		<a href="home.php"><img src="assets/logo.png" alt="KontrolVM Logo" style="display:block;margin:0 auto;" /></a>
 		<br />
 		<br />
 		<?php if(isset($error)) { ?>
 			<h2 style="color:red;">Update Failed</h2>
 			<br />
-			<div class="error-message"><?php echo $error; ?></div> 
+			<div class="error-message"><?php echo $error; ?><br /><br /><a href="logs.php"><strong>Check the logs for errors.</strong></a></div>
 		<?php } ?>
 		<br /><br />
 		<p style="text-align:center;font-size:0.9em;">Powered by <a href="https://github.com/KuJoe/kontrolvm" target="_blank">KontrolVM</a></p>

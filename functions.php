@@ -51,14 +51,14 @@ function generateRandomString($length = 16) {
 }
 
 function generateMAC($macaddr) {
-    if(!preg_match('/^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$/', $macaddr)) {
-        return false;
-    }
-    $octets = explode(':', $macaddr);
-    $newLastOctet = sprintf('%02x', mt_rand(0, 255));
-    $octets[5] = $newLastOctet;
-    $newmacaddr = implode(':', $octets);
-    return $newmacaddr;
+	if(!preg_match('/^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$/', $macaddr)) {
+		return false;
+	}
+	$octets = explode(':', $macaddr);
+	$newLastOctet = sprintf('%02x', mt_rand(0, 255));
+	$octets[5] = $newLastOctet;
+	$newmacaddr = implode(':', $octets);
+	return $newmacaddr;
 }
 
 function getCSRFToken() {
@@ -259,17 +259,17 @@ function checkNodeCleaned($node_id) {
 	include('config.php');
 	$conn = new PDO("sqlite:$db_file_path");
 	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    try {
-        $stmt = $conn->prepare("SELECT COUNT(*) FROM vms WHERE node_id =:node_id");
+	try {
+		$stmt = $conn->prepare("SELECT COUNT(*) FROM vms WHERE node_id =:node_id");
 		$stmt->bindValue(':node_id', $node_id, SQLITE3_INTEGER);
 		$stmt->execute();
 		$count = $stmt->fetchColumn();
-    } catch(PDOException $e) {
+	} catch(PDOException $e) {
 		$error = "Database error (checkNodeCleaned): " . $e->getMessage();
 		logMessage($error);
 		return $error;
 	}
-    return $count > 0 ? false : true;
+	return $count > 0 ? false : true;
 }
 
 function checkClusterCleaned($cluster) {
@@ -287,7 +287,7 @@ function checkClusterCleaned($cluster) {
 		logMessage($error);
 		return $error;
 	}
-    return $count > 0 ? false : true;
+	return $count > 0 ? false : true;
 }
 
 function createUser($myid,$username,$email) {
@@ -900,7 +900,7 @@ function addISOs($myid,$download,$friendlyname) {
 	}
 	$localFile = "wget_isos.sh";
 	$wgetCommand = '/usr/bin/wget -O /home/kontrolvm/isos/'.$filename.' '.$download;
-    file_put_contents($localFile, $wgetCommand . PHP_EOL, FILE_APPEND | LOCK_EX) !== false;
+	file_put_contents($localFile, $wgetCommand . PHP_EOL, FILE_APPEND | LOCK_EX) !== false;
 	$rundl = downloadISOs($localFile);
 	if($rundl === true) {
 		$stmt = $conn->prepare('INSERT INTO ostemplates (filename, friendlyname, status, added) VALUES (:filename, :friendlyname, :status, :added)');
@@ -2591,23 +2591,23 @@ function checkVersion($ver = 0) {
 	}
 	$localVersion = KONTROLVM_VERSION;
 
-    if($latestVersion === false) {
-        $error = "ERROR: Failed to fetch remote file.";
+	if($latestVersion === false) {
+		$error = "ERROR: Failed to fetch remote file.";
 		logMessage($error);
 		return $error;  
-    }
+	}
 	
 	if(!is_numeric($latestVersion) || !is_numeric($localVersion)) {
-        $error = "ERROR: Both remote and local content must be numeric.";
+		$error = "ERROR: Both remote and local content must be numeric.";
 		logMessage($error);
 		return $error; 
-    }
+	}
 
 	if((float)$latestVersion === (float)$localVersion) {
-        return true;
-    } else {
-        return false;
-    }
+		return true;
+	} else {
+		return false;
+	}
 }
 
 ?>
