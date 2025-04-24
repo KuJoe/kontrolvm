@@ -4,7 +4,7 @@
 if(!defined('AmAllowed')) {
 	die('Error 001A');
 }
-define('KONTROLVM_VERSION', '1.0');
+define('KONTROLVM_VERSION', '1.2');
 require_once('config.php');
 require __DIR__ . '/vendor/autoload.php';
 use phpseclib3\Net\SSH2;
