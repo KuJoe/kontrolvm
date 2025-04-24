@@ -85,8 +85,9 @@ wget -N https://raw.githubusercontent.com/KuJoe/kontrolvm/refs/heads/main/script
 wget -N https://raw.githubusercontent.com/KuJoe/kontrolvm/refs/heads/main/scripts/tc_stop.sh
 wget -N https://raw.githubusercontent.com/KuJoe/kontrolvm/refs/heads/main/scripts/backup_vm.sh
 wget -N https://raw.githubusercontent.com/KuJoe/kontrolvm/refs/heads/main/scripts/restore_vm.sh
-wget -O /home/kontrolvm/isos/systemrescue-amd64.iso https://sourceforge.net/projects/systemrescuecd/files/sysresccd-x86/11.03/systemrescue-11.03-amd64.iso/download
-echo "kontrolvm_version=0.1" > /home/kontrolvm/conf/kontrolvm.conf
+echo "/usr/bin/wget -O /home/kontrolvm/isos/systemrescue-amd64.iso https://sourceforge.net/projects/systemrescuecd/files/sysresccd-x86/11.03/systemrescue-11.03-amd64.iso/download" > /home/kontrolvm/isos/wget_isos.sh
+chmod 0755 /home/kontrolvm/isos/wget_isos.sh
+echo "kontrolvm_version=1.0" > /home/kontrolvm/conf/kontrolvm.conf
 echo '#!/bin/sh' > /home/kontrolvm/create_console.sh
 echo "# Script Name:  create_console" >> /home/kontrolvm/create_console.sh
 echo " " >> /home/kontrolvm/create_console.sh
@@ -119,5 +120,7 @@ echo '*/5 * * * * sh /home/kontrolvm/vz_traffic.sh' >> /var/spool/cron/root
 echo '*/15 * * * * sh /home/kontrolvm/buildnet.sh' >> /var/spool/cron/root
 echo '*/15 * * * * sh /home/kontrolvm/iolimits.sh' >> /var/spool/cron/root
 echo '0 * * * * sh /home/kontrolvm/traffic.sh' >> /var/spool/cron/root
+echo '0 0 * * * sh /home/kontrolvm/isos/wget_isos.sh' >> /var/spool/cron/root
 
 echo "KontrolVM node setup completed, a full log is available in kontrolvm.log" > /dev/tty 
+echo "Please reboot this server to complete the install." > /dev/tty

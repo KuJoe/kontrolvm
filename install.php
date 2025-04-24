@@ -98,8 +98,6 @@ try {
 		template_id INTEGER PRIMARY KEY AUTOINCREMENT,
 		filename TEXT NOT NULL,
 		friendlyname TEXT NOT NULL,
-		type TEXT NOT NULL,
-		variant TEXT NOT NULL,
 		status TEXT NOT NULL,
 		added DATETIME
 	)",
@@ -234,6 +232,14 @@ try {
 	$stmt->bindValue(':role', '9', SQLITE3_INTEGER);
 	$stmt->execute();
 	
+	// Create SystemRescueCD ISO
+	$stmt = $conn->prepare('INSERT INTO ostemplates (filename, friendlyname, status, added) VALUES (:filename, :friendlyname, :status, :added)');
+	$stmt->bindValue(':filename', "systemrescue-amd64.iso", SQLITE3_TEXT);
+	$stmt->bindValue(':friendlyname', "SystemRescueCD", SQLITE3_TEXT);
+	$stmt->bindValue(':status', '1', SQLITE3_INTEGER);
+	$stmt->bindValue(':added', time(), SQLITE3_TEXT); 
+	$result = $stmt->execute();
+	
 	//// Populate default settings
 	//$setting = [
 	//'bgupdate' => "true",
@@ -251,6 +257,11 @@ try {
 	$publicKeyString = $publicKey->toString('OpenSSH');
 	file_put_contents($sshkeypriv, $privateKeyString);
 	file_put_contents($sshkeypub, $publicKeyString);
+	
+	//Create wget_isos.sh file
+	$localFile = "wget_isos.sh";
+	$wgetCommand = '/usr/bin/wget -O /home/kontrolvm/isos/systemrescue-amd64.iso https://sourceforge.net/projects/systemrescuecd/files/sysresccd-x86/11.03/systemrescue-11.03-amd64.iso/download';
+    file_put_contents($localFile, $wgetCommand . PHP_EOL, FILE_APPEND | LOCK_EX) !== false;
 	
 	$success = "Database has been deployed and the tables have been successfully created.<br />An SSH key has been generated for internal use.";
 	

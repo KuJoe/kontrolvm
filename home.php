@@ -27,7 +27,7 @@ if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 	}
 	if(isset($_GET['s'])) {
 		if($_GET['s'] == '99') {
-			$error = "Account does not access to fuction.";
+			$error = "Account does not have access to function.";
 		}
 	}
 }

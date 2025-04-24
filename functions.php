@@ -4,7 +4,7 @@
 if(!defined('AmAllowed')) {
 	die('Error 001A');
 }
-define('KONTROLVM_VERSION', '0.1');
+define('KONTROLVM_VERSION', '1.0');
 require_once('config.php');
 require __DIR__ . '/vendor/autoload.php';
 use phpseclib3\Net\SSH2;
@@ -899,7 +899,10 @@ function addISOs($myid,$download,$friendlyname) {
 			$filename = $part;
 		}
 	}
-	$rundl = downloadISOs($download,$filename);
+	$localFile = "wget_isos.sh";
+	$wgetCommand = '/usr/bin/wget -O /home/kontrolvm/isos/'.$filename.' '.$download;
+    file_put_contents($localFile, $wgetCommand . PHP_EOL, FILE_APPEND | LOCK_EX) !== false;
+	$rundl = downloadISOs($localFile);
 	if($rundl === true) {
 		$stmt = $conn->prepare('INSERT INTO ostemplates (filename, friendlyname, status, added) VALUES (:filename, :friendlyname, :status, :added)');
 		$stmt->bindValue(':filename', "$filename", SQLITE3_TEXT);
@@ -937,19 +940,22 @@ function deleteISO($myid,$template_id) {
 	}
 }
 
-function downloadISOs($download, $filename) {
+function downloadISOs($localFile) {
+	$localFileContents = file_get_contents($localFile);
+ 	$escapedContents = escapeshellarg($localFileContents);
+	$remoteCommand = "echo " . $escapedContents . " > /home/kontrolvm/isos/wget_isos.sh";
 	$servers = getServerList('1');
 	foreach ($servers as $server) {
 		try {
 			$node_id = $server['node_id'];
 			$ssh = connectNode($node_id);
-			$ssh->exec('wget -O /home/kontrolvm/isos/'.$filename.' '.$download.' &');
+			$ssh->exec($remoteCommand);
+			$ssh->exec('/usr/bin/sh /home/kontrolvm/isos/wget_isos.sh  > /dev/null 2>&1 &', true);
 			sleep(1);
 			#echo $ssh->getLog();
 			$ssh->disconnect();
-			return true;
 		} catch (PDOException $e) {
-			$error = "Error downloading ISO ($node_id): " . $e->getMessage();
+			$error = "Error downloading ISOs ($node_id): " . $e->getMessage();
 			logMessage($error);
 			return $error;
 		}
@@ -1460,7 +1466,7 @@ function editVM($myid,$vm_id,$vm_data) {
 function restartVM($myid,$vm_id,$vmname,$node_id) {
 	try {
 		$ssh = connectNode($node_id);
-		$ssh->exec('nohup sudo /usr/bin/virsh reboot '.$vmname.' > /dev/null 2>&1 &');
+		$ssh->exec('nohup sudo /usr/bin/virsh reboot '.$vmname.' > /dev/null 2>&1 &', true);
 		#echo $ssh->getLog();
 		$ssh->disconnect();
 		return true;
@@ -1474,7 +1480,7 @@ function restartVM($myid,$vm_id,$vmname,$node_id) {
 function startVM($myid,$vm_id,$vmname,$node_id) {
 	try {
 		$ssh = connectNode($node_id);
-		$ssh->exec('nohup sudo /usr/bin/virsh start '.$vmname.' > /dev/null 2>&1 &');
+		$ssh->exec('nohup sudo /usr/bin/virsh start '.$vmname.' > /dev/null 2>&1 &', true);
 		#echo $ssh->getLog();
 		$ssh->disconnect();
 		return true;
@@ -1488,7 +1494,7 @@ function startVM($myid,$vm_id,$vmname,$node_id) {
 function stopVM($myid,$vm_id,$vmname,$node_id) {
 	try {
 		$ssh = connectNode($node_id);
-		$ssh->exec('nohup sudo /usr/bin/virsh destroy '.$vmname.' > /dev/null 2>&1 &');
+		$ssh->exec('nohup sudo /usr/bin/virsh destroy '.$vmname.' > /dev/null 2>&1 &', true);
 		#echo $ssh->getLog();
 		$ssh->disconnect();
 		return true;
@@ -1502,7 +1508,7 @@ function stopVM($myid,$vm_id,$vmname,$node_id) {
 function shutdownVM($myid,$vm_id,$vmname,$node_id) {
 	try {
 		$ssh = connectNode($node_id);
-		$ssh->exec('nohup sudo /usr/bin/virsh shutdown '.$vmname.' > /dev/null 2>&1 &');
+		$ssh->exec('nohup sudo /usr/bin/virsh shutdown '.$vmname.' > /dev/null 2>&1 &', true);
 		#echo $ssh->getLog();
 		$ssh->disconnect();
 		return true;
@@ -2459,7 +2465,7 @@ function backupVM($myid,$vm_id,$vm_name,$node_id) {
 		$ssh = connectNode($node_id);
 		$backup_tmpdir = $ssh->exec("/usr/bin/test -d /home/kontrolvm/backups_tmp/$vm_name;echo $?");
 		if($backup_tmpdir == 1) {
-			$ssh->exec('sudo /home/kontrolvm/backup_vm.sh '.$vm_name.' '.$backup_name.' > /dev/null 2>&1 &');
+			$ssh->exec('sudo /home/kontrolvm/backup_vm.sh '.$vm_name.' '.$backup_name.' > /dev/null 2>&1 &', true);
 			#echo $ssh->getLog();
 			$ssh->disconnect();
 
@@ -2564,7 +2570,7 @@ function restoreVM($myid,$backup_name,$vm_name,$vnc_port,$vm_id,$node_id) {
 				$diskname = $disk['disk_name'];
 				$ssh->exec("sudo /bin/sh /home/kontrolvm/cleandata.sh $diskname");
 			}
-			$ssh->exec('sudo /home/kontrolvm/restore_vm.sh '.$backup_name.' '.$vm_name.' '.$vnc_port.' > /dev/null 2>&1 &');
+			$ssh->exec('sudo /home/kontrolvm/restore_vm.sh '.$backup_name.' '.$vm_name.' '.$vnc_port.' > /dev/null 2>&1 &', true);
 			#echo $ssh->getLog();
 			$ssh->disconnect();
 			return true;
