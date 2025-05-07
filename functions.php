@@ -1531,7 +1531,7 @@ function destroyVM($myid,$vm_id,$vmname,$websockify,$vncport,$node_id,$confirm) 
 			sleep(5);
 			$disks = getDisks($vm_id);
 			foreach ($disks as $disk) {
-				deleteDisk($vm_id,$vmname,$disk['disk_id'],$disk['disk_name'],$node_id);
+				deleteDisk($myid,$vm_id,$vmname,$disk['disk_id'],$disk['disk_name'],$node_id);
 			}
 			#echo $ssh->getLog();
 			$ssh->disconnect();
