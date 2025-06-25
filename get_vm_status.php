@@ -8,6 +8,6 @@ $vmname = $_POST['vmname'];
 $node_id = $_POST['node_id'];
 
 $state = getVMState($vmname,$node_id);
-echo $state;
+echo strip_tags($state);
 
 ?>
