@@ -98,7 +98,8 @@ All of the current assets and UI are placeholders, I'll find somebody to design 
 	 ***NOTE: Save the username and password generated in this file for later.***
 
 # Linux KVM Node Setup
-*At this time only AlmaLinux 9, RockyLinux 9, and CentOS Stream 9 have been tested and are supported. We will add more server OS options later.*
-Login to your Linux KVM node and run the following command as root:
+*At this time only AlmaLinux 9, RockyLinux 9, and CentOS Stream 9 have been tested and are supported.*  
+*We will add more server OS options later.*  
+Login to your Linux KVM node and run the following command as root:  
 
     curl -fsSL https://kontrolvm.com/setup.sh | bash

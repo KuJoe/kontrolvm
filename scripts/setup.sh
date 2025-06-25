@@ -87,7 +87,7 @@ wget -N https://raw.githubusercontent.com/KuJoe/kontrolvm/refs/heads/main/script
 wget -N https://raw.githubusercontent.com/KuJoe/kontrolvm/refs/heads/main/scripts/restore_vm.sh
 echo "/usr/bin/wget -O /home/kontrolvm/isos/systemrescue-amd64.iso https://sourceforge.net/projects/systemrescuecd/files/sysresccd-x86/11.03/systemrescue-11.03-amd64.iso/download" > /home/kontrolvm/isos/wget_isos.sh
 chmod 0755 /home/kontrolvm/isos/wget_isos.sh
-echo "kontrolvm_version=1.0" > /home/kontrolvm/conf/kontrolvm.conf
+echo "kontrolvm_version=1.2" > /home/kontrolvm/conf/kontrolvm.conf
 echo '#!/bin/sh' > /home/kontrolvm/create_console.sh
 echo "# Script Name:  create_console" >> /home/kontrolvm/create_console.sh
 echo " " >> /home/kontrolvm/create_console.sh

@@ -4,10 +4,14 @@
 define('AmAllowed', TRUE);
 require_once('functions.php');
 
-$vmname = $_POST['vmname'];
-$node_id = $_POST['node_id'];
+$vmname = trim($_POST['vmname']);
+$node_id = (int)$_POST['node_id'];
 
 $state = getVMState($vmname,$node_id);
-echo strip_tags($state);
+if($state == 'running') {
+	echo "running";
+} else {
+	echo "offline";
+}
 
 ?>

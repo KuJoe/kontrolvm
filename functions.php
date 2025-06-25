@@ -451,7 +451,7 @@ function addNode($myid,$hostname,$ipaddr,$sshport,$rootpw,$cluster) {
 			$ssh->setTimeout(60);
 			$kversion = $ssh->exec("/usr/bin/cat /home/kontrolvm/conf/kontrolvm.conf");
 			if(trim($kversion) !== "kontrolvm_version=".KONTROLVM_VERSION) {
-				throw new Exception("KontrolVM not installed or incorrect version.");
+				throw new Exception("KontrolVM not installed or incorrect version ($kversion | ".KONTROLVM_VERSION.").");
 			}
 			$sshkeypublic = file_get_contents($sshkeypub);
 			$kontrolvmip = $_SERVER['SERVER_ADDR'];
