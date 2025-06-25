@@ -372,6 +372,19 @@ if($_SERVER["REQUEST_METHOD"] == "POST") {
 					$error = $result;
 				}
 			} else {
+				$error = "VM destruction failed: Please make sure you checked the confirmation box.";
+			}
+		}
+		if(isset($_POST['deleteVM'])) {
+			if(isset($_POST['confirm'])) {
+				$confirm = $_POST['confirm'];
+				$result = deleteVM($loggedin_id,$vm_id,$confirm);
+				if($result === true) {
+					header("Location: vms.php?s=2");
+				} else {
+					$error = $result;
+				}
+			} else {
 				$error = "VM delete failed: Please make sure you checked the confirmation box.";
 			}
 		}
@@ -831,7 +844,7 @@ if($vm) {
 				<br />
 				<table>
 					<tr>
-						<td style="background-color:#999;">DELETE VM:</td>
+						<td style="background-color:#999;">DESTROY VM:</td>
 						<td style="padding:10px;">
 						<form id="destroyVM" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post">
 						<label class="checkbox-container" style="padding:5px;">
@@ -843,11 +856,35 @@ if($vm) {
 						<td>
 						<input type="hidden" name="csrf_token" value="<?php echo $csrfToken; ?>">
 						<input type="hidden" name="id" value="<?php echo $vm_id; ?>">
-						<button type="submit" name="destroyVM" id="destroyVM" class="stylish-button" style="background-color:red;">DELETE</button>
+						<button type="submit" name="destroyVM" id="destroyVM" class="stylish-button" style="background-color:red;">DESTROY</button>
 						</form>
 						</td>
-					</tr>					
+					</tr>
 				</table>
+				<p style="text-align:center;"><i>Delete the VM, disks, NIC, and all traces off the node and database.</i></p>
+				<br />
+				<hr />
+				<br />
+				<table>
+					<tr>
+						<td style="background-color:#999;">DELETE FROM INVENTORY:</td>
+						<td style="padding:10px;">
+						<form id="deleteVM" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post">
+						<label class="checkbox-container" style="padding:5px;">
+							<input type="checkbox" name="confirm" style="padding:5px;">
+							<span class="checkmark"></span>
+						</label>
+						Confirm
+						</td>
+						<td>
+						<input type="hidden" name="csrf_token" value="<?php echo $csrfToken; ?>">
+						<input type="hidden" name="id" value="<?php echo $vm_id; ?>">
+						<button type="submit" name="deleteVM" id="deleteVM" class="stylish-button" style="background-color:red;">DELETE</button>
+						</form>
+						</td>
+					</tr>
+				</table>
+				<p style="text-align:center;"><i>Only deletes the VM from the database.</i></p>
 				<?php } ?>
 			</div>
 <?php

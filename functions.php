@@ -665,12 +665,18 @@ function updateKontrolVMNode($node_id) {
 	$latestVersion = @file_get_contents('https://kontrolvm.com/version');
 
 	$ssh = connectNode($node_id);
-	$version = "kontrolvm_version=".trim($latestVersion);
-	$file = "/home/kontrolvm/conf/kontrolvm.conf";
-	$kversion = $ssh->exec("echo '$version' > $file");
-	#$ssh->exec("/usr/bin/curl -fsSL https://kontrolvm.com//update.sh | bash");
-	#echo $ssh->getLog();
-	$ssh->disconnect();
+	if($ssh) {
+		$version = "kontrolvm_version=".trim($latestVersion);
+		$file = "/home/kontrolvm/conf/kontrolvm.conf";
+		$kversion = $ssh->exec("echo '$version' > $file");
+		#$ssh->exec("/usr/bin/curl -fsSL https://kontrolvm.com//update.sh | bash");
+		#echo $ssh->getLog();
+		$ssh->disconnect();
+	} else {
+		$error = "Error connecting to node: " . $node_id;
+		logMessage($error);
+		return $error;
+	}
 	return;
 }
 
@@ -681,24 +687,30 @@ function getNodeStats($node_id) {
 
 	try {
 		$ssh = connectNode($node_id);
-		$uptime_string = $ssh->exec('uptime'); 
-		preg_match('/up (.*?),/', $uptime_string, $matches);
-		$uptime = $matches[1];
-		$load = $ssh->exec("/usr/bin/cat /proc/loadavg | awk '{print $1}'");
-		$disk = $ssh->exec("/usr/bin/df -h /home/ | awk 'NR==2{print $5}'");
-		$memused = $ssh->exec("/usr/bin/free -m | awk 'NR==2{printf \"%.2f%%\", $3*100/$2 }'");
-		#echo $ssh->getLog();
-		$ssh->disconnect();
-		
-		
-		$stmt = $conn->prepare("UPDATE nodes SET uptime =:uptime, load =:load, memused =:memused, diskclnt =:diskclnt, last_updated =:last_updated WHERE node_id =:node_id");
-		$stmt->bindValue(':uptime', "$uptime", SQLITE3_TEXT);
-		$stmt->bindValue(':load', "$load", SQLITE3_TEXT);
-		$stmt->bindValue(':memused', "$memused", SQLITE3_TEXT);
-		$stmt->bindValue(':diskclnt', "$disk", SQLITE3_TEXT);
-		$stmt->bindValue(':node_id', $node_id, SQLITE3_INTEGER);
-		$stmt->bindValue(':last_updated', time(), SQLITE3_INTEGER);
-		$stmt->execute();
+		if($ssh) {
+			$uptime_string = $ssh->exec('uptime'); 
+			preg_match('/up (.*?),/', $uptime_string, $matches);
+			$uptime = $matches[1];
+			$load = $ssh->exec("/usr/bin/cat /proc/loadavg | awk '{print $1}'");
+			$disk = $ssh->exec("/usr/bin/df -h /home/ | awk 'NR==2{print $5}'");
+			$memused = $ssh->exec("/usr/bin/free -m | awk 'NR==2{printf \"%.2f%%\", $3*100/$2 }'");
+			#echo $ssh->getLog();
+			$ssh->disconnect();
+			
+			
+			$stmt = $conn->prepare("UPDATE nodes SET uptime =:uptime, load =:load, memused =:memused, diskclnt =:diskclnt, last_updated =:last_updated WHERE node_id =:node_id");
+			$stmt->bindValue(':uptime', "$uptime", SQLITE3_TEXT);
+			$stmt->bindValue(':load', "$load", SQLITE3_TEXT);
+			$stmt->bindValue(':memused', "$memused", SQLITE3_TEXT);
+			$stmt->bindValue(':diskclnt', "$disk", SQLITE3_TEXT);
+			$stmt->bindValue(':node_id', $node_id, SQLITE3_INTEGER);
+			$stmt->bindValue(':last_updated', time(), SQLITE3_INTEGER);
+			$stmt->execute();
+		} else {
+			$error = "Error connecting to node: " . $node_id;
+			logMessage($error);
+			return $error;
+		}		
 	} catch (PDOException $e) {
 		$error = "Error fetching node details: " . $e->getMessage();
 		logMessage($error);
@@ -713,54 +725,60 @@ function getNodeInfo($node_id) {
 
 	try {
 		$ssh = connectNode($node_id);
-		// Get RAM amount
-		$ram = $ssh->exec("free -h | grep Mem | awk '{print $2}'");
-		$total_memory = trim($ram);
-		preg_match('/([\d\.]+)([GMK])/', $total_memory, $matches);
-		$value = $matches[1];
-		$unit = $matches[2];
+		if($ssh) {
+			// Get RAM amount
+			$ram = $ssh->exec("free -h | grep Mem | awk '{print $2}'");
+			$total_memory = trim($ram);
+			preg_match('/([\d\.]+)([GMK])/', $total_memory, $matches);
+			$value = $matches[1];
+			$unit = $matches[2];
 
-		if($unit == "G") {
-			$ram = $value;
-		} elseif($unit == "M") {
-			$ram = $value / 1024;
-		} elseif($unit == "K") {
-			$ram = $value / 1024 / 1024;
+			if($unit == "G") {
+				$ram = $value;
+			} elseif($unit == "M") {
+				$ram = $value / 1024;
+			} elseif($unit == "K") {
+				$ram = $value / 1024 / 1024;
+			}
+
+			// Get CPU core count
+			$cpu = $ssh->exec('cat /proc/cpuinfo | grep "processor" | wc -l');
+			$cpumodel = $ssh->exec("cat /proc/cpuinfo | grep 'model name' | head -n 1");
+			$cpumodel = trim(mb_substr($cpumodel, 13));
+
+			// Get total disk space
+			$total_disk = $ssh->exec("df -h /home/kontrolvm | awk 'NR==2{print $2}'");
+			$total_disk = calcDisk($total_disk);
+			$used_disk = $ssh->exec("df -h /home/kontrolvm | awk 'NR==2{print $3}'");
+			$used_disk = calcDisk($used_disk);
+
+			// Get make and model
+			$make = $ssh->exec("sudo dmidecode | grep -A3 '^System Information' | grep 'Manufacturer'");
+			$make = mb_substr($make, 14);
+			$make = trim(str_replace([',', '.'], '', $make));
+			$model = $ssh->exec("sudo dmidecode | grep -A3 '^System Information' | grep 'Product Name'");
+			$model = mb_substr($model, 14);
+			$model = trim(str_replace([',', '.'], '', $model)); 
+
+			// Get number of VMs (XML files)
+			$vms = $ssh->exec("sudo virsh list --all | grep kvm | wc -l");
+
+			// Get OS Information
+			$os_version = $ssh->exec('cat /etc/os-release | grep "PRETTY_NAME"');
+			$os_version = trim(mb_substr($os_version, 12));
+			$kernel_version = $ssh->exec('uname -r');
+			$libvirt_version = $ssh->exec('virsh --version');
+			$kontrolvm_version = $ssh->exec('cat /home/kontrolvm/conf/kontrolvm.conf | tail -c +19');
+			
+			$ssh->disconnect();
+			$node_data = [':cpu_cores' => $cpu,':total_memory' => $ram,':disk_space' => $total_disk,':make' => $make,':model' => $model,':cpu' => $cpumodel,':vms' => $vms,':os_version' => $os_version,':kernel_version' => $kernel_version,':libvirt_version' => $libvirt_version];
+			updateNode($node_id, $node_data);
+			return true;
+		} else {
+			$error = "Error connecting to node: " . $node_id;
+			logMessage($error);
+			return $error;
 		}
-
-		// Get CPU core count
-		$cpu = $ssh->exec('cat /proc/cpuinfo | grep "processor" | wc -l');
-		$cpumodel = $ssh->exec("cat /proc/cpuinfo | grep 'model name' | head -n 1");
-		$cpumodel = trim(mb_substr($cpumodel, 13));
-
-		// Get total disk space
-		$total_disk = $ssh->exec("df -h /home/kontrolvm | awk 'NR==2{print $2}'");
-		$total_disk = calcDisk($total_disk);
-		$used_disk = $ssh->exec("df -h /home/kontrolvm | awk 'NR==2{print $3}'");
-		$used_disk = calcDisk($used_disk);
-
-		// Get make and model
-		$make = $ssh->exec("sudo dmidecode | grep -A3 '^System Information' | grep 'Manufacturer'");
-		$make = mb_substr($make, 14);
-		$make = trim(str_replace([',', '.'], '', $make));
-		$model = $ssh->exec("sudo dmidecode | grep -A3 '^System Information' | grep 'Product Name'");
-		$model = mb_substr($model, 14);
-		$model = trim(str_replace([',', '.'], '', $model)); 
-
-		// Get number of VMs (XML files)
-		$vms = $ssh->exec("sudo virsh list --all | grep kvm | wc -l");
-
-		// Get OS Information
-		$os_version = $ssh->exec('cat /etc/os-release | grep "PRETTY_NAME"');
-		$os_version = trim(mb_substr($os_version, 12));
-		$kernel_version = $ssh->exec('uname -r');
-		$libvirt_version = $ssh->exec('virsh --version');
-		$kontrolvm_version = $ssh->exec('cat /home/kontrolvm/conf/kontrolvm.conf | tail -c +19');
-		
-		$ssh->disconnect();
-		$node_data = [':cpu_cores' => $cpu,':total_memory' => $ram,':disk_space' => $total_disk,':make' => $make,':model' => $model,':cpu' => $cpumodel,':vms' => $vms,':os_version' => $os_version,':kernel_version' => $kernel_version,':libvirt_version' => $libvirt_version];
-		updateNode($node_id, $node_data);
-		return true;
 	} catch (Exception $e) {
 		$error = "Error connecting to $node_id: " . $e->getMessage();
 		logMessage($error);
@@ -838,10 +856,16 @@ function getVMState($vmname,$node_id) {
 	include('config.php');
 	try {
 		$ssh = connectNode($node_id);
-		$status = $ssh->exec("sudo virsh list --all | grep $vmname | awk '{print $3}'");
-		#echo $ssh->getLog();
-		$ssh->disconnect();
-		return trim($status);
+		if($ssh) {
+			$status = $ssh->exec("sudo virsh list --all | grep $vmname | awk '{print $3}'");
+			#echo $ssh->getLog();
+			$ssh->disconnect();
+			return trim($status);
+		} else {
+			$error = "Error connecting to node: " . $node_id;
+			logMessage($error);
+			return $error;
+		}
 	} catch (PDOException $e) {
 		$error = "Error stopping VM ($vm_id): " . $e->getMessage();
 		logMessage($error);
@@ -948,11 +972,17 @@ function downloadISOs($localFile) {
 		try {
 			$node_id = $server['node_id'];
 			$ssh = connectNode($node_id);
-			$ssh->exec($remoteCommand);
-			$ssh->exec('/usr/bin/sh /home/kontrolvm/isos/wget_isos.sh  > /dev/null 2>&1 &', true);
-			sleep(1);
-			#echo $ssh->getLog();
-			$ssh->disconnect();
+			if($ssh) {
+				$ssh->exec($remoteCommand);
+				$ssh->exec('/usr/bin/sh /home/kontrolvm/isos/wget_isos.sh  > /dev/null 2>&1 &', true);
+				sleep(1);
+				#echo $ssh->getLog();
+				$ssh->disconnect();
+			} else {
+				$error = "Error connecting to node: " . $node_id;
+				logMessage($error);
+				return $error;
+			}
 		} catch (PDOException $e) {
 			$error = "Error downloading ISOs ($node_id): " . $e->getMessage();
 			logMessage($error);
@@ -1162,6 +1192,7 @@ function attachIP($myid,$vmid,$ip_id,$node,$version) {
 	try {
 		# For future configurations (Issues #11 and #13) 
 		#$ssh = connectNode($node_id);
+		#if($ssh) {
 		#$ssh->exec('echo "'.$ip.'" >> /home/kontrol/addrs/kvm'.$vpsid.'');
 		#$ssh->exec('sh /home/kontrol/buildnet.sh');
 		#$ssh->exec('echo "0" > /home/kontrol/traffic/'.$ip.'');
@@ -1184,6 +1215,11 @@ function attachIP($myid,$vmid,$ip_id,$node,$version) {
 		$stmt->bindValue(':ip_id', $ip_id, SQLITE3_INTEGER);
 		$stmt->execute();
 		return true;
+		#} else {
+		#	$error = "Error connecting to node: " . $node_id;
+		#	logMessage($error);
+		#	return $error;
+		#}
 	} catch (PDOException $e) {
 		$error = "Error updating row: ". $e->getMessage();
 		logMessage($error,$myid);
@@ -1401,44 +1437,50 @@ function createVM($myid,$memory,$disk_space,$cpu_cores,$cluster) {
 		$timenow = time();
 				
 		$ssh = connectNode($node_id);
-		$ssh->exec('sudo /usr/bin/virt-install --name '.$vmname.' --ram '.$memorymb.' --vcpus='.$cpu_cores.' --disk path=/home/kontrolvm/data/'.$disk1.',size='.$disk_space.',format=qcow2,bus=virtio,cache=writeback --network=bridge:virbr0,model=virtio --cdrom /home/kontrolvm/isos/systemrescue-amd64.iso --os-variant linux2022 --osinfo generic --noautoconsole --graphics vnc,listen=0.0.0.0,port='.$vncport.',password='.$password.',keymap=en-us --hvm --boot uefi');
-		$ssh->exec('/usr/bin/rm -rf /home/kontrolvm/xmls/'.$vmname.'.xml');
-		$ssh->exec('/bin/touch /home/kontrolvm/xmls/'.$vmname.'.xml');
-		$ssh->exec('sudo /usr/bin/virsh destroy '.$vmname.'');
-		$ssh->exec('sudo /usr/bin/virsh change-media '.$vmname.' sda /home/kontrolvm/isos/systemrescue-amd64.iso --insert --config');
-		$ssh->exec('sudo /usr/bin/virsh dumpxml '.$vmname.' --security-info > /home/kontrolvm/xmls/'.$vmname.'.xml');
-		$ssh->exec('sudo /bin/sed -i -e \'s/<on_reboot>destroy<\/on_reboot>/<on_reboot>restart<\/on_reboot>/g\' /home/kontrolvm/xmls/'.$vmname.'.xml');
-		$ssh->exec('sudo /bin/sed -i -e \'s/<on_crash>destroy<\/on_crash>/<on_crash>restart<\/on_crash>/g\' /home/kontrolvm/xmls/'.$vmname.'.xml');
-		$ssh->exec('sudo /bin/sed -i \'/<source bridge=\x27br0\x27\/>/a\ \ \ \ \ \ \ <target dev=\x27'.$vmname.'\x27\/>\' /home/kontrolvm/xmls/'.$vmname.'.xml');
-		$ssh->exec('sudo /bin/sed -ie \'s/<boot dev=\x27hd\x27\/>/<boot dev=\x27cdrom\x27\/>/g\' /home/kontrolvm/xmls/'.$vmname.'.xml');
-		$ssh->exec('sudo /usr/bin/virsh define /home/kontrolvm/xmls/'.$vmname.'.xml');
-		$ssh->exec('sudo /usr/bin/virsh autostart '.$vmname.'');
-		$ssh->exec('sudo /usr/bin/virsh start '.$vmname.'');
-		$ssh->exec('sudo /bin/sed -ie \'s/<boot dev=\x27hd\x27\/>/<boot dev=\x27cdrom\x27\/>/g\' /home/kontrolvm/xmls/'.$vmname.'.xml');
-		$macaddr = $ssh->exec("sudo virsh domiflist ". $vmname ." | awk 'NR==3{print $5}'");
-		$network = $ssh->exec("sudo virsh domiflist ". $vmname ." | awk 'NR==3{print $1}'");
-		$ssh->exec('/usr/bin/rm -rf /home/kontrolvm/addrs/'.$vmname.'');
-		$ssh->exec('/bin/touch /home/kontrolvm/addrs/'.$vmname.'');
-		$ssh->exec('sudo /bin/sh /home/kontrolvm/create_console.sh '.$wsport.' '.$vncport.'');
+		if($ssh) {
+			$ssh->exec('sudo /usr/bin/virt-install --name '.$vmname.' --ram '.$memorymb.' --vcpus='.$cpu_cores.' --disk path=/home/kontrolvm/data/'.$disk1.',size='.$disk_space.',format=qcow2,bus=virtio,cache=writeback --network=bridge:virbr0,model=virtio --cdrom /home/kontrolvm/isos/systemrescue-amd64.iso --os-variant linux2022 --osinfo generic --noautoconsole --graphics vnc,listen=0.0.0.0,port='.$vncport.',password='.$password.',keymap=en-us --hvm --boot uefi');
+			$ssh->exec('/usr/bin/rm -rf /home/kontrolvm/xmls/'.$vmname.'.xml');
+			$ssh->exec('/bin/touch /home/kontrolvm/xmls/'.$vmname.'.xml');
+			$ssh->exec('sudo /usr/bin/virsh destroy '.$vmname.'');
+			$ssh->exec('sudo /usr/bin/virsh change-media '.$vmname.' sda /home/kontrolvm/isos/systemrescue-amd64.iso --insert --config');
+			$ssh->exec('sudo /usr/bin/virsh dumpxml '.$vmname.' --security-info > /home/kontrolvm/xmls/'.$vmname.'.xml');
+			$ssh->exec('sudo /bin/sed -i -e \'s/<on_reboot>destroy<\/on_reboot>/<on_reboot>restart<\/on_reboot>/g\' /home/kontrolvm/xmls/'.$vmname.'.xml');
+			$ssh->exec('sudo /bin/sed -i -e \'s/<on_crash>destroy<\/on_crash>/<on_crash>restart<\/on_crash>/g\' /home/kontrolvm/xmls/'.$vmname.'.xml');
+			$ssh->exec('sudo /bin/sed -i \'/<source bridge=\x27br0\x27\/>/a\ \ \ \ \ \ \ <target dev=\x27'.$vmname.'\x27\/>\' /home/kontrolvm/xmls/'.$vmname.'.xml');
+			$ssh->exec('sudo /bin/sed -ie \'s/<boot dev=\x27hd\x27\/>/<boot dev=\x27cdrom\x27\/>/g\' /home/kontrolvm/xmls/'.$vmname.'.xml');
+			$ssh->exec('sudo /usr/bin/virsh define /home/kontrolvm/xmls/'.$vmname.'.xml');
+			$ssh->exec('sudo /usr/bin/virsh autostart '.$vmname.'');
+			$ssh->exec('sudo /usr/bin/virsh start '.$vmname.'');
+			$ssh->exec('sudo /bin/sed -ie \'s/<boot dev=\x27hd\x27\/>/<boot dev=\x27cdrom\x27\/>/g\' /home/kontrolvm/xmls/'.$vmname.'.xml');
+			$macaddr = $ssh->exec("sudo virsh domiflist ". $vmname ." | awk 'NR==3{print $5}'");
+			$network = $ssh->exec("sudo virsh domiflist ". $vmname ." | awk 'NR==3{print $1}'");
+			$ssh->exec('/usr/bin/rm -rf /home/kontrolvm/addrs/'.$vmname.'');
+			$ssh->exec('/bin/touch /home/kontrolvm/addrs/'.$vmname.'');
+			$ssh->exec('sudo /bin/sh /home/kontrolvm/create_console.sh '.$wsport.' '.$vncport.'');
 
-		$data = [':name' => $vmname,':hostname' => $vmname,':status' => 1,':node_id' => $node_id,':cluster' => $cluster,':cpu_cores' => $cpu_cores,':memory' => $memory,':protected' => 0,':mac_address' => $macaddr,':nic' => 1000,':iow' => 1000,':vncpw' => $encpw,':vncport' => $vncport,':websockify' => $wsport,':netdriver' => 'virtio',':diskdriver' => 'virtio',':bootorder' => 'cdrom',':created_at' => $timenow,':last_updated' => $timenow];
-		$stmt = $conn->prepare("INSERT INTO vms (name, hostname, node_id, status, cluster, cpu_cores, memory, mac_address, nic, iow, vncpw, vncport, websockify, netdriver, diskdriver, bootorder, created_at, last_updated, protected) VALUES (:name,:hostname,:node_id,:status,:cluster,:cpu_cores,:memory,:mac_address,:nic,:iow,:vncpw,:vncport,:websockify,:netdriver,:diskdriver,:bootorder,:created_at,:last_updated,:protected)");
-		$stmt->execute($data);
+			$data = [':name' => $vmname,':hostname' => $vmname,':status' => 1,':node_id' => $node_id,':cluster' => $cluster,':cpu_cores' => $cpu_cores,':memory' => $memory,':protected' => 0,':mac_address' => $macaddr,':nic' => 1000,':iow' => 1000,':vncpw' => $encpw,':vncport' => $vncport,':websockify' => $wsport,':netdriver' => 'virtio',':diskdriver' => 'virtio',':bootorder' => 'cdrom',':created_at' => $timenow,':last_updated' => $timenow];
+			$stmt = $conn->prepare("INSERT INTO vms (name, hostname, node_id, status, cluster, cpu_cores, memory, mac_address, nic, iow, vncpw, vncport, websockify, netdriver, diskdriver, bootorder, created_at, last_updated, protected) VALUES (:name,:hostname,:node_id,:status,:cluster,:cpu_cores,:memory,:mac_address,:nic,:iow,:vncpw,:vncport,:websockify,:netdriver,:diskdriver,:bootorder,:created_at,:last_updated,:protected)");
+			$stmt->execute($data);
 
-		$vm_id = $conn->lastInsertId();	
-		$data = [':disk_name' => $disk1,':disk_size' => $disk_space,':vm_id' => $vm_id,':node_id' => $node_id,':last_updated' => $timenow];
-		$stmt = $conn->prepare("INSERT INTO disks (disk_name, disk_size, vm_id, node_id, last_updated) VALUES (:disk_name,:disk_size,:vm_id,:node_id,:last_updated)");
-		$stmt->execute($data);
+			$vm_id = $conn->lastInsertId();	
+			$data = [':disk_name' => $disk1,':disk_size' => $disk_space,':vm_id' => $vm_id,':node_id' => $node_id,':last_updated' => $timenow];
+			$stmt = $conn->prepare("INSERT INTO disks (disk_name, disk_size, vm_id, node_id, last_updated) VALUES (:disk_name,:disk_size,:vm_id,:node_id,:last_updated)");
+			$stmt->execute($data);
 
-		$data = [':lastvnc' => $vncport,':lastws' => $wsport,':lastvm' => $vmnum,':node_id' => $node_id];
-		$stmt = $conn->prepare("UPDATE nodes SET lastvnc =:lastvnc, lastws =:lastws, lastvm =:lastvm WHERE node_id =:node_id");
-		$stmt->execute($data);
-		
-		$data = [':nic_name' => $nic_name,':mac_address' => $macaddr,':vm_id' => $vm_id,':node_id' => $node_id,':last_updated' => $timenow];
-		$stmt = $conn->prepare('INSERT INTO nics (nic_name, mac_address, vm_id, node_id, last_updated) VALUES (:nic_name, :mac_address, :vm_id, :node_id, :last_updated)');
-		$stmt->execute($data);
+			$data = [':lastvnc' => $vncport,':lastws' => $wsport,':lastvm' => $vmnum,':node_id' => $node_id];
+			$stmt = $conn->prepare("UPDATE nodes SET lastvnc =:lastvnc, lastws =:lastws, lastvm =:lastvm WHERE node_id =:node_id");
+			$stmt->execute($data);
+			
+			$data = [':nic_name' => $nic_name,':mac_address' => $macaddr,':vm_id' => $vm_id,':node_id' => $node_id,':last_updated' => $timenow];
+			$stmt = $conn->prepare('INSERT INTO nics (nic_name, mac_address, vm_id, node_id, last_updated) VALUES (:nic_name, :mac_address, :vm_id, :node_id, :last_updated)');
+			$stmt->execute($data);
 
-		return true;
+			return true;
+		} else {
+			$error = "Error connecting to node: " . $node_id;
+			logMessage($error);
+			return $error;
+		}
 	} catch (PDOException $e) {
 		$error = "Error creating VM ($vmname): " . $e->getMessage();
 		logMessage($error,$myid);
@@ -1465,10 +1507,16 @@ function editVM($myid,$vm_id,$vm_data) {
 function restartVM($myid,$vm_id,$vmname,$node_id) {
 	try {
 		$ssh = connectNode($node_id);
-		$ssh->exec('nohup sudo /usr/bin/virsh reboot '.$vmname.' > /dev/null 2>&1 &', true);
-		#echo $ssh->getLog();
-		$ssh->disconnect();
-		return true;
+		if($ssh) {
+			$ssh->exec('nohup sudo /usr/bin/virsh reboot '.$vmname.' > /dev/null 2>&1 &', true);
+			#echo $ssh->getLog();
+			$ssh->disconnect();
+			return true;
+		} else {
+			$error = "Error connecting to node: " . $node_id;
+			logMessage($error);
+			return $error;
+		}
 	} catch (PDOException $e) {
 		$error = "Error restarting VM ($vm_id): " . $e->getMessage();
 		logMessage($error,$myid);
@@ -1479,10 +1527,16 @@ function restartVM($myid,$vm_id,$vmname,$node_id) {
 function startVM($myid,$vm_id,$vmname,$node_id) {
 	try {
 		$ssh = connectNode($node_id);
-		$ssh->exec('nohup sudo /usr/bin/virsh start '.$vmname.' > /dev/null 2>&1 &', true);
-		#echo $ssh->getLog();
-		$ssh->disconnect();
-		return true;
+		if($ssh) {
+			$ssh->exec('nohup sudo /usr/bin/virsh start '.$vmname.' > /dev/null 2>&1 &', true);
+			#echo $ssh->getLog();
+			$ssh->disconnect();
+			return true;
+		} else {
+			$error = "Error connecting to node: " . $node_id;
+			logMessage($error);
+			return $error;
+		}
 	} catch (PDOException $e) {
 		$error = "Error starting VM ($vm_id): " . $e->getMessage();
 		logMessage($error,$myid);
@@ -1493,10 +1547,16 @@ function startVM($myid,$vm_id,$vmname,$node_id) {
 function stopVM($myid,$vm_id,$vmname,$node_id) {
 	try {
 		$ssh = connectNode($node_id);
-		$ssh->exec('nohup sudo /usr/bin/virsh destroy '.$vmname.' > /dev/null 2>&1 &', true);
-		#echo $ssh->getLog();
-		$ssh->disconnect();
-		return true;
+		if($ssh) {
+			$ssh->exec('nohup sudo /usr/bin/virsh destroy '.$vmname.' > /dev/null 2>&1 &', true);
+			#echo $ssh->getLog();
+			$ssh->disconnect();
+			return true;
+		} else {
+			$error = "Error connecting to node: " . $node_id;
+			logMessage($error);
+			return $error;
+		}
 	} catch (PDOException $e) {
 		$error = "Error stopping VM ($vm_id): " . $e->getMessage();
 		logMessage($error,$myid);
@@ -1507,10 +1567,16 @@ function stopVM($myid,$vm_id,$vmname,$node_id) {
 function shutdownVM($myid,$vm_id,$vmname,$node_id) {
 	try {
 		$ssh = connectNode($node_id);
-		$ssh->exec('nohup sudo /usr/bin/virsh shutdown '.$vmname.' > /dev/null 2>&1 &', true);
-		#echo $ssh->getLog();
-		$ssh->disconnect();
-		return true;
+		if($ssh) {
+			$ssh->exec('nohup sudo /usr/bin/virsh shutdown '.$vmname.' > /dev/null 2>&1 &', true);
+			#echo $ssh->getLog();
+			$ssh->disconnect();
+			return true;
+		} else {
+			$error = "Error connecting to node: " . $node_id;
+			logMessage($error);
+			return $error;
+		}
 	} catch (PDOException $e) {
 		$error = "Error stopping VM ($vm_id): " . $e->getMessage();
 		logMessage($error,$myid);
@@ -1525,16 +1591,59 @@ function destroyVM($myid,$vm_id,$vmname,$websockify,$vncport,$node_id,$confirm) 
 		$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 		try {
 			$ssh = connectNode($node_id);
-			$ssh->exec('sudo /bin/sh /home/kontrolvm/destroyvps.sh '.$vmname.'');
-			sleep(5);
-			$ssh->exec('sudo /bin/sh /home/kontrolvm/killconsole.sh '.$vncport.'');
-			sleep(5);
-			$disks = getDisks($vm_id);
-			foreach ($disks as $disk) {
-				deleteDisk($myid,$vm_id,$vmname,$disk['disk_id'],$disk['disk_name'],$node_id);
+			if($ssh) {
+				$ssh->exec('sudo /bin/sh /home/kontrolvm/destroyvps.sh '.$vmname.'');
+				sleep(5);
+				$ssh->exec('sudo /bin/sh /home/kontrolvm/killconsole.sh '.$vncport.'');
+				sleep(5);
+				$disks = getDisks($vm_id);
+				foreach ($disks as $disk) {
+					deleteDisk($myid,$vm_id,$vmname,$disk['disk_id'],$disk['disk_name'],$node_id);
+				}
+				#echo $ssh->getLog();
+				$ssh->disconnect();
+				$stmt = $conn->prepare("DELETE FROM vms WHERE vm_id =:vm_id");
+				$stmt->bindValue(':vm_id', $vm_id, SQLITE3_INTEGER);
+				$stmt->execute();
+				$stmt = $conn->prepare("DELETE FROM disks WHERE vm_id =:vm_id");
+				$stmt->bindValue(':vm_id', $vm_id, SQLITE3_INTEGER);
+				$stmt->execute();
+				$stmt = $conn->prepare("UPDATE ipv4 SET vmid =:vmid, node =:node, status =:status WHERE vmid =:vm_id");
+				$stmt->bindValue(':vmid', '0', SQLITE3_INTEGER);
+				$stmt->bindValue(':node', '0', SQLITE3_TEXT);
+				$stmt->bindValue(':status', '1', SQLITE3_INTEGER);
+				$stmt->bindValue(':vm_id', $vm_id, SQLITE3_INTEGER);
+				$stmt->execute();
+				$stmt = $conn->prepare("UPDATE ipv6 SET vmid =:vmid, node =:node, status =:status WHERE vmid =:vm_id");
+				$stmt->bindValue(':vmid', '0', SQLITE3_INTEGER);
+				$stmt->bindValue(':node', '0', SQLITE3_TEXT);
+				$stmt->bindValue(':status', '1', SQLITE3_INTEGER);
+				$stmt->bindValue(':vm_id', $vm_id, SQLITE3_INTEGER);
+				$stmt->execute();
+				return true;
+			} else {
+				$error = "Error connecting to node: " . $node_id;
+				logMessage($error);
+				return $error;
 			}
-			#echo $ssh->getLog();
-			$ssh->disconnect();
+		} catch (PDOException $e) {
+			$error = "Error stopping VM ($vm_id): " . $e->getMessage();
+			logMessage($error,$myid);
+			return $error;
+		}
+	} else {
+		$error = "No confirmation ($vm_id)";
+		logMessage($error,$myid);
+		return $error;
+	}
+}
+
+function deleteVM($myid,$vm_id,$confirm) {
+	if($confirm) {
+		include('config.php');
+		$conn = new PDO("sqlite:$db_file_path");
+		$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+		try {
 			$stmt = $conn->prepare("DELETE FROM vms WHERE vm_id =:vm_id");
 			$stmt->bindValue(':vm_id', $vm_id, SQLITE3_INTEGER);
 			$stmt->execute();
@@ -1555,7 +1664,7 @@ function destroyVM($myid,$vm_id,$vmname,$websockify,$vncport,$node_id,$confirm) 
 			$stmt->execute();
 			return true;
 		} catch (PDOException $e) {
-			$error = "Error stopping VM ($vm_id): " . $e->getMessage();
+			$error = "Error deleting VM ($vm_id): " . $e->getMessage();
 			logMessage($error,$myid);
 			return $error;
 		}
@@ -1573,76 +1682,82 @@ function importVMs($myid,$node_id) {
 	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 	try {
 		$ssh = connectNode($node_id);
-		$vm_list = $ssh->exec("sudo virsh list --all | tail -n +3 | awk '{print $2}'");
-		$vm_names = explode("\n", trim($vm_list));
-		foreach ($vm_names as $vm_name) {
-			if(empty($vm_name)) continue;
-			$stmt = $conn->prepare("SELECT COUNT(*) FROM vms WHERE name=:name");
-			$stmt->bindParam(':name', $vm_name);
-			$stmt->execute();
-			$count = $stmt->fetchColumn();
-			if($count > 0) {
-				continue; // Skip to the next VM
-			}			
-			$cpu_cores = $ssh->exec("sudo virsh dominfo ". escapeshellarg($vm_name) ." | grep 'CPU(s)' | awk '{print $2}'");
-			$memory = $ssh->exec("sudo virsh dominfo ". escapeshellarg($vm_name) ." | grep 'Max memory' | awk '{print $3}'");
-			$memory = trim($memory) / 1024 / 1024;
-			
-			$vncport = $ssh->exec("sudo virsh dumpxml ". escapeshellarg($vm_name) ." | grep vnc | awk '{print $3}'");
-			preg_match("/port='(\d+)'/", $vncport, $matches);
-			$vncport = $matches['1'];
-			$websockify = $vncport + 1000;
-			
-			$vncpw = $ssh->exec("sudo virsh dumpxml ". escapeshellarg($vm_name) ." | grep vnc | awk '{print $7}'");
-			if(!$vncpw) {
-				preg_match("/passwd='(.*?)'/", $vncpw, $matches);
-				$vncpw = $matches['1'];
-				$vncpw = encrypt($vncpw);
-			} else {
-				$vncpw = " ";
-			}
-			
-			$diskdriver = $ssh->exec("sudo virsh dumpxml ". escapeshellarg($vm_name) ." | grep 'vda' | awk '{print $3}'");
-			preg_match("/bus='(.*?)'/", $diskdriver, $matches);
-			$diskdriver = $matches['1'];
-			if(empty($diskdriver)) {
-				$diskdriver = $ssh->exec("sudo virsh dumpxml ". escapeshellarg($vm_name) ." | grep 'sda' | awk '{print $3}'");
+		if($ssh) {
+			$vm_list = $ssh->exec("sudo virsh list --all | tail -n +3 | awk '{print $2}'");
+			$vm_names = explode("\n", trim($vm_list));
+			foreach ($vm_names as $vm_name) {
+				if(empty($vm_name)) continue;
+				$stmt = $conn->prepare("SELECT COUNT(*) FROM vms WHERE name=:name");
+				$stmt->bindParam(':name', $vm_name);
+				$stmt->execute();
+				$count = $stmt->fetchColumn();
+				if($count > 0) {
+					continue; // Skip to the next VM
+				}			
+				$cpu_cores = $ssh->exec("sudo virsh dominfo ". escapeshellarg($vm_name) ." | grep 'CPU(s)' | awk '{print $2}'");
+				$memory = $ssh->exec("sudo virsh dominfo ". escapeshellarg($vm_name) ." | grep 'Max memory' | awk '{print $3}'");
+				$memory = trim($memory) / 1024 / 1024;
+				
+				$vncport = $ssh->exec("sudo virsh dumpxml ". escapeshellarg($vm_name) ." | grep vnc | awk '{print $3}'");
+				preg_match("/port='(\d+)'/", $vncport, $matches);
+				$vncport = $matches['1'];
+				$websockify = $vncport + 1000;
+				
+				$vncpw = $ssh->exec("sudo virsh dumpxml ". escapeshellarg($vm_name) ." | grep vnc | awk '{print $7}'");
+				if(!$vncpw) {
+					preg_match("/passwd='(.*?)'/", $vncpw, $matches);
+					$vncpw = $matches['1'];
+					$vncpw = encrypt($vncpw);
+				} else {
+					$vncpw = " ";
+				}
+				
+				$diskdriver = $ssh->exec("sudo virsh dumpxml ". escapeshellarg($vm_name) ." | grep 'vda' | awk '{print $3}'");
 				preg_match("/bus='(.*?)'/", $diskdriver, $matches);
 				$diskdriver = $matches['1'];
-			}
-			
-			$bootorder = $ssh->exec("sudo virsh dumpxml ". escapeshellarg($vm_name) ." | grep 'boot dev' | awk '{print $2}'");
-			preg_match("/dev='(.*?)'/", $bootorder, $matches);
-			$bootorder = $matches['1'];
-			$netdriver = $ssh->exec("sudo virsh domiflist ". escapeshellarg($vm_name) ." | awk 'NR==3{print $4}'");
-			$created_at = time();
-							
-			$vm_data = [
-				'node_id' => $node_id,
-				'name' => "$vm_name",
-				'hostname' => "$vm_name",
-				'status' => "1",
-				'cluster' => $node['cluster'],
-				'cpu_cores' => $cpu_cores,
-				'memory' => $memory,
-				'vncport' => $vncport,
-				'vncpw' => "$vncpw",
-				'websockify' => $websockify,
-				'netdriver' => "$netdriver",
-				'diskdriver' => "$diskdriver",
-				'bootorder' => "$bootorder",
-				'created_at' => $created_at
-			];
-			
+				if(empty($diskdriver)) {
+					$diskdriver = $ssh->exec("sudo virsh dumpxml ". escapeshellarg($vm_name) ." | grep 'sda' | awk '{print $3}'");
+					preg_match("/bus='(.*?)'/", $diskdriver, $matches);
+					$diskdriver = $matches['1'];
+				}
+				
+				$bootorder = $ssh->exec("sudo virsh dumpxml ". escapeshellarg($vm_name) ." | grep 'boot dev' | awk '{print $2}'");
+				preg_match("/dev='(.*?)'/", $bootorder, $matches);
+				$bootorder = $matches['1'];
+				$netdriver = $ssh->exec("sudo virsh domiflist ". escapeshellarg($vm_name) ." | awk 'NR==3{print $4}'");
+				$created_at = time();
+								
+				$vm_data = [
+					'node_id' => $node_id,
+					'name' => "$vm_name",
+					'hostname' => "$vm_name",
+					'status' => "1",
+					'cluster' => $node['cluster'],
+					'cpu_cores' => $cpu_cores,
+					'memory' => $memory,
+					'vncport' => $vncport,
+					'vncpw' => "$vncpw",
+					'websockify' => $websockify,
+					'netdriver' => "$netdriver",
+					'diskdriver' => "$diskdriver",
+					'bootorder' => "$bootorder",
+					'created_at' => $created_at
+				];
+				
 
-			// Insert or update the VM data in the database
-			$sql = "INSERT OR REPLACE INTO vms (
-						node_id, name, hostname, status, cluster, cpu_cores, memory, vncport, vncpw, websockify, netdriver, diskdriver, bootorder, created_at
-					) VALUES (
-						:node_id,:name,:hostname,:status,:cluster,:cpu_cores,:memory,:vncport,:vncpw,:websockify,:netdriver,:diskdriver,:bootorder,:created_at
-					)";
-			$stmt = $conn->prepare($sql);
-			$stmt->execute($vm_data);
+				// Insert or update the VM data in the database
+				$sql = "INSERT OR REPLACE INTO vms (
+							node_id, name, hostname, status, cluster, cpu_cores, memory, vncport, vncpw, websockify, netdriver, diskdriver, bootorder, created_at
+						) VALUES (
+							:node_id,:name,:hostname,:status,:cluster,:cpu_cores,:memory,:vncport,:vncpw,:websockify,:netdriver,:diskdriver,:bootorder,:created_at
+						)";
+				$stmt = $conn->prepare($sql);
+				$stmt->execute($vm_data);
+			}
+		} else {
+			$error = "Error connecting to node: " . $node_id;
+			logMessage($error);
+			return $error;
 		}
 	} catch (Exception $e) {
 		$error = "Error updating VM list: ". $e->getMessage();
@@ -1660,16 +1775,22 @@ function setCPU($myid,$vm_id,$vmname,$cpu,$node_id) {
 
 	try {
 		$ssh = connectNode($node_id);
-		$ssh->exec('sudo /usr/bin/virsh setvcpus '.$vmname.' '.$cpu.' --config --maximum');
-		$ssh->exec('sudo /usr/bin/virsh setvcpus '.$vmname.' '.$cpu.' --config');
-		$ssh->exec('sudo /usr/bin/virsh dumpxml '.$vmname.' --security-info > /home/kontrolvm/xmls/ '.$vmname.'.xml');
-		$ssh->disconnect();
+		if($ssh) {
+			$ssh->exec('sudo /usr/bin/virsh setvcpus '.$vmname.' '.$cpu.' --config --maximum');
+			$ssh->exec('sudo /usr/bin/virsh setvcpus '.$vmname.' '.$cpu.' --config');
+			$ssh->exec('sudo /usr/bin/virsh dumpxml '.$vmname.' --security-info > /home/kontrolvm/xmls/ '.$vmname.'.xml');
+			$ssh->disconnect();
 
-		$stmt = $conn->prepare("UPDATE vms SET cpu_cores =:cpu_cores WHERE vm_id =:vm_id");
-		$stmt->bindValue(':cpu_cores', $cpu, SQLITE3_INTEGER);
-		$stmt->bindValue(':vm_id', $vm_id, SQLITE3_INTEGER);
-		$stmt->execute();
-		return true;
+			$stmt = $conn->prepare("UPDATE vms SET cpu_cores =:cpu_cores WHERE vm_id =:vm_id");
+			$stmt->bindValue(':cpu_cores', $cpu, SQLITE3_INTEGER);
+			$stmt->bindValue(':vm_id', $vm_id, SQLITE3_INTEGER);
+			$stmt->execute();
+			return true;
+		} else {
+			$error = "Error connecting to node: " . $node_id;
+			logMessage($error);
+			return $error;
+		}
 	} catch (PDOException $e) {
 		$error = "Error updating VM IOW ($vm_id): " . $e->getMessage();
 		logMessage($error,$myid);
@@ -1684,16 +1805,22 @@ function setRAM($myid,$vm_id,$vmname,$memory,$node_id) {
 
 	try {
 		$ssh = connectNode($node_id);
-		$ssh->exec('sudo /usr/bin/virsh setmaxmem '.$vmname.' '.$memory.'G --config');
-		$ssh->exec('sudo /usr/bin/virsh setmem '.$vmname.' '.$memory.'G --config');
-		$ssh->exec('sudo /usr/bin/virsh dumpxml '.$vmname.' --security-info > /home/kontrolvm/xmls/ '.$vmname.'.xml');
-		$ssh->disconnect();
+		if($ssh) {
+			$ssh->exec('sudo /usr/bin/virsh setmaxmem '.$vmname.' '.$memory.'G --config');
+			$ssh->exec('sudo /usr/bin/virsh setmem '.$vmname.' '.$memory.'G --config');
+			$ssh->exec('sudo /usr/bin/virsh dumpxml '.$vmname.' --security-info > /home/kontrolvm/xmls/ '.$vmname.'.xml');
+			$ssh->disconnect();
 
-		$stmt = $conn->prepare("UPDATE vms SET memory =:memory WHERE vm_id =:vm_id");
-		$stmt->bindValue(':memory', $memory, SQLITE3_INTEGER);
-		$stmt->bindValue(':vm_id', $vm_id, SQLITE3_INTEGER);
-		$stmt->execute();
-		return true;
+			$stmt = $conn->prepare("UPDATE vms SET memory =:memory WHERE vm_id =:vm_id");
+			$stmt->bindValue(':memory', $memory, SQLITE3_INTEGER);
+			$stmt->bindValue(':vm_id', $vm_id, SQLITE3_INTEGER);
+			$stmt->execute();
+			return true;
+		} else {
+			$error = "Error connecting to node: " . $node_id;
+			logMessage($error);
+			return $error;
+		}
 	} catch (PDOException $e) {
 		$error = "Error updating VM IOW ($vm_id): " . $e->getMessage();
 		logMessage($error,$myid);
@@ -1731,41 +1858,47 @@ function addDisk($myid,$vm_id,$vmname,$disk_size,$node_id) {
 			$stmt->execute();
 			$count = $stmt->fetchColumn();
 			$ssh = connectNode($node_id);
-			if($count > 0) {
-				$disknum = $count + 1;
-				$diskfile = $vmname.'-disk'.$disknum.'.img';
-				$file_exists = true;
-				while($file_exists) {
+			if($ssh) {
+				if($count > 0) {
+					$disknum = $count + 1;
 					$diskfile = $vmname.'-disk'.$disknum.'.img';
-					$checkdisk = $ssh->exec("ls -la /home/kontrolvm/data/$diskfile | wc -l");
-					if($checkdisk == 1) {
-						$disknum++;
-					} else {
-						$file_exists = false;
-						$letter = chr(96 + $disknum);
-						$volid = "vd".$letter;
-						$disk_name = $vmname.'-disk'.$disknum.'.img';
+					$file_exists = true;
+					while($file_exists) {
+						$diskfile = $vmname.'-disk'.$disknum.'.img';
+						$checkdisk = $ssh->exec("ls -la /home/kontrolvm/data/$diskfile | wc -l");
+						if($checkdisk == 1) {
+							$disknum++;
+						} else {
+							$file_exists = false;
+							$letter = chr(96 + $disknum);
+							$volid = "vd".$letter;
+							$disk_name = $vmname.'-disk'.$disknum.'.img';
+						}
 					}
+				} else {
+					$disk_name = $vmname.'-disk'.$disknum.'.img';
+					$volid = 'vda';
 				}
-			} else {
-				$disk_name = $vmname.'-disk'.$disknum.'.img';
-				$volid = 'vda';
-			}
-			$ssh->exec('/usr/bin/qemu-img create -f qcow2 /home/kontrolvm/data/'.$disk_name.' '.$disk_size.'G');
-			$ssh->exec("chmod 0640 /home/kontrolvm/data/$disk_name");
-			$ssh->exec("sudo /usr/bin/virsh attach-disk $vmname /home/kontrolvm/data/$disk_name $volid --type disk --cache writeback --config --persistent");
-			$ssh->exec("sudo /usr/bin/virsh dumpxml $vmname --security-info > /home/kontrolvm/xmls/$vmname.xml");
-			$ssh->exec("sudo /usr/bin/virsh define /home/kontrolvm/xmls/$vmname.xml");
-			$ssh->disconnect();
+				$ssh->exec('/usr/bin/qemu-img create -f qcow2 /home/kontrolvm/data/'.$disk_name.' '.$disk_size.'G');
+				$ssh->exec("chmod 0640 /home/kontrolvm/data/$disk_name");
+				$ssh->exec("sudo /usr/bin/virsh attach-disk $vmname /home/kontrolvm/data/$disk_name $volid --type disk --cache writeback --config --persistent");
+				$ssh->exec("sudo /usr/bin/virsh dumpxml $vmname --security-info > /home/kontrolvm/xmls/$vmname.xml");
+				$ssh->exec("sudo /usr/bin/virsh define /home/kontrolvm/xmls/$vmname.xml");
+				$ssh->disconnect();
 
-			$stmt = $conn->prepare("INSERT INTO disks (disk_name, disk_size, vm_id, node_id, last_updated) VALUES (:disk_name, :disk_size, :vm_id, :node_id, :last_updated)");
-			$stmt->bindValue(':disk_name', "$disk_name", SQLITE3_TEXT);
-			$stmt->bindValue(':disk_size', $disk_size, SQLITE3_INTEGER);
-			$stmt->bindValue(':vm_id', $vm_id, SQLITE3_INTEGER);
-			$stmt->bindValue(':node_id', $node_id, SQLITE3_INTEGER);
-			$stmt->bindValue(':last_updated', time(), SQLITE3_TEXT);
-			$stmt->execute();
-			return true;
+				$stmt = $conn->prepare("INSERT INTO disks (disk_name, disk_size, vm_id, node_id, last_updated) VALUES (:disk_name, :disk_size, :vm_id, :node_id, :last_updated)");
+				$stmt->bindValue(':disk_name', "$disk_name", SQLITE3_TEXT);
+				$stmt->bindValue(':disk_size', $disk_size, SQLITE3_INTEGER);
+				$stmt->bindValue(':vm_id', $vm_id, SQLITE3_INTEGER);
+				$stmt->bindValue(':node_id', $node_id, SQLITE3_INTEGER);
+				$stmt->bindValue(':last_updated', time(), SQLITE3_TEXT);
+				$stmt->execute();
+				return true;
+			} else {
+				$error = "Error connecting to node: " . $node_id;
+				logMessage($error);
+				return $error;
+			}
 		} catch (PDOException $e) {
 			$error = $e->getMessage();
 			$error = "Error adding VM disk ($vm_id): ".$e->getMessage();
@@ -1786,14 +1919,20 @@ function resizeDisk($myid,$vm_id,$vmname,$disk_id,$disk_name,$disk_size,$node_id
 
 	try {
 		$ssh = connectNode($node_id);
-		$ssh->exec('sudo /usr/bin/qemu-img resize /home/kontrolvm/data/'.$disk_name.' '.$disk_size.'G');
-		$ssh->disconnect();
+		if($ssh) {
+			$ssh->exec('sudo /usr/bin/qemu-img resize /home/kontrolvm/data/'.$disk_name.' '.$disk_size.'G');
+			$ssh->disconnect();
 
-		$stmt = $conn->prepare("UPDATE disks SET disk_size =:disk_size WHERE disk_id =:disk_id");
-		$stmt->bindValue(':disk_size', $disk_size, SQLITE3_INTEGER);
-		$stmt->bindValue(':disk_id', $disk_id, SQLITE3_INTEGER);
-		$stmt->execute();
-		return true;
+			$stmt = $conn->prepare("UPDATE disks SET disk_size =:disk_size WHERE disk_id =:disk_id");
+			$stmt->bindValue(':disk_size', $disk_size, SQLITE3_INTEGER);
+			$stmt->bindValue(':disk_id', $disk_id, SQLITE3_INTEGER);
+			$stmt->execute();
+			return true;
+		} else {
+			$error = "Error connecting to node: " . $node_id;
+			logMessage($error);
+			return $error;
+		}
 	} catch (PDOException $e) {
 		$error = "Error updating VM disk ($disk_id): ".$e->getMessage();
 		logMessage($error,$myid);
@@ -1807,15 +1946,21 @@ function deleteDisk($myid,$vm_id,$vmname,$disk_id,$disk_name,$node_id) {
 	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 	try {
 		$ssh = connectNode($node_id);
-		$ssh->exec("sudo /usr/bin/virsh detach-disk $vmname /home/kontrolvm/data/$disk_name --config --persistent");
-		$ssh->exec("sudo /usr/bin/virsh dumpxml $vmname --security-info > /home/kontrolvm/xmls/$vmname.xml");
-		$ssh->exec("sudo /bin/sh /home/kontrolvm/cleandata.sh $disk_name");
-		$ssh->disconnect();
+		if($ssh) {
+			$ssh->exec("sudo /usr/bin/virsh detach-disk $vmname /home/kontrolvm/data/$disk_name --config --persistent");
+			$ssh->exec("sudo /usr/bin/virsh dumpxml $vmname --security-info > /home/kontrolvm/xmls/$vmname.xml");
+			$ssh->exec("sudo /bin/sh /home/kontrolvm/cleandata.sh $disk_name");
+			$ssh->disconnect();
 
-		$stmt = $conn->prepare("DELETE FROM disks WHERE disk_id =:disk_id");
-		$stmt->bindValue(':disk_id', $disk_id, SQLITE3_INTEGER);
-		$stmt->execute();
-		return true;
+			$stmt = $conn->prepare("DELETE FROM disks WHERE disk_id =:disk_id");
+			$stmt->bindValue(':disk_id', $disk_id, SQLITE3_INTEGER);
+			$stmt->execute();
+			return true;
+		} else {
+			$error = "Error connecting to node: " . $node_id;
+			logMessage($error);
+			return $error;
+		}
 	} catch (PDOException $e) {
 		$error = "Error deleting VM disk ($disk_id - $disk_name): ".$e->getMessage();
 		logMessage($error,$myid);
@@ -1849,22 +1994,28 @@ function addNIC($myid,$vm_id, $vmname, $network, $macaddr, $node_id) {
 	$nic_name = $vmname."_".$nicCount+1;
 	try {
 		$ssh = connectNode($node_id);
-		$output = $ssh->exec('sudo /usr/bin/virsh attach-interface '.$vmname.' --type bridge --source '.$network.' --mac '.$newmacaddr.' --target '.$nic_name.' --model virtio --config --live');
-		if(strpos($output, "domain is not running") !== false) {
-			$ssh->exec('sudo /usr/bin/virsh attach-interface '.$vmname.' --type bridge --source '.$network.' --mac '.$newmacaddr.' --target '.$nic_name.' --model virtio --config');
-		}
-		$ssh->exec('sudo /usr/bin/virsh dumpxml '.$vmname.' --security-info > /home/kontrolvm/xmls/'.$vmname.'.xml');
-		#echo $ssh->getLog();
-		$ssh->disconnect();
+		if($ssh) {
+			$output = $ssh->exec('sudo /usr/bin/virsh attach-interface '.$vmname.' --type bridge --source '.$network.' --mac '.$newmacaddr.' --target '.$nic_name.' --model virtio --config --live');
+			if(strpos($output, "domain is not running") !== false) {
+				$ssh->exec('sudo /usr/bin/virsh attach-interface '.$vmname.' --type bridge --source '.$network.' --mac '.$newmacaddr.' --target '.$nic_name.' --model virtio --config');
+			}
+			$ssh->exec('sudo /usr/bin/virsh dumpxml '.$vmname.' --security-info > /home/kontrolvm/xmls/'.$vmname.'.xml');
+			#echo $ssh->getLog();
+			$ssh->disconnect();
 
-		$stmt = $conn->prepare('INSERT INTO nics (nic_name, mac_address, vm_id, node_id, last_updated) VALUES (:nic_name, :mac_address, :vm_id, :node_id, :last_updated)');
-		$stmt->bindValue(':nic_name', "$nic_name", SQLITE3_TEXT);
-		$stmt->bindValue(':mac_address', "$newmacaddr", SQLITE3_TEXT);
-		$stmt->bindValue(':vm_id', $vm_id, SQLITE3_INTEGER);
-		$stmt->bindValue(':node_id', $node_id, SQLITE3_INTEGER);
-		$stmt->bindValue(':last_updated', time(), SQLITE3_TEXT);
-		$stmt->execute();
-		return true;
+			$stmt = $conn->prepare('INSERT INTO nics (nic_name, mac_address, vm_id, node_id, last_updated) VALUES (:nic_name, :mac_address, :vm_id, :node_id, :last_updated)');
+			$stmt->bindValue(':nic_name', "$nic_name", SQLITE3_TEXT);
+			$stmt->bindValue(':mac_address', "$newmacaddr", SQLITE3_TEXT);
+			$stmt->bindValue(':vm_id', $vm_id, SQLITE3_INTEGER);
+			$stmt->bindValue(':node_id', $node_id, SQLITE3_INTEGER);
+			$stmt->bindValue(':last_updated', time(), SQLITE3_TEXT);
+			$stmt->execute();
+			return true;
+		} else {
+			$error = "Error connecting to node: " . $node_id;
+			logMessage($error);
+			return $error;
+		}
 	} catch (PDOException $e) {
 		$error = "Error adding VM NIC ($vmname): ".$e->getMessage();
 		logMessage($error,$myid);
@@ -1878,15 +2029,21 @@ function deleteNIC($myid,$node_id, $vmname, $nic_id, $macaddr) {
 	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 	try {
 		$ssh = connectNode($node_id);
-		$ssh->exec('sudo /usr/bin/virsh detach-interface '.$vmname.' --type bridge --mac '.$macaddr.' --config --live --persistent');
-		$ssh->exec('sudo /usr/bin/virsh dumpxml '.$vmname.' --security-info > /home/kontrolvm/xmls/'.$vmname.'.xml');
-		echo $ssh->getLog();
-		$ssh->disconnect();
+		if($ssh) {
+			$ssh->exec('sudo /usr/bin/virsh detach-interface '.$vmname.' --type bridge --mac '.$macaddr.' --config --live --persistent');
+			$ssh->exec('sudo /usr/bin/virsh dumpxml '.$vmname.' --security-info > /home/kontrolvm/xmls/'.$vmname.'.xml');
+			echo $ssh->getLog();
+			$ssh->disconnect();
 
-		$stmt = $conn->prepare('DELETE FROM nics WHERE nic_id =:nic_id');
-		$stmt->bindValue(':nic_id', $nic_id, SQLITE3_INTEGER);
-		$stmt->execute();
-		return true;
+			$stmt = $conn->prepare('DELETE FROM nics WHERE nic_id =:nic_id');
+			$stmt->bindValue(':nic_id', $nic_id, SQLITE3_INTEGER);
+			$stmt->execute();
+			return true;
+		} else {
+			$error = "Error connecting to node: " . $node_id;
+			logMessage($error);
+			return $error;
+		}
 	} catch (PDOException $e) {
 		$error = "Error deleting VM NIC ($nic_id - $vmname): ".$e->getMessage();
 		logMessage($error,$myid);
@@ -1901,16 +2058,22 @@ function setIOW($myid,$vm_id,$vmname,$speed,$node_id) {
 
 	try {
 		$ssh = connectNode($node_id);
-		$ssh->exec('/usr/bin/rm -rf /home/kontrolvm/iow/'.$vmname.'');
-		$ssh->exec('echo "virsh blkdeviotune '.$vmname.' vda --write_bytes_sec $(expr 1024 \* 1024 \* '.$speed.')" > /home/kontrolvm/iow/'.$vmname.'');
-		$ssh->exec('sudo /bin/sh /home/kontrolvm/iow/'.$vmname.'');
-		$ssh->disconnect();
+		if($ssh) {
+			$ssh->exec('/usr/bin/rm -rf /home/kontrolvm/iow/'.$vmname.'');
+			$ssh->exec('echo "virsh blkdeviotune '.$vmname.' vda --write_bytes_sec $(expr 1024 \* 1024 \* '.$speed.')" > /home/kontrolvm/iow/'.$vmname.'');
+			$ssh->exec('sudo /bin/sh /home/kontrolvm/iow/'.$vmname.'');
+			$ssh->disconnect();
 
-		$stmt = $conn->prepare("UPDATE vms SET iow =:iow WHERE vm_id =:vm_id");
-		$stmt->bindValue(':iow', $speed, SQLITE3_INTEGER);
-		$stmt->bindValue(':vm_id', $vm_id, SQLITE3_INTEGER);
-		$stmt->execute();
-		return true;
+			$stmt = $conn->prepare("UPDATE vms SET iow =:iow WHERE vm_id =:vm_id");
+			$stmt->bindValue(':iow', $speed, SQLITE3_INTEGER);
+			$stmt->bindValue(':vm_id', $vm_id, SQLITE3_INTEGER);
+			$stmt->execute();
+			return true;
+		} else {
+			$error = "Error connecting to node: " . $node_id;
+			logMessage($error);
+			return $error;
+		}
 	} catch (PDOException $e) {
 		$error = "Error updating VM IOW ($vm_id): ".$e->getMessage();
 		logMessage($error,$myid);
@@ -1925,35 +2088,41 @@ function setNIC($myid,$vm_id,$vmname,$nicToChange,$speed,$node_id) {
 
 	try {
 		$ssh = connectNode($node_id);
-		$ssh->exec('/usr/bin/rm -rf /home/kontrolvm/tc/'.$vmname.'');
-		$ssh->exec('echo "/sbin/tc qdisc del dev '.$nicToChange.' root" >> /home/kontrolvm/tc_stop.sh');
-		$ssh->exec('echo "/sbin/tc qdisc del dev '.$nicToChange.' ingress" >> /home/kontrolvm/tc_stop.sh');
-		$ssh->exec('echo "/sbin/tc qdisc add dev '.$nicToChange.' root" >> /home/kontrolvm/tc/'.$vmname.'');
-		$ssh->exec('echo "/sbin/tc qdisc add dev '.$nicToChange.' root handle 1: htb default 1" >> /home/kontrolvm/tc/'.$vmname.'');
-		$ssh->exec('echo "/sbin/tc class add dev '.$nicToChange.' parent 1: classid 1:1 htb rate '.$speed.'mbit ceil '.$speed.'mbit burst 15k" >> /home/kontrolvm/tc/'.$vmname.'');
-		$ssh->exec('echo "/sbin/tc class add dev '.$nicToChange.' parent 1:1 classid 1:1 htb rate '.$speed.'mbit burst 15k" >> /home/kontrolvm/tc/'.$vmname.'');
-		$ssh->exec('echo "/sbin/tc qdisc add dev '.$nicToChange.' parent 1:1 handle 1: sfq perturb 10" >> /home/kontrolvm/tc/'.$vmname.'');
-		$ssh->exec('echo "/sbin/tc qdisc add dev '.$nicToChange.' ingress" >> /home/kontrolvm/tc/'.$vmname.'');
-		$ssh->exec('echo "/sbin/tc filter add dev '.$nicToChange.' parent ffff: protocol ip u32 match ip src 0.0.0.0/0 police rate '.$speed.'mbit burst 15k mtu 64kb drop flowid :1" >> /home/kontrolvm/tc/'.$vmname.'');
-		$sql = "SELECT ipaddress FROM ipv4 WHERE vmid =:vmid";
-		$stmt = $conn->prepare($sql);
-		$stmt->bindParam(':vmid', $vm_id, PDO::PARAM_INT);
-		$stmt->execute();
-		$data = $stmt->fetchAll(PDO::FETCH_ASSOC);
-		foreach ($data as $row) {
-			$ip = $row['ipaddress'];
-			$ssh->exec('echo "/sbin/tc filter add dev br0 protocol ip parent 1:0 prio 1 u32 match ip src '.$ip.' flowid 1:'.$speed.'" >> /home/kontrolvm/tc/'.$vmname.'');
-		}
-		$ssh->exec('sudo /bin/sh /home/kontrolvm/tc_stop.sh');
-		$ssh->exec('sudo /bin/sh /home/kontrolvm/tc_start.sh');
-		#echo $ssh->getLog();
-		$ssh->disconnect();
+		if($ssh) {
+			$ssh->exec('/usr/bin/rm -rf /home/kontrolvm/tc/'.$vmname.'');
+			$ssh->exec('echo "/sbin/tc qdisc del dev '.$nicToChange.' root" >> /home/kontrolvm/tc_stop.sh');
+			$ssh->exec('echo "/sbin/tc qdisc del dev '.$nicToChange.' ingress" >> /home/kontrolvm/tc_stop.sh');
+			$ssh->exec('echo "/sbin/tc qdisc add dev '.$nicToChange.' root" >> /home/kontrolvm/tc/'.$vmname.'');
+			$ssh->exec('echo "/sbin/tc qdisc add dev '.$nicToChange.' root handle 1: htb default 1" >> /home/kontrolvm/tc/'.$vmname.'');
+			$ssh->exec('echo "/sbin/tc class add dev '.$nicToChange.' parent 1: classid 1:1 htb rate '.$speed.'mbit ceil '.$speed.'mbit burst 15k" >> /home/kontrolvm/tc/'.$vmname.'');
+			$ssh->exec('echo "/sbin/tc class add dev '.$nicToChange.' parent 1:1 classid 1:1 htb rate '.$speed.'mbit burst 15k" >> /home/kontrolvm/tc/'.$vmname.'');
+			$ssh->exec('echo "/sbin/tc qdisc add dev '.$nicToChange.' parent 1:1 handle 1: sfq perturb 10" >> /home/kontrolvm/tc/'.$vmname.'');
+			$ssh->exec('echo "/sbin/tc qdisc add dev '.$nicToChange.' ingress" >> /home/kontrolvm/tc/'.$vmname.'');
+			$ssh->exec('echo "/sbin/tc filter add dev '.$nicToChange.' parent ffff: protocol ip u32 match ip src 0.0.0.0/0 police rate '.$speed.'mbit burst 15k mtu 64kb drop flowid :1" >> /home/kontrolvm/tc/'.$vmname.'');
+			$sql = "SELECT ipaddress FROM ipv4 WHERE vmid =:vmid";
+			$stmt = $conn->prepare($sql);
+			$stmt->bindParam(':vmid', $vm_id, PDO::PARAM_INT);
+			$stmt->execute();
+			$data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+			foreach ($data as $row) {
+				$ip = $row['ipaddress'];
+				$ssh->exec('echo "/sbin/tc filter add dev br0 protocol ip parent 1:0 prio 1 u32 match ip src '.$ip.' flowid 1:'.$speed.'" >> /home/kontrolvm/tc/'.$vmname.'');
+			}
+			$ssh->exec('sudo /bin/sh /home/kontrolvm/tc_stop.sh');
+			$ssh->exec('sudo /bin/sh /home/kontrolvm/tc_start.sh');
+			#echo $ssh->getLog();
+			$ssh->disconnect();
 
-		$stmt = $conn->prepare("UPDATE vms SET nic =:nic WHERE vm_id =:vm_id");
-		$stmt->bindValue(':nic', $speed, SQLITE3_INTEGER);
-		$stmt->bindValue(':vm_id', $vm_id, SQLITE3_INTEGER);
-		$stmt->execute();
-		return true;
+			$stmt = $conn->prepare("UPDATE vms SET nic =:nic WHERE vm_id =:vm_id");
+			$stmt->bindValue(':nic', $speed, SQLITE3_INTEGER);
+			$stmt->bindValue(':vm_id', $vm_id, SQLITE3_INTEGER);
+			$stmt->execute();
+			return true;
+		} else {
+			$error = "Error connecting to node: " . $node_id;
+			logMessage($error);
+			return $error;
+		}
 	} catch (PDOException $e) {
 		$error = "Error updating VM NIC ($vm_id): " . $e->getMessage();
 		logMessage($error,$myid);
@@ -1968,18 +2137,24 @@ function disableVNC($myid,$vm_id,$vmname,$websockify,$vncport,$node_id) {
 
 	try {
 		$ssh = connectNode($node_id);
-		$ssh->exec('sudo /bin/sh /home/kontrolvm/killconsole.sh '.$vncport);
-		sleep(2);
-		$ssh->exec('/bin/touch /home/kontrolvm/disabledvnc/'.$vncport);
-		$ssh->exec('sudo /sbin/iptables -A INPUT -p tcp --destination-port '.$vncport.' -j DROP');
-		#echo $ssh->getLog();
-		$ssh->disconnect();
+		if($ssh) {
+			$ssh->exec('sudo /bin/sh /home/kontrolvm/killconsole.sh '.$vncport);
+			sleep(2);
+			$ssh->exec('/bin/touch /home/kontrolvm/disabledvnc/'.$vncport);
+			$ssh->exec('sudo /sbin/iptables -A INPUT -p tcp --destination-port '.$vncport.' -j DROP');
+			#echo $ssh->getLog();
+			$ssh->disconnect();
 
-		$stmt = $conn->prepare("UPDATE vms SET vncexpire =:vncexpire WHERE vm_id =:vm_id");
-		$stmt->bindValue(':vncexpire', '1', SQLITE3_INTEGER);
-		$stmt->bindValue(':vm_id', $vm_id, SQLITE3_INTEGER);
-		$stmt->execute();
-		return true;
+			$stmt = $conn->prepare("UPDATE vms SET vncexpire =:vncexpire WHERE vm_id =:vm_id");
+			$stmt->bindValue(':vncexpire', '1', SQLITE3_INTEGER);
+			$stmt->bindValue(':vm_id', $vm_id, SQLITE3_INTEGER);
+			$stmt->execute();
+			return true;
+		} else {
+			$error = "Error connecting to node: " . $node_id;
+			logMessage($error);
+			return $error;
+		}
 	} catch (PDOException $e) {
 		$error = "Error disabling VM VNC ($vm_id): " . $e->getMessage();
 		logMessage($error,$myid);
@@ -1994,19 +2169,25 @@ function enableVNC($myid,$vm_id,$vmname,$websockify,$vncport,$node_id) {
 
 	try {
 		$ssh = connectNode($node_id);
-		$ssh->exec('sudo /bin/sh /home/kontrolvm/killconsole.sh '.$vncport);
-		sleep(2);
-		$ssh->exec('sudo /bin/sh /home/kontrolvm/create_console.sh '.$websockify.' '.$vncport);
-		$ssh->exec('/usr/bin/rm -rf /home/kontrolvm/disabledvnc/'.$vncport.'');
-		$ssh->exec('sudo /sbin/iptables -D INPUT -p tcp --destination-port '.$vncport.' -j DROP');
-		#echo $ssh->getLog();
-		$ssh->disconnect();
+		if($ssh) {
+			$ssh->exec('sudo /bin/sh /home/kontrolvm/killconsole.sh '.$vncport);
+			sleep(2);
+			$ssh->exec('sudo /bin/sh /home/kontrolvm/create_console.sh '.$websockify.' '.$vncport);
+			$ssh->exec('/usr/bin/rm -rf /home/kontrolvm/disabledvnc/'.$vncport.'');
+			$ssh->exec('sudo /sbin/iptables -D INPUT -p tcp --destination-port '.$vncport.' -j DROP');
+			#echo $ssh->getLog();
+			$ssh->disconnect();
 
-		$stmt = $conn->prepare("UPDATE vms SET vncexpire =:vncexpire WHERE vm_id =:vm_id");
-		$stmt->bindValue(':vncexpire', '0', SQLITE3_INTEGER);
-		$stmt->bindValue(':vm_id', $vm_id, SQLITE3_INTEGER);
-		$stmt->execute();
-		return true;
+			$stmt = $conn->prepare("UPDATE vms SET vncexpire =:vncexpire WHERE vm_id =:vm_id");
+			$stmt->bindValue(':vncexpire', '0', SQLITE3_INTEGER);
+			$stmt->bindValue(':vm_id', $vm_id, SQLITE3_INTEGER);
+			$stmt->execute();
+			return true;
+		} else {
+			$error = "Error connecting to node: " . $node_id;
+			logMessage($error);
+			return $error;
+		}
 	} catch (PDOException $e) {
 		$error = "Error disabling VM VNC ($vm_id): " . $e->getMessage();
 		logMessage($error,$myid);
@@ -2022,16 +2203,22 @@ function consolePW($myid,$vm_id,$vmname,$vncport,$node_id) {
 	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 	try {
 		$ssh = connectNode($node_id);
-		$ssh->exec('sudo /bin/sed -i \'/vnc/c\ \ \ \ <graphics type=\x27vnc\x27 port=\x27'.$vncport.'\x27 autoport=\x27no\x27 listen=\x270.0.0.0\x27 keymap=\x27en-us\x27 passwd=\x27'.$password.'\x27>\' /home/kontrolvm/xmls/'.$vmname.'.xml');
-		$ssh->exec('sudo /usr/bin/virsh define /home/kontrolvm/xmls/'.$vmname.'.xml');
-		#echo $ssh->getLog();
-		$ssh->disconnect();
+		if($ssh) {
+			$ssh->exec('sudo /bin/sed -i \'/vnc/c\ \ \ \ <graphics type=\x27vnc\x27 port=\x27'.$vncport.'\x27 autoport=\x27no\x27 listen=\x270.0.0.0\x27 keymap=\x27en-us\x27 passwd=\x27'.$password.'\x27>\' /home/kontrolvm/xmls/'.$vmname.'.xml');
+			$ssh->exec('sudo /usr/bin/virsh define /home/kontrolvm/xmls/'.$vmname.'.xml');
+			#echo $ssh->getLog();
+			$ssh->disconnect();
 
-		$stmt = $conn->prepare("UPDATE vms SET vncpw =:vncpw WHERE vm_id =:vm_id");
-		$stmt->bindValue(':vncpw', "$encpw", SQLITE3_TEXT);
-		$stmt->bindValue(':vm_id', $vm_id, SQLITE3_INTEGER);
-		$stmt->execute();
-		return true;
+			$stmt = $conn->prepare("UPDATE vms SET vncpw =:vncpw WHERE vm_id =:vm_id");
+			$stmt->bindValue(':vncpw', "$encpw", SQLITE3_TEXT);
+			$stmt->bindValue(':vm_id', $vm_id, SQLITE3_INTEGER);
+			$stmt->execute();
+			return true;
+		} else {
+			$error = "Error connecting to node: " . $node_id;
+			logMessage($error);
+			return $error;
+		}
 	} catch (PDOException $e) {
 		$error = "Error disabling VM VNC ($vm_id): " . $e->getMessage();
 		logMessage($error,$myid);
@@ -2045,20 +2232,26 @@ function mountISO($myid,$vm_id,$vmname,$ostemplate,$node_id) {
 	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 	try {
 		$ssh = connectNode($node_id);
-		$ssh->exec('sudo /usr/bin/virsh attach-disk '.$vmname.' /home/kontrolvm/isos/'.$ostemplate.' sda --type cdrom --mode readonly --persistent');
-		$ssh->exec('sudo /usr/bin/virsh change-media '.$vmname.' sda /home/kontrolvm/isos/'.$ostemplate.' --insert --live --config');
-		$ssh->exec('sudo /usr/bin/virsh dumpxml '.$vmname.' --security-info > /home/kontrolvm/xmls/'.$vmname.'.xml');
-		$ssh->exec('sudo /bin/sed -ie \'s/<boot dev=\x27hd\x27\/>/<boot dev=\x27cdrom\x27\/>/g\' /home/kontrolvm/xmls/'.$vmname.'.xml');
-		$ssh->exec('sudo /usr/bin/virsh define /home/kontrolvm/xmls/'.$vmname.'.xml');
-		echo $ssh->getLog();
-		$ssh->disconnect();
+		if($ssh) {
+			$ssh->exec('sudo /usr/bin/virsh attach-disk '.$vmname.' /home/kontrolvm/isos/'.$ostemplate.' sda --type cdrom --mode readonly --persistent');
+			$ssh->exec('sudo /usr/bin/virsh change-media '.$vmname.' sda /home/kontrolvm/isos/'.$ostemplate.' --insert --live --config');
+			$ssh->exec('sudo /usr/bin/virsh dumpxml '.$vmname.' --security-info > /home/kontrolvm/xmls/'.$vmname.'.xml');
+			$ssh->exec('sudo /bin/sed -ie \'s/<boot dev=\x27hd\x27\/>/<boot dev=\x27cdrom\x27\/>/g\' /home/kontrolvm/xmls/'.$vmname.'.xml');
+			$ssh->exec('sudo /usr/bin/virsh define /home/kontrolvm/xmls/'.$vmname.'.xml');
+			echo $ssh->getLog();
+			$ssh->disconnect();
 
-		$stmt = $conn->prepare("UPDATE vms SET os_template =:os_template, bootorder =:bootorder WHERE vm_id =:vm_id");
-		$stmt->bindValue(':os_template', "$ostemplate", SQLITE3_TEXT);
-		$stmt->bindValue(':bootorder', "cdrom", SQLITE3_TEXT);
-		$stmt->bindValue(':vm_id', $vm_id, SQLITE3_INTEGER);
-		$stmt->execute();
-		return true;
+			$stmt = $conn->prepare("UPDATE vms SET os_template =:os_template, bootorder =:bootorder WHERE vm_id =:vm_id");
+			$stmt->bindValue(':os_template', "$ostemplate", SQLITE3_TEXT);
+			$stmt->bindValue(':bootorder', "cdrom", SQLITE3_TEXT);
+			$stmt->bindValue(':vm_id', $vm_id, SQLITE3_INTEGER);
+			$stmt->execute();
+			return true;
+		} else {
+			$error = "Error connecting to node: " . $node_id;
+			logMessage($error);
+			return $error;
+		}
 	} catch (PDOException $e) {
 		$error = "Error mounting ISO ($vm_id): " . $e->getMessage();
 		logMessage($error,$myid);
@@ -2072,26 +2265,32 @@ function unmountISO($myid,$vm_id,$vmname,$node_id) {
 	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 	try {
 		$ssh = connectNode($node_id);
-		$ssh->exec('sudo /usr/bin/virsh change-media '.$vmname.' sda --eject --live');
-		$ssh->exec('sudo /usr/bin/virsh change-media '.$vmname.' sda --eject --config');
-		$ssh->exec('sudo /usr/bin/virsh change-media '.$vmname.' fda --eject --live');
-		$ssh->exec('sudo /usr/bin/virsh change-media '.$vmname.' fda --eject --config');
-		$ssh->exec('sudo /usr/bin/virsh detach-disk '.$vmname.' fda --live');
-		$ssh->exec('sudo /usr/bin/virsh detach-disk '.$vmname.' fda --config');
-		$ssh->exec('sudo /usr/bin/virsh detach-disk '.$vmname.' sda --live');
-		$ssh->exec('sudo /usr/bin/virsh detach-disk '.$vmname.' sda --config');
-		$ssh->exec('sudo /usr/bin/virsh dumpxml '.$vmname.' --security-info > /home/kontrolvm/xmls/'.$vmname.'.xml');
-		$ssh->exec('sudo /bin/sed -ie \'s/<boot dev=\x27cdrom\x27\/>/<boot dev=\x27hd\x27\/>/g\' /home/kontrolvm/xmls/'.$vmname.'.xml');
-		$ssh->exec('sudo /usr/bin/virsh define /home/kontrolvm/xmls/'.$vmname.'.xml');
-		#echo $ssh->getLog();
-		$ssh->disconnect();
+		if($ssh) {
+			$ssh->exec('sudo /usr/bin/virsh change-media '.$vmname.' sda --eject --live');
+			$ssh->exec('sudo /usr/bin/virsh change-media '.$vmname.' sda --eject --config');
+			$ssh->exec('sudo /usr/bin/virsh change-media '.$vmname.' fda --eject --live');
+			$ssh->exec('sudo /usr/bin/virsh change-media '.$vmname.' fda --eject --config');
+			$ssh->exec('sudo /usr/bin/virsh detach-disk '.$vmname.' fda --live');
+			$ssh->exec('sudo /usr/bin/virsh detach-disk '.$vmname.' fda --config');
+			$ssh->exec('sudo /usr/bin/virsh detach-disk '.$vmname.' sda --live');
+			$ssh->exec('sudo /usr/bin/virsh detach-disk '.$vmname.' sda --config');
+			$ssh->exec('sudo /usr/bin/virsh dumpxml '.$vmname.' --security-info > /home/kontrolvm/xmls/'.$vmname.'.xml');
+			$ssh->exec('sudo /bin/sed -ie \'s/<boot dev=\x27cdrom\x27\/>/<boot dev=\x27hd\x27\/>/g\' /home/kontrolvm/xmls/'.$vmname.'.xml');
+			$ssh->exec('sudo /usr/bin/virsh define /home/kontrolvm/xmls/'.$vmname.'.xml');
+			#echo $ssh->getLog();
+			$ssh->disconnect();
 
-		$stmt = $conn->prepare("UPDATE vms SET os_template =:os_template,bootorder =:bootorder WHERE vm_id =:vm_id");
-		$stmt->bindValue(':os_template', "kvm", SQLITE3_TEXT);
-		$stmt->bindValue(':bootorder', "hd", SQLITE3_TEXT);
-		$stmt->bindValue(':vm_id', $vm_id, SQLITE3_INTEGER);
-		$stmt->execute();
-		return true;
+			$stmt = $conn->prepare("UPDATE vms SET os_template =:os_template,bootorder =:bootorder WHERE vm_id =:vm_id");
+			$stmt->bindValue(':os_template', "kvm", SQLITE3_TEXT);
+			$stmt->bindValue(':bootorder', "hd", SQLITE3_TEXT);
+			$stmt->bindValue(':vm_id', $vm_id, SQLITE3_INTEGER);
+			$stmt->execute();
+			return true;
+		} else {
+			$error = "Error connecting to node: " . $node_id;
+			logMessage($error);
+			return $error;
+		}
 	} catch (PDOException $e) {
 		$error = "Error unmounting ISO ($vm_id): " . $e->getMessage();
 		logMessage($error,$myid);
@@ -2105,20 +2304,26 @@ function unmountISO($myid,$vm_id,$vmname,$node_id) {
 #	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 #	try {
 #		$ssh = connectNode($node_id);
-#		if($bus == 'ide') {
-#			$ssh->exec('sudo /bin/sed -i \'/vda/c\ \ \ \ \ \ <target dev=\x27vda\x27\ bus=\x27ide\x27\/>\' /home/kontrolvm/xmls/'.$vmname.'.xml');
+#		if($ssh) {
+#			if($bus == 'ide') {
+#				$ssh->exec('sudo /bin/sed -i \'/vda/c\ \ \ \ \ \ <target dev=\x27vda\x27\ bus=\x27ide\x27\/>\' /home/kontrolvm/xmls/'.$vmname.'.xml');
+#			} else {
+#				$ssh->exec('sudo /bin/sed -i \'/vda/c\ \ \ \ \ \ <target dev=\x27vda\x27\ bus=\x27virtio\x27\/>\' /home/kontrolvm/xmls/'.$vmname.'.xml');
+#			}
+#			$ssh->exec('sudo /usr/bin/virsh define /home/kontrolvm/xmls/'.$vmname.'.xml');		
+#			#echo $ssh->getLog();
+#			$ssh->disconnect();
+#	
+#			$stmt = $conn->prepare("UPDATE vms SET diskdriver =:diskdriver WHERE vm_id =:vm_id");
+#			$stmt->bindValue(':diskdriver', "$bus", SQLITE3_TEXT);
+#			$stmt->bindValue(':vm_id', $vm_id, SQLITE3_INTEGER);
+#			$stmt->execute();
+#			return true;
 #		} else {
-#			$ssh->exec('sudo /bin/sed -i \'/vda/c\ \ \ \ \ \ <target dev=\x27vda\x27\ bus=\x27virtio\x27\/>\' /home/kontrolvm/xmls/'.$vmname.'.xml');
+#			$error = "Error connecting to node: " . $node_id;
+#			logMessage($error);
+#			return $error;
 #		}
-#		$ssh->exec('sudo /usr/bin/virsh define /home/kontrolvm/xmls/'.$vmname.'.xml');		
-#		#echo $ssh->getLog();
-#		$ssh->disconnect();
-#
-#		$stmt = $conn->prepare("UPDATE vms SET diskdriver =:diskdriver WHERE vm_id =:vm_id");
-#		$stmt->bindValue(':diskdriver', "$bus", SQLITE3_TEXT);
-#		$stmt->bindValue(':vm_id', $vm_id, SQLITE3_INTEGER);
-#		$stmt->execute();
-#		return true;
 #	} catch (PDOException $e) {
 #		$error = "Error updating VM disk driver ($vm_id): " . $e->getMessage();
 #		logMessage($error,$myid);
@@ -2132,20 +2337,26 @@ function unmountISO($myid,$vm_id,$vmname,$node_id) {
 #	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 #	try {
 #		$ssh = connectNode($node_id);
-#		if($bus == 'e1000') {
-#			$ssh->exec('sudo /bin/sed -i \'/<model type=\x27virtio\x27\/>/c\ \ \ \ \ \ <model type=\x27e1000\x27\/>\' /home/kontrolvm/xmls/'.$vmname.'.xml');
+#		if($ssh) {
+#			if($bus == 'e1000') {
+#				$ssh->exec('sudo /bin/sed -i \'/<model type=\x27virtio\x27\/>/c\ \ \ \ \ \ <model type=\x27e1000\x27\/>\' /home/kontrolvm/xmls/'.$vmname.'.xml');
+#			} else {
+#				$ssh->exec('sudo /bin/sed -i \'/<model type=\x27e1000\x27\/>/c\ \ \ \ \ \ <model type=\x27virtio\x27\/>\' /home/kontrolvm/xmls/'.$vmname.'.xml');
+#			}
+#			$ssh->exec('sudo /usr/bin/virsh define /home/kontrolvm/xmls/'.$vmname.'.xml');
+#			#echo $ssh->getLog();
+#			$ssh->disconnect();
+#	
+#			$stmt = $conn->prepare("UPDATE vms SET netdriver =:netdriver WHERE vm_id =:vm_id");
+#			$stmt->bindValue(':netdriver', "$bus", SQLITE3_TEXT);
+#			$stmt->bindValue(':vm_id', $vm_id, SQLITE3_INTEGER);
+#			$stmt->execute();
+#			return true;
 #		} else {
-#			$ssh->exec('sudo /bin/sed -i \'/<model type=\x27e1000\x27\/>/c\ \ \ \ \ \ <model type=\x27virtio\x27\/>\' /home/kontrolvm/xmls/'.$vmname.'.xml');
+#			$error = "Error connecting to node: " . $node_id;
+#			logMessage($error);
+#			return $error;
 #		}
-#		$ssh->exec('sudo /usr/bin/virsh define /home/kontrolvm/xmls/'.$vmname.'.xml');
-#		#echo $ssh->getLog();
-#		$ssh->disconnect();
-#
-#		$stmt = $conn->prepare("UPDATE vms SET netdriver =:netdriver WHERE vm_id =:vm_id");
-#		$stmt->bindValue(':netdriver', "$bus", SQLITE3_TEXT);
-#		$stmt->bindValue(':vm_id', $vm_id, SQLITE3_INTEGER);
-#		$stmt->execute();
-#		return true;
 #	} catch (PDOException $e) {
 #		$error = "Error updating VM network driver ($vm_id): " . $e->getMessage();
 #		logMessage($error,$myid);
@@ -2159,20 +2370,26 @@ function bootOrder($myid,$vm_id,$vmname,$boot,$node_id) {
 	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 	try {
 		$ssh = connectNode($node_id);
-		if($boot == 'hd') {
-			$ssh->exec('sudo /bin/sed -ie \'s/<boot dev=\x27cdrom\x27\/>/<boot dev=\x27hd\x27\/>/g\' /home/kontrolvm/xmls/'.$vmname.'.xml');
-		} else {
-			$ssh->exec('sudo /bin/sed -ie \'s/<boot dev=\x27hd\x27\/>/<boot dev=\x27cdrom\x27\/>/g\' /home/kontrolvm/xmls/'.$vmname.'.xml');
-		}
-		$ssh->exec('sudo /usr/bin/virsh define /home/kontrolvm/xmls/'.$vmname.'.xml');
-		#echo $ssh->getLog();
-		$ssh->disconnect();
+		if($ssh) {
+			if($boot == 'hd') {
+				$ssh->exec('sudo /bin/sed -ie \'s/<boot dev=\x27cdrom\x27\/>/<boot dev=\x27hd\x27\/>/g\' /home/kontrolvm/xmls/'.$vmname.'.xml');
+			} else {
+				$ssh->exec('sudo /bin/sed -ie \'s/<boot dev=\x27hd\x27\/>/<boot dev=\x27cdrom\x27\/>/g\' /home/kontrolvm/xmls/'.$vmname.'.xml');
+			}
+			$ssh->exec('sudo /usr/bin/virsh define /home/kontrolvm/xmls/'.$vmname.'.xml');
+			#echo $ssh->getLog();
+			$ssh->disconnect();
 
-		$stmt = $conn->prepare("UPDATE vms SET bootorder =:bootorder WHERE vm_id =:vm_id");
-		$stmt->bindValue(':bootorder', "$boot", SQLITE3_TEXT);
-		$stmt->bindValue(':vm_id', $vm_id, SQLITE3_INTEGER);
-		$stmt->execute();
-		return true;
+			$stmt = $conn->prepare("UPDATE vms SET bootorder =:bootorder WHERE vm_id =:vm_id");
+			$stmt->bindValue(':bootorder', "$boot", SQLITE3_TEXT);
+			$stmt->bindValue(':vm_id', $vm_id, SQLITE3_INTEGER);
+			$stmt->execute();
+			return true;
+		} else {
+			$error = "Error connecting to node: " . $node_id;
+			logMessage($error);
+			return $error;
+		}
 	} catch (PDOException $e) {
 		$error = "Error updating VM boot order ($vm_id): " . $e->getMessage();
 		logMessage($error,$myid);
@@ -2462,22 +2679,28 @@ function backupVM($myid,$vm_id,$vm_name,$node_id) {
 	$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 	try {
 		$ssh = connectNode($node_id);
-		$backup_tmpdir = $ssh->exec("/usr/bin/test -d /home/kontrolvm/backups_tmp/$vm_name;echo $?");
-		if($backup_tmpdir == 1) {
-			$ssh->exec('sudo /home/kontrolvm/backup_vm.sh '.$vm_name.' '.$backup_name.' > /dev/null 2>&1 &', true);
-			#echo $ssh->getLog();
-			$ssh->disconnect();
+		if($ssh) {
+			$backup_tmpdir = $ssh->exec("/usr/bin/test -d /home/kontrolvm/backups_tmp/$vm_name;echo $?");
+			if($backup_tmpdir == 1) {
+				$ssh->exec('sudo /home/kontrolvm/backup_vm.sh '.$vm_name.' '.$backup_name.' > /dev/null 2>&1 &', true);
+				#echo $ssh->getLog();
+				$ssh->disconnect();
 
-			$stmt = $conn->prepare('INSERT INTO backups (backup_name, vm_id, node_id, status, created_at) VALUES (:backup_name, :vm_id, :node_id, "0", :created_at)');
-			$stmt->bindValue(':backup_name', "$backup_name.tar.gz", SQLITE3_TEXT);
-			$stmt->bindValue(':vm_id', $vm_id, SQLITE3_INTEGER);
-			$stmt->bindValue(':node_id', $node_id, SQLITE3_INTEGER);
-			$stmt->bindValue(':created_at', time(), SQLITE3_TEXT);
-			$stmt->execute();
-			return true;
+				$stmt = $conn->prepare('INSERT INTO backups (backup_name, vm_id, node_id, status, created_at) VALUES (:backup_name, :vm_id, :node_id, "0", :created_at)');
+				$stmt->bindValue(':backup_name', "$backup_name.tar.gz", SQLITE3_TEXT);
+				$stmt->bindValue(':vm_id', $vm_id, SQLITE3_INTEGER);
+				$stmt->bindValue(':node_id', $node_id, SQLITE3_INTEGER);
+				$stmt->bindValue(':created_at', time(), SQLITE3_TEXT);
+				$stmt->execute();
+				return true;
+			} else {
+				$error = "Error starting VM restore: Backup or restore is already running.";
+				logMessage($error,$myid);
+				return $error;
+			}
 		} else {
-			$error = "Error starting VM restore: Backup or restore is already running.";
-			logMessage($error,$myid);
+			$error = "Error connecting to node: " . $node_id;
+			logMessage($error);
 			return $error;
 		}
 	} catch (PDOException $e) {
@@ -2494,13 +2717,19 @@ function deleteBackup($myid,$vm_id,$backup_name,$backup_id,$node_id) {
 
 	try {
 		$ssh = connectNode($node_id);
-		$ssh->exec("/usr/bin/rm -rf /home/kontrolvm/kvm_backups/$backup_name");
-		$ssh->disconnect();
+		if($ssh) {
+			$ssh->exec("/usr/bin/rm -rf /home/kontrolvm/kvm_backups/$backup_name");
+			$ssh->disconnect();
 
-		$stmt = $conn->prepare("DELETE FROM backups WHERE backup_id =:backup_id");
-		$stmt->bindValue(':backup_id', $backup_id, SQLITE3_INTEGER);
-		$stmt->execute();
-		return true;
+			$stmt = $conn->prepare("DELETE FROM backups WHERE backup_id =:backup_id");
+			$stmt->bindValue(':backup_id', $backup_id, SQLITE3_INTEGER);
+			$stmt->execute();
+			return true;
+		} else {
+			$error = "Error connecting to node: " . $node_id;
+			logMessage($error);
+			return $error;
+		}
 	} catch (PDOException $e) {
 		$error = "Error deleting VM backup ($backup_id - $backup_name): " . $e->getMessage();
 		logMessage($error,$myid);
@@ -2533,17 +2762,23 @@ function getBackupInfo($vm_name,$backup_name,$node_id) {
 
 	try {
 		$ssh = connectNode($node_id);
-		$backup_tmpdir = $ssh->exec("/usr/bin/test -d /home/kontrolvm/backups_tmp/$vm_name;echo $?");
-		if($backup_tmpdir == 1) {
-			$backup_size = $ssh->exec("/usr/bin/stat -c '%s' /home/kontrolvm/kvm_backups/$backup_name | awk '{printf \"%.2f MB\", \$1 / (1024 * 1024)}'");
-			#echo $ssh->getLog();
-			$ssh->disconnect();
-			$stmt = $conn->prepare("UPDATE backups SET backup_size =:backup_size,status ='1' WHERE backup_name =:backup_name");
-			$stmt->bindValue(':backup_size', $backup_size, SQLITE3_INTEGER);
-			$stmt->bindValue(':backup_name', "$backup_name", SQLITE3_TEXT);
-			$stmt->execute();
+		if($ssh) {
+			$backup_tmpdir = $ssh->exec("/usr/bin/test -d /home/kontrolvm/backups_tmp/$vm_name;echo $?");
+			if($backup_tmpdir == 1) {
+				$backup_size = $ssh->exec("/usr/bin/stat -c '%s' /home/kontrolvm/kvm_backups/$backup_name | awk '{printf \"%.2f MB\", \$1 / (1024 * 1024)}'");
+				#echo $ssh->getLog();
+				$ssh->disconnect();
+				$stmt = $conn->prepare("UPDATE backups SET backup_size =:backup_size,status ='1' WHERE backup_name =:backup_name");
+				$stmt->bindValue(':backup_size', $backup_size, SQLITE3_INTEGER);
+				$stmt->bindValue(':backup_name', "$backup_name", SQLITE3_TEXT);
+				$stmt->execute();
+			}
+			return true;
+		} else {
+			$error = "Error connecting to node: " . $node_id;
+			logMessage($error);
+			return $error;
 		}
-		return true;
 	} catch (PDOException $e) {
 		$error = "Error fetching node details: " . $e->getMessage();
 		logMessage($error);
@@ -2558,25 +2793,31 @@ function restoreVM($myid,$backup_name,$vm_name,$vnc_port,$vm_id,$node_id) {
 
 	try {
 		$ssh = connectNode($node_id);
-		$backup_tmpdir = $ssh->exec("/usr/bin/test -d /home/kontrolvm/backups_tmp/$vm_name;echo $?");
-		if($backup_tmpdir == 1) {
-			$ssh->exec('sudo /usr/bin/virsh destroy '.$vm_name.'');
-			$ssh->exec('sudo /usr/bin/virsh undefine '.$vm_name.'');
-			$ssh->exec('sudo /usr/bin/virsh undefine '.$vm_name.' --nvram');
-			$ssh->exec('sudo /usr/bin/virsh destroy '.$vm_name.'');
-			$disks = getDisks($vm_id);
-			foreach ($disks as $disk) {
-				$diskname = $disk['disk_name'];
-				$ssh->exec("sudo /bin/sh /home/kontrolvm/cleandata.sh $diskname");
+		if($ssh) {
+			$backup_tmpdir = $ssh->exec("/usr/bin/test -d /home/kontrolvm/backups_tmp/$vm_name;echo $?");
+			if($backup_tmpdir == 1) {
+				$ssh->exec('sudo /usr/bin/virsh destroy '.$vm_name.'');
+				$ssh->exec('sudo /usr/bin/virsh undefine '.$vm_name.'');
+				$ssh->exec('sudo /usr/bin/virsh undefine '.$vm_name.' --nvram');
+				$ssh->exec('sudo /usr/bin/virsh destroy '.$vm_name.'');
+				$disks = getDisks($vm_id);
+				foreach ($disks as $disk) {
+					$diskname = $disk['disk_name'];
+					$ssh->exec("sudo /bin/sh /home/kontrolvm/cleandata.sh $diskname");
+				}
+				$ssh->exec('sudo /home/kontrolvm/restore_vm.sh '.$backup_name.' '.$vm_name.' '.$vnc_port.' > /dev/null 2>&1 &', true);
+				#echo $ssh->getLog();
+				$ssh->disconnect();
+				return true;
+			} else {
+				$error = "Error starting VM restore: Backup or restore is already running.";
+				logMessage($error,$myid);
+				return $error; 
 			}
-			$ssh->exec('sudo /home/kontrolvm/restore_vm.sh '.$backup_name.' '.$vm_name.' '.$vnc_port.' > /dev/null 2>&1 &', true);
-			#echo $ssh->getLog();
-			$ssh->disconnect();
-			return true;
 		} else {
-			$error = "Error starting VM restore: Backup or restore is already running.";
-			logMessage($error,$myid);
-			return $error; 
+			$error = "Error connecting to node: " . $node_id;
+			logMessage($error);
+			return $error;
 		}
 	} catch (PDOException $e) {
 		$error = "Error starting VM restore: " . $e->getMessage();

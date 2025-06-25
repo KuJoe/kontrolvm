@@ -10,9 +10,11 @@ if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 		if($_GET['s'] == '1') {
 			$success = "VM created successfully.";
 		} elseif($_GET['s'] == '2') {
-			$success = "VM deleted successfully.";
+			$success = "VM destroyed successfully.";
 		} elseif($_GET['s'] == '3') {
 			$error = "VM ID missing.";
+		} elseif($_GET['s'] == '4') {
+			$error = "VM deleted successfully.";
 		}
 	}
 	define('AmAllowed', TRUE);
