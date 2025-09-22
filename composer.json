@@ -1,7 +1,7 @@
 {
     "require": {
         "phpseclib/phpseclib": "~3.0",
-        "pragmarx/google2fa": "^8.0",
+        "pragmarx/google2fa": "^9.0",
         "bacon/bacon-qr-code": "^3.0",
         "phpmailer/phpmailer": "^6.9"
     }
