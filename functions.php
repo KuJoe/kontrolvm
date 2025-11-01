@@ -951,6 +951,39 @@ function addISOs($myid,$download,$friendlyname) {
 function deleteISO($myid,$template_id) {
 	include('config.php');
 	$conn = new PDO("sqlite:$db_file_path");
+	// Get filename from ostemplates
+	$stmt = $conn->prepare('SELECT filename FROM ostemplates WHERE template_id =:template_id');
+	$stmt->bindValue(':template_id', $template_id, SQLITE3_INTEGER);
+	$stmt->execute();
+	$filename = $stmt->fetchColumn();
+
+	// Delete ISO file from /home/kontrolvm/isos/
+	if ($filename) {
+		$servers = getServerList('1');
+		foreach ($servers as $server) {
+			$node_id = $server['node_id'];
+			$ssh = connectNode($node_id);
+			if ($ssh) {
+				$ssh->exec('/usr/bin/rm -f /home/kontrolvm/isos/' . $filename);
+				$ssh->disconnect();
+			}
+		}
+		// Remove line from wget_isos.sh
+		$localFile = 'wget_isos.sh';
+		if (file_exists($localFile)) {
+			$lines = file($localFile);
+			$newLines = array();
+			foreach ($lines as $line) {
+				if (strpos($line, $filename) === false) {
+					$newLines[] = $line;
+				}
+			}
+			file_put_contents($localFile, implode("", $newLines));
+			downloadISOs($localFile);
+		}
+	}
+
+	// Delete from database
 	$stmt = $conn->prepare('DELETE FROM ostemplates WHERE template_id =:template_id');
 	$stmt->bindValue(':template_id', $template_id, SQLITE3_INTEGER);
 	$result = $stmt->execute();
